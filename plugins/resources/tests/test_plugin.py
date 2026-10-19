@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -167,6 +168,18 @@ class FetchTests(Base):
         self.assertEqual(out["data"]["placed"][0]["track"], "V2")
         code, out = self.run_cli("credits", "--folder", self.dest, project=False)
         self.assertEqual(out["data"]["credits"], ["- pot.jpg, by Ann Ó, CC BY 4.0, https://commons.wikimedia.org/wiki/File:pot.jpg"])
+
+
+class OutputTests(unittest.TestCase):
+    def test_the_result_is_utf8_whatever_the_console_code_page(self):
+        folder = tempfile.mkdtemp()
+        path = os.path.join(folder, "x.png")
+        open(path, "wb").close()
+        write_sidecar(path, {"license": "CC0", "author": "Ann Ó Nguyễn"})
+        env = dict(os.environ, PYTHONIOENCODING="cp1252:replace")
+        done = subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "plugin.py"), "credits", "--folder", folder],
+                              stdout=subprocess.PIPE, env=env, check=True)
+        self.assertIn("Ann Ó Nguyễn", json.loads(done.stdout.decode("utf-8"))["data"]["credits"][0])
 
 
 class ManifestTests(unittest.TestCase):
