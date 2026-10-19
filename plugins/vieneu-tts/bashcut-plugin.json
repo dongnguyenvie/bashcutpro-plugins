@@ -140,5 +140,6 @@
       ]
     }
   ],
+  "models": ["vieneu-v3-turbo", "moss-audio-tokenizer-nano-onnx"],
   "skills": ["skills/vieneu-tts/SKILL.md"]
 }

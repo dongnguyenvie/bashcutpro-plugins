@@ -121,7 +121,15 @@ class SynthesizeTests(Base):
         steps = result["data"]["steps"]
         self.assertEqual(steps[0][1:3], ["-m", "venv"])
         self.assertIn("vieneu>=3.8,<4", steps[1])
-        self.assertIn("Vieneu()", steps[2][-1])
+        self.assertEqual(len(steps), 2)
+        self.assertEqual(result["data"]["models"], ["vieneu-v3-turbo", "moss-audio-tokenizer-nano-onnx"])
+
+    def test_model_files_come_from_models_json(self):
+        from bashcut_models import Models
+        models = Models.find(cli.PLUGIN_ROOT, root=self.dir)
+        for model_id in cli.MODELS:
+            self.assertTrue(models.missing(model_id))  # nothing downloaded in the test folder
+            self.assertIn("bashcut.vieneu-tts", models.model(model_id)["usedBy"])
 
 
 class PlaceTests(Base):

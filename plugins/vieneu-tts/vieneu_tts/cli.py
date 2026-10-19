@@ -11,6 +11,8 @@ import os
 import subprocess
 import sys
 
+from bashcut_models import ModelError, Models
+
 from . import __version__
 from .mcp import AppError, McpClient
 from .settings import engine_python, plugin_dir, resolve, venv_python
@@ -19,6 +21,9 @@ from .timeline import ensure_audio_track, import_files, overlaps, place_audio
 from .voices import DEFAULT_VOICE, NAMES, find_voice, voice_list
 
 PACKAGES = ["vieneu>=3.8,<4", "onnxruntime>=1.20,<1.23"]
+# What VieNeu v3 Turbo reads on CPU, from models.json (pinned revision, SHA-256 checked).
+MODELS = ["vieneu-v3-turbo", "moss-audio-tokenizer-nano-onnx"]
+PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def progress(message):
@@ -61,7 +66,7 @@ def build_parser():
 
     p = sub.add_parser("setup", help="make the private Python environment and install VieNeu (about 750 MB, plus a 600 MB model)")
     p.add_argument("--python", help="a Python 3.10+ to make the environment with (default: this one, else `uv`)")
-    p.add_argument("--download-model", action="store_true", help="also download the voice model now (else on first use)")
+    p.add_argument("--download-model", action="store_true", help="also download the voice model now, verified against models.json (else VieNeu fetches it on first use)")
     p.add_argument("--dry-run", action="store_true", help="print the steps, run nothing")
 
     p = sub.add_parser("synthesize", help="voice the lines into wav takes, place nothing")
@@ -94,10 +99,35 @@ def save(app, args):
     return False
 
 
+def hf_home():
+    return os.path.join(plugin_dir(), "huggingface")
+
+
+def models_ready():
+    """True when every model file is downloaded and verified (then VieNeu runs offline on them)."""
+    try:
+        models = Models.find(PLUGIN_ROOT)
+        return all(not models.missing(m) for m in MODELS)
+    except ModelError:
+        return False
+
+
+def fetch_models():
+    """Download the model files through models.json (resume, SHA-256) and expose them to huggingface_hub."""
+    models = Models.find(PLUGIN_ROOT, log=progress)
+    folders = {}
+    for model_id in MODELS:
+        folders[model_id] = models.fetch(model_id)
+        models.hf_cache(model_id, os.environ.get("HF_HOME") or hf_home())
+    return folders
+
+
 def engine_env():
     env = dict(os.environ)
-    env.setdefault("HF_HOME", os.path.join(plugin_dir(), "huggingface"))
+    env.setdefault("HF_HOME", hf_home())
     env.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    if models_ready():
+        env.setdefault("HF_HUB_OFFLINE", "1")
     env.setdefault("PYTHONIOENCODING", "utf-8")
     return env
 
@@ -167,20 +197,25 @@ def setup_steps(args):
         install = ["uv", "pip", "install", "--python", target, "--upgrade"] + PACKAGES
     steps = [] if os.path.isfile(target) else [make]
     steps.append(install)
-    if args.download_model:
-        steps.append([target, "-c", "from vieneu import Vieneu; Vieneu()"])
     return steps
 
 
 def cmd_setup(args):
     steps = setup_steps(args)
+    models = MODELS if args.download_model else []
     if args.dry_run:
-        return "%d steps (dry run: nothing ran)" % len(steps), {"steps": steps}
+        return "%d steps (dry run: nothing ran)" % len(steps), {"steps": steps, "models": models}
     for step in steps:
         progress(" ".join(step))
         if subprocess.run(step, env=engine_env()).returncode != 0:
             raise AppError("setup_failed", "this step failed: %s" % " ".join(step))
-    return "VieNeu is installed in %s" % venv_python(), {"python": venv_python(), "steps": steps}
+    folders = {}
+    if models:
+        try:
+            folders = fetch_models()
+        except ModelError as error:
+            raise AppError(error.code, error.message)
+    return "VieNeu is installed in %s" % venv_python(), {"python": venv_python(), "steps": steps, "models": folders}
 
 
 def cmd_synthesize(args):

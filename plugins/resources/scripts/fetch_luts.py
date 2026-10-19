@@ -8,7 +8,7 @@
     uv run fetch_luts.py [--source gmic,rawtherapee] [--folder /abs/my-luts] [--limit 40] [--scope user]
 
 Sources: gmic (gmic.eu colour presets: the Creative pack zip, then every category's .cube), rawtherapee (the
-film simulation HaldCLUTs, converted to .cube; the official zip, else a GitHub copy of it), and --folder (your
+film simulation HaldCLUTs, converted to .cube; the official zip, checked against models.json, else a GitHub copy of it), and --folder (your
 own .cube files or HaldCLUT images, such as packs downloaded by hand). A source that fails is skipped with one
 line. Files are kept in BashCut's shared folder (BASHCUT_SHARED_DATA/luts; downloads in BASHCUT_SHARED_CACHE).
 
@@ -40,7 +40,6 @@ import numpy as np
 
 AGENT = "Mozilla/5.0 (Macintosh) bashcut-agent-kit"
 GMIC = "https://gmic.eu/color_presets/"
-RT_ZIP = "https://rawtherapee.com/shared/HaldCLUT.zip"
 # A copy of the same RawTherapee collection, used when the official server refuses (it often answers 509).
 RT_MIRROR = "cedeber/hald-clut"
 RT_FOLDER = "HaldCLUT/Film Simulation/"
@@ -421,17 +420,25 @@ def gmic(quota):
         yield from pool.map(fetch, order)
 
 
+def rt_pack():
+    """The official zip (`rawtherapee-haldclut` in models.json: SHA-256 checked, resumable), None when it fails."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    try:
+        from bashcut_models import ModelError, Models
+    except ImportError as e:
+        print(f"rawtherapee: {e}", file=sys.stderr)
+        return None
+    try:
+        return Path(Models.find(__file__).fetch("rawtherapee-haldclut")) / "HaldCLUT.zip"
+    except ModelError as e:
+        print(f"rawtherapee: {e.message}", file=sys.stderr)
+        return None
+
+
 def rawtherapee(quota):
-    """RawTherapee film simulation HaldCLUTs: the official zip, else the same files from a GitHub copy."""
-    pack = CACHE / "rawtherapee-HaldCLUT.zip"
-    if not pack.exists() and not quota:
-        try:
-            pack.parent.mkdir(parents=True, exist_ok=True)
-            body = get(RT_ZIP, timeout=1800)
-            pack.write_bytes(body)
-        except OSError:
-            pass
-    if pack.exists():
+    """RawTherapee film simulation HaldCLUTs: the official zip (verified), else the same files from a GitHub copy."""
+    pack = None if quota else rt_pack()
+    if pack and pack.exists():
         with zipfile.ZipFile(pack) as z:
             names = sorted(n for n in z.namelist() if n.lower().endswith(".png") and "Film Simulation" in n)
             for n in names[:quota or None]:
