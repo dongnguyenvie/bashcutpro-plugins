@@ -15,6 +15,19 @@
       "path": "plugins/translate-captions",
       "manifest": "plugins/translate-captions/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/translate-captions"}
+    },
+    {
+      "id": "bashcut.vieneu-tts",
+      "name": "VieNeu TTS (Vietnamese)",
+      "version": "0.1.0",
+      "summary": "Vietnamese voiceover on this computer with VieNeu-TTS (25 voices, cloning with consent), placed on an audio track.",
+      "category": "voice",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/vieneu-tts",
+      "manifest": "plugins/vieneu-tts/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/vieneu-tts"}
     }
   ]
 }
