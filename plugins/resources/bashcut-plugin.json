@@ -3,7 +3,7 @@
   "id": "bashcut.resources",
   "name": "Online Resources",
   "version": "0.1.0",
-  "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them with the credits in the project notes.",
+  "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them; credit lines only when asked.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
   "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/resources",
@@ -89,7 +89,8 @@
         {"id": "args", "flag": "--args", "type": "string", "default": ""},
         {"id": "import", "flag": "--import", "type": "bool", "default": false},
         {"id": "videoTrack", "flag": "--video-track", "type": "string", "default": "V2"},
-        {"id": "audioTrack", "flag": "--audio-track", "type": "string", "default": "A2"}
+        {"id": "audioTrack", "flag": "--audio-track", "type": "string", "default": "A2"},
+        {"id": "credits", "flag": "--credits", "type": "bool", "default": false}
       ]
     },
     {
@@ -102,7 +103,8 @@
         {"id": "path", "flag": "--path", "type": "path", "optional": true},
         {"id": "folder", "flag": "--folder", "type": "path", "optional": true},
         {"id": "frame", "flag": "--frame", "type": "integer", "optional": true},
-        {"id": "duration", "flag": "--duration", "type": "integer", "optional": true}
+        {"id": "duration", "flag": "--duration", "type": "integer", "optional": true},
+        {"id": "credits", "flag": "--credits", "type": "bool", "default": false}
       ]
     },
     {

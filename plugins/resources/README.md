@@ -1,8 +1,8 @@
 # Online Resources
 
 Open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie animations, fonts and LUTs for
-BashCutPro, fetched from official APIs with each file's licence recorded next to it, then imported and placed with
-the credits in the project notes. Plugin id `bashcut.resources`, Python 3.9+, macOS, Windows and Linux. A port of
+BashCutPro, fetched from official APIs with each file's licence recorded next to it, then imported and placed. Credit lines
+are opt-in: nothing about licences goes into the project unless asked (`--credits`). Plugin id `bashcut.resources`, Python 3.9+, macOS, Windows and Linux. A port of
 BashCut's Online Resources plugin ([`bashcut-plugins/plugins/resources`](https://github.com/dongnguyenvie/bashcut-plugins)):
 its ten fetch scripts are carried over as they are; the browser window and BashCut's library are not.
 
@@ -19,8 +19,8 @@ py -3 plugin.py fetch --script audio --bridge 127.0.0.1:9876 --import --args '["
 |---|---|---|
 | `scripts` | the fetch scripts, what each fetches and which API keys are set | – |
 | `setup` | a private Python (`<data dir>/bashcut-plugins/bashcut.resources/venv`) with Pillow, NumPy, fontTools, resvg and rlottie, for contact sheets, PNG rendering and measuring (about 65 MB); `--dry-run` prints the steps | – |
-| `fetch` | runs one script (`--script`, its own flags in `--args` as a string or JSON list, or after `--`); every file it saves gets `<file>.licence.json`; with `--import` every fetched file is imported and credited; files the script picked with `@frame[:duration]` are placed on `--video-track` (V2) or `--audio-track` (A2) | `media_import`, `sequence_inspect`, `sequence.addTracks`, `timeline.place`, `project.notes`, `project.setNotes`, `file.save` |
-| `import` | imports `--path` files or every file of `--folder` that has a licence record, credits them, and with `--frame` places them one after another | the same |
+| `fetch` | runs one script (`--script`, its own flags in `--args` as a string or JSON list, or after `--`); every file it saves gets `<file>.licence.json`; with `--import` every fetched file is imported (`--credits`: and credited in the project notes); files the script picked with `@frame[:duration]` are placed on `--video-track` (V2) or `--audio-track` (A2) | `media_import`, `sequence_inspect`, `sequence.addTracks`, `timeline.place`, `project.notes`, `project.setNotes`, `file.save` |
+| `import` | imports `--path` files or every file of `--folder` that has a licence record, with `--frame` places them one after another, with `--credits` writes their credit lines into the project notes | the same |
 | `credits` | the credit lines of a folder's files, from their records | – |
 
 Output and exit status follow `bashcut-result/1` (see the [repository README](../../README.md#how-a-plugin-runs)).
@@ -68,8 +68,10 @@ A licence record:
  "source": "https://commons.wikimedia.org/wiki/File:…", "fetchedBy": "bashcut.resources fetch_stock.py", "fetched": "2026-10-20"}
 ```
 
-The project notes get one block between `<!-- bashcut.resources credits -->` markers, updated (not repeated) on each
-import; files without a record are listed as "licence unknown: check before publishing" and in `data.unlicensed`.
+Credits are opt-in (owner's rule): by default nothing about licences goes onto the video, its description or the
+project notes; the records beside the files are the licence record. With `--credits` (only when the user asked for
+credits) the project notes get one block between `<!-- bashcut.resources credits -->` markers, updated (not repeated)
+on each import; files without a record are listed as "licence unknown: check before publishing" and in `data.unlicensed`.
 
 Differences from the BashCut plugin: no browser window, no library (search, tags, measured loudness and BPM), no
 font install (BashCutPro uses the system's fonts: the .ttf is downloaded for the user to install), Lottie files are
