@@ -1,4 +1,4 @@
-"""Command line: `translate`, `export-lines`, `apply`, `cover`, `check-key`.
+"""Command line: `translate`, `review`, `export-lines`, `apply`, `cover`, `check-key`.
 
 Every command prints one JSON object on stdout: `{"ok": true, "message", "data"}` or
 `{"ok": false, "error": {"code", "message"}}`. Progress goes to stderr. Exit status 0 on success, 1 on an
@@ -17,6 +17,7 @@ from .cover import apply_cover, detect_clip, parse_box, video_clips
 from .mcp import AppError, McpClient
 from .settings import resolve
 from .translate import LANGUAGES, Style, TranslateError, Translator, glossary_entries, too_fast, translate_lines
+from .view import review_view
 
 EXIT_NO_KEY = 3
 
@@ -60,6 +61,12 @@ def build_parser():
     p.add_argument("--brief", default="", help="one or two sentences on what the video is about")
     p.add_argument("--batch-size", type=int, default=40)
     p.add_argument("--dry-run", action="store_true", help="translate and report, change nothing")
+
+    p = sub.add_parser("review", help="the captions as a review list in BashCutPro's Runs section (bashcut-view/1)")
+    connection_args(p)
+    translation_args(p)
+    p.add_argument("--glossary", default="")
+    p.add_argument("--tone", default="natural", choices=["natural", "casual", "formal"])
 
     p = sub.add_parser("export-lines", help="the captions to translate as JSON, for an agent to translate itself")
     connection_args(p)
@@ -150,7 +157,15 @@ def cmd_translate(args):
         "target": args.target, "service": service.label, "lines": len(lines), "translated": len(steps), "kept": kept,
         "tooFast": fast, "saved": saved,
         "captions": [{"caption": l.caption, "text": l.text, "translation": translated.get(l.id)} for l in lines],
+        "view": review_view(lines, translated, args.target, args.tone, args.glossary, style.max_cps),
     }
+
+
+def cmd_review(args):
+    with connect(args) as app:
+        _, lines = read_lines(app, args)
+    view = review_view(lines, None, args.target, args.tone, args.glossary, args.max_cps)
+    return "%d captions to review" % len(lines), {"lines": len(lines), "view": view}
 
 
 def cmd_export_lines(args):
@@ -229,7 +244,7 @@ def cmd_check_key(args):
     return "%s accepts the key (%d text models)" % (service.name, len(models)), {"service": service.kind, "model": service.model, "models": models}
 
 
-COMMANDS = {"translate": cmd_translate, "export-lines": cmd_export_lines, "apply": cmd_apply, "cover": cmd_cover, "check-key": cmd_check_key}
+COMMANDS = {"translate": cmd_translate, "review": cmd_review, "export-lines": cmd_export_lines, "apply": cmd_apply, "cover": cmd_cover, "check-key": cmd_check_key}
 
 
 def emit(value):
