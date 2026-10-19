@@ -101,6 +101,20 @@
       "handoff": {"exit": 3, "then": "apply"}
     },
     {
+      "id": "review",
+      "title": "Review captions…",
+      "args": ["review"],
+      "needs": "project",
+      "edits": false,
+      "params": [
+        {"id": "target", "flag": "--target", "type": "enum", "default": "vi",
+         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
+        {"id": "track", "flag": "--track", "type": "string", "optional": true},
+        {"id": "glossary", "flag": "--glossary", "type": "string", "default": ""},
+        {"id": "tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"}
+      ]
+    },
+    {
       "id": "export-lines",
       "title": "Export lines for the agent",
       "args": ["export-lines"],
