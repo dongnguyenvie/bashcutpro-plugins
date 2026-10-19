@@ -13,7 +13,7 @@ import sys
 from . import __version__
 from .captions import (export_lines, lines_from_listing, set_text_steps, stale_lines, translations_from_answer,
                        caption_tracks)
-from .cover import apply_cover, detect_clip, parse_box, video_clips
+from .cover import apply_cover, detect_clip, footage_items, parse_box, video_clips
 from .mcp import AppError, McpClient
 from .settings import resolve
 from .translate import LANGUAGES, Style, TranslateError, Translator, glossary_entries, too_fast, translate_lines
@@ -207,7 +207,7 @@ def cmd_cover(args):
     results, covered = [], 0
     with connect(args) as app:
         sequence = app.tool("sequence_inspect") or {}
-        clips = [c for c in video_clips(sequence) if not args.clip or c["clip"] in args.clip]
+        clips = [c for c in video_clips(sequence, footage_items(app)) if not args.clip or c["clip"] in args.clip]
         if not clips:
             raise AppError("no_clips", "The active sequence has no video clips" + (" with those ids" if args.clip else ""))
         for clip in clips:

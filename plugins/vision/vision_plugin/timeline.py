@@ -29,12 +29,15 @@ def frame_ticks(sequence):
     return TPS * s["den"] // s["num"]
 
 
-def video_clips(sequence, wanted=None):
-    """Clips from media items on the video tracks, bottom track first, with their track index (1 = V1)."""
+def video_clips(sequence, wanted=None, footage=None):
+    """Clips from media items on the video tracks, bottom track first, with their track index (1 = V1). With
+    `footage` (from `footage_items`), only clips of those items: a title or graphic has no source frame to export."""
     clips = []
     for index, track in enumerate(sequence.get("video") or []):
         for item in track.get("items") or []:
             if item.get("item") is None or not item.get("enabled", True):
+                continue
+            if footage is not None and item.get("item") not in footage:
                 continue
             if wanted and item.get("clip") not in wanted:
                 continue
@@ -44,6 +47,28 @@ def video_clips(sequence, wanted=None):
     if not clips:
         raise AppError("no_clips", "the active sequence has no video clips")
     return clips
+
+
+FOOTAGE_TYPES = ("Movie", "Still", "ImageSequence")
+
+
+def footage_items(app):
+    """Ids of the project's media items that have pictures to look at (`project_inspect` types Movie, Still,
+    ImageSequence): graphics, captions turned into titles, nested sequences and synthetic media are left out.
+    None when the project tree cannot be read (then nothing is left out)."""
+    try:
+        tree = app.tool("project_inspect") or {}
+    except Exception:  # an older engine without the tool: do not filter
+        return None
+    found, stack = set(), [tree.get("root") or {}]
+    while stack:
+        node = stack.pop()
+        if not isinstance(node, dict):
+            continue
+        if node.get("type") in FOOTAGE_TYPES and node.get("item") is not None:
+            found.add(node["item"])
+        stack.extend(node.get("children") or [])
+    return found
 
 
 def source_range(clip):

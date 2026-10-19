@@ -173,14 +173,39 @@ def parse_box(text):
     return {"x": x, "y": y, "w": round(min(w, 1 - x), 4), "h": round(min(h, 1 - y), 4), "lineHeight": h / 2, "frames": 0}
 
 
-def video_clips(sequence):
-    """Clips on the video tracks that come from a media item, top track first."""
+def video_clips(sequence, footage=None):
+    """Clips on the video tracks that come from a media item, top track first. With `footage` (from
+    `footage_items`), only clips of those items: a title or graphic has no source frame to export."""
     clips = []
     for index, track in enumerate(sequence.get("video") or []):
         for item in track.get("items") or []:
+            if footage is not None and item.get("item") not in footage:
+                continue
             if item.get("enabled", True) and item.get("item") is not None:
                 clips.append(dict(item, track=track.get("name") or "V%d" % (index + 1)))
     return clips
+
+
+FOOTAGE_TYPES = ("Movie", "Still", "ImageSequence")
+
+
+def footage_items(app):
+    """Ids of the project's media items that have pictures to look at (`project_inspect` types Movie, Still,
+    ImageSequence): graphics, captions turned into titles, nested sequences and synthetic media are left out.
+    None when the project tree cannot be read (then nothing is left out)."""
+    try:
+        tree = app.tool("project_inspect") or {}
+    except Exception:  # an older engine without the tool: do not filter
+        return None
+    found, stack = set(), [tree.get("root") or {}]
+    while stack:
+        node = stack.pop()
+        if not isinstance(node, dict):
+            continue
+        if node.get("type") in FOOTAGE_TYPES and node.get("item") is not None:
+            found.add(node["item"])
+        stack.extend(node.get("children") or [])
+    return found
 
 
 def sample_times(clip, seconds=30.0, count=8):
