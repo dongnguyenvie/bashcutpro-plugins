@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- An isometric system diagram from JSON data. Each node a block on an isometric grid (layers along one axis), connectors along the grid, blocks lit up and packets flowing along their connectors step by step (data is JSON {title, nodes:[{id,label,icon?,group?}], edges:[{from,to}], steps:[{at,focus,reveal}]}). Transparent, the project's canvas, 8 s. -->
+<!-- Pitfalls:
+  - steps[].at are seconds from the graphic's start. Do not compute them: `bin/graphic place … --steps-from voice`
+    gives step i the start of the i-th voice line from --at-frame on (placing the graphic just before the first one and
+    ending it after the last when --at-frame/--duration are left out); `"at": "line:3"` or `"section:Label"` picks one.
+    A step without a number is spread evenly.
+  - Pass the data with `--set data=@diagram.json` (a file; ids are short strings, labels the words on screen).
+  - Up to ~8 blocks keep the blocks large; at 12 they shrink to ~110 px wide on 9:16. Long chains read best on 16:9.
+  - group colours a block (first = accent, second = secondary); icon is an emoji or an image file in the folder.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "System (JSON {title, nodes, edges, steps})", "default": "{\"title\": \"Inside a video app\", \"nodes\": [{\"id\": \"phone\", \"label\": \"Phone\", \"icon\": \"📱\"}, {\"id\": \"cdn\", \"label\": \"CDN\", \"icon\": \"🌐\"}, {\"id\": \"api\", \"label\": \"API\", \"icon\": \"⚙️\"}, {\"id\": \"store\", \"label\": \"Video storage\", \"icon\": \"🗄️\", \"group\": \"data\"}, {\"id\": \"db\", \"label\": \"Database\", \"icon\": \"💾\", \"group\": \"data\"}, {\"id\": \"encode\", \"label\": \"Encoder\", \"icon\": \"🎞️\"}], \"edges\": [{\"from\": \"phone\", \"to\": \"cdn\"}, {\"from\": \"phone\", \"to\": \"api\"}, {\"from\": \"api\", \"to\": \"db\"}, {\"from\": \"api\", \"to\": \"encode\"}, {\"from\": \"encode\", \"to\": \"store\"}, {\"from\": \"cdn\", \"to\": \"store\"}], \"steps\": [{\"at\": 1.8, \"focus\": [\"phone\", \"api\"]}, {\"at\": 3.8, \"focus\": [\"encode\", \"store\"]}, {\"at\": 5.8, \"focus\": [\"cdn\"]}]}"},
+  {"id": "title", "type": "string", "label": "Title when data has none (empty: no title)", "default": ""},
+  {"id": "t0", "type": "number", "label": "Scene second this render starts at (a slice of a longer scene; graphic plan sets it)", "default": 0},
+  {"id": "total", "type": "number", "label": "Scene length in seconds (0: the length of this render; graphic plan sets it)", "default": 0},
+  {"id": "packets", "type": "boolean", "label": "Packets run along focused connectors", "default": true},
+  {"id": "accent", "type": "color", "label": "Focus colour (ring, packets, hot edges)", "default": "#3EE0B5"},
+  {"id": "background", "type": "color", "label": "Node plate colour", "default": "#121826"},
+  {"id": "text", "type": "color", "label": "Text and edge colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Second group / block colour", "default": "#6C7BFF"},
+  {"id": "headingFont", "type": "font", "label": "Label font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Edge label font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="diagram.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* Brand look: diagram.js fills --accent, --background, --text, --secondary and the fonts from the variables. */
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --hand-font: "Chalkboard SE", "Marker Felt", "Comic Sans MS";
+        --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #585B63; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      .dg-label { font-family: var(--heading-font), Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1080" data-height="1920" data-fit="canvas"></div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      const tl = gsap.timeline({ paused: true });
+      // Layout, steps and the exit (at END - 0.5 of the root's data-duration) come from diagram.js.
+      BCDiagram.mount(tl, v, "iso", document.getElementById("root"));
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

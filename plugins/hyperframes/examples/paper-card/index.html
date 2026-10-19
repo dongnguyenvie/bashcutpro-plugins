@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- A full-frame paper card that turns in like a page over the cut, then builds a phrase line by line on the words
+     (lines is a JSON string: text, at seconds, size px, weight, colour, font), with the brand's mascot when the project
+     has one. Opaque, 1080×1920, 3 s. Place it on the
+     Overlay layer over the speaker, or under a shrunken speaker clip (see the skill). Raw material: change it. -->
+<!-- Pitfalls:
+  - A line of size 90 or more takes a full row and never wraps: at 112 px about 15 characters fit inside the 900 px
+    margins ("more views fast"); a longer one shrinks itself to fit (18 characters ~95 px). Split a long phrase into
+    two lines rather than letting one shrink far below its neighbours.
+  - With a mascot the text keeps clear of its box (x 660–1000, y 1140–1480): a block that would reach below y 1100
+    moves up (not above y 300), and only past that do all lines shrink together. Three or four big lines with a
+    mascot sit higher than the centre; with no mascot the text starts at y 760 as before.
+  - The card has no exit and stays opaque to its last frame: cut away on the timeline, and keep every at under
+    data-duration − 0.3 (2.7 s at 3 s) so a line is not still rising at the cut.
+  - The page turns in during the first 0.5 s: a line or mascotAt before ~0.5 s appears on a page that is still
+    turning.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "background", "type": "color", "label": "Paper colour", "default": "#F2EEE5"},
+  {"id": "lines", "type": "string", "label": "Lines (JSON)", "default": "[{\"text\":\"to start\",\"at\":0.55,\"size\":40},{\"text\":\"getting\",\"at\":0.85,\"size\":40},{\"text\":\"more views\",\"at\":1.15,\"size\":112,\"weight\":800,\"accent\":true}]"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#1E2A44"},
+  {"id": "accent", "type": "color", "label": "Colour of lines with \"accent\": true", "default": "#1E2A44"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""},
+  {"id": "mascot", "type": "image", "label": "Mascot picture (bin/graphic copies the brand pose; empty hides it)", "default": ""},
+  {"id": "pose", "type": "string", "label": "Brand mascot pose (--set pose=thinking)", "default": "default"},
+  {"id": "mascotAt", "type": "number", "label": "Mascot pops in (s)", "default": 0.6}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; perspective: 2400px; }
+      #page { position: absolute; inset: 0; transform-origin: left center; overflow: hidden;
+        box-shadow: -30px 0 80px rgba(0, 0, 0, 0.35); }
+      #shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.28)); }
+      #grain { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.5), rgba(0, 0, 0, 0.06) 75%); }
+      #text { position: absolute; left: 90px; right: 90px; top: 760px; display: flex; flex-wrap: wrap;
+        align-items: baseline; justify-content: center; column-gap: 18px; color: var(--text);
+        font-family: var(--body-font), Arial, sans-serif; letter-spacing: -0.03em; }
+      .line { display: inline-block; white-space: nowrap; }
+      #mascot { position: absolute; right: 80px; bottom: 440px; width: 340px; height: 340px; object-fit: contain;
+        transform-origin: 50% 100%; display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3" data-width="1080" data-height="1920">
+      <div id="page"><div id="grain"></div><div id="text"></div><img id="mascot" alt="" /><div id="shade"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const page = document.getElementById("page");
+      page.style.background = v.background;
+      const text = document.getElementById("text");
+      const lines = JSON.parse(v.lines);
+      const tl = gsap.timeline({ paused: true });
+      // The page turns in from the right edge, hinged on the left, and its shadow lifts as it lands.
+      tl.fromTo(page, { rotationY: -95, x: 40 }, { rotationY: 0, x: 0, duration: 0.5, ease: "power3.out" }, 0);
+      tl.fromTo("#shade", { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "power2.out" }, 0);
+      lines.forEach((item, index) => {
+        const span = document.createElement("span");
+        span.className = "line";
+        span.textContent = item.text;
+        span.style.fontSize = `${item.size ?? 48}px`;
+        span.style.fontWeight = String(item.weight ?? 500);
+        if (item.accent) span.style.color = v.accent;
+        if (item.color) span.style.color = item.color;
+        if ((item.size ?? 48) >= 90) span.style.fontFamily = "var(--heading-font), Arial, sans-serif";
+        if (item.font) span.style.fontFamily = item.font;
+        if ((item.size ?? 48) >= 90) span.style.flexBasis = "100%", span.style.textAlign = "center";
+        text.appendChild(span);
+        tl.fromTo(span, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.22, ease: "power3.out" }, Math.max(0, item.at - 0.12));
+      });
+      // Layout (sizes and position only, no timing): each big line shrinks to one row inside the margins, and with a
+      // mascot the block moves up, then shrinks, so no line runs into the mascot's box. offset* sizes ignore the
+      // page's turn and the lines' rise, which are transforms.
+      const ROOM = 900, TOP = 760, HIGHEST = 300, CLEAR = v.mascot ? 1100 : 1820;
+      function layout() {
+        const spans = [...text.children];
+        let scale = 1;
+        for (let pass = 0; pass < 8; pass += 1) {
+          spans.forEach((span, index) => {
+            const size = (lines[index].size ?? 48) * scale;
+            span.style.fontSize = `${size}px`;
+            if (span.scrollWidth > ROOM) span.style.fontSize = `${Math.floor(size * ROOM / span.scrollWidth)}px`;
+          });
+          const height = text.offsetHeight;
+          text.style.top = `${Math.max(HIGHEST, Math.min(TOP, CLEAR - height))}px`;
+          if (height <= CLEAR - HIGHEST) return;
+          scale *= (CLEAR - HIGHEST) / height;
+        }
+      }
+      layout();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+      // The brand's mascot (a pose bin/graphic copied in) hops up from the bottom edge of the page.
+      const mascot = document.getElementById("mascot");
+      if (v.mascot) {
+        mascot.src = v.mascot;
+        mascot.style.display = "block";
+        tl.fromTo(mascot, { scale: 0, y: 80, rotation: -8 }, { scale: 1, y: 0, rotation: 0, duration: 0.45, ease: "back.out(2.2)" }, v.mascotAt);
+      }
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

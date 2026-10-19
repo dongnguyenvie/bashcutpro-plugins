@@ -1,0 +1,182 @@
+<!doctype html>
+<!-- A matrix or heatmap grid that fills cell by cell. It then rings a row, a column or a cell per step while the rest dims (data is JSON {title, rows:[labels], cols:[labels], values:[[numbers or CSS colours]], order:"row"|"col"|"diag", fill:[from, to] s, decimals, showValues, steps:[{at, row?|col?|cell:[r,c], note?}]}). Numbers shade from the background to the accent. Transparent card, the project's canvas, 7 s. -->
+<!-- Pitfalls:
+  - steps[].at are seconds from the graphic's start: `bin/graphic place … --steps-from voice` puts step i on the i-th
+    voice line (no frames to compute); a step without at is spread evenly. Pass data with `--set data=@file.json`.
+  - rows and cols index from 0 (row 2 is the third). Up to 8 × 8 keeps values readable; past that cells drop under
+    70 px and the values hide (showValues has no effect); 12 × 12 still shows the colours.
+  - Values shade between the smallest and largest given: one outlier flattens the rest; clip it or use colours.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Grid (JSON {title, rows, cols, values, order, fill, steps})", "default": "{\"title\": \"Attention weights\", \"rows\": [\"The\", \"cat\", \"sat\", \"on\", \"the\", \"mat\"], \"cols\": [\"The\", \"cat\", \"sat\", \"on\", \"the\", \"mat\"], \"values\": [[0.62, 0.12, 0.08, 0.06, 0.07, 0.05], [0.1, 0.58, 0.16, 0.05, 0.04, 0.07], [0.05, 0.41, 0.33, 0.09, 0.04, 0.08], [0.04, 0.06, 0.22, 0.44, 0.09, 0.15], [0.18, 0.05, 0.04, 0.1, 0.48, 0.15], [0.05, 0.2, 0.08, 0.17, 0.12, 0.38]], \"order\": \"row\", \"fill\": [0.6, 2.4], \"decimals\": 2, \"steps\": [{\"at\": 3.2, \"row\": 2, \"note\": \"“sat” looks back at “cat”\"}, {\"at\": 5.0, \"cell\": [5, 1], \"note\": \"“mat” still checks “cat”\"}]}"},
+  {"id": "accent", "type": "color", "label": "Highlight colour", "default": "#FFB020"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Muted colour", "default": "#8A8F99"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #8A8F99; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; color: var(--text); }
+      #card { opacity: 0; position: absolute; border-radius: 36px; background: color-mix(in srgb, var(--background) 92%, transparent);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); }
+      #title { position: absolute; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+      #note { position: absolute; font-family: var(--body-font), Arial, sans-serif; font-weight: 600; text-align: center;
+        color: color-mix(in srgb, var(--text) 85%, transparent); }
+      #root { perspective: 1600px; }
+      .lab, .cell { opacity: 0; }
+      .lab { position: absolute; font-weight: 600; color: color-mix(in srgb, var(--text) 80%, transparent); white-space: nowrap; overflow: hidden; }
+      .cell { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .ring { position: absolute; border-style: solid; border-color: var(--accent); opacity: 0; box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 60%, transparent); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7" data-width="1920" data-height="1080" data-fit="canvas">
+      <div id="card"><div id="title"></div><div id="grid"></div><div id="note"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      // Colours as values GSAP can tween (it cannot tween var(--accent)).
+      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const ACCENT = css("--accent");
+      const TEXT = css("--text");
+      // The canvas is the project's (bin/graphic sets data-width/height on a data-fit="canvas" root): 9:16 or 16:9.
+      const root = document.getElementById("root");
+      const W = Number(root.dataset.width) || 1080;
+      const H = Number(root.dataset.height) || 1920;
+      for (const node of [document.documentElement, document.body, root]) Object.assign(node.style, { width: `${W}px`, height: `${H}px` });
+      const u = Math.min(W, H) / 1080;
+      const portrait = H > W;
+      const END = Number(root.dataset.duration);
+      const data = JSON.parse(v.data || "{}");
+      // Steps: seconds from the start (bin/graphic --steps-from voice fills them); a step without one is spread evenly.
+      const steps = (data.steps ?? []).map((s) => ({ ...s }));
+      const free = steps.filter((s) => typeof s.at !== "number");
+      free.forEach((s, i) => (s.at = 1.4 + ((END - 2.4) * i) / Math.max(1, free.length)));
+      steps.sort((a, b) => a.at - b.at);
+      const tl = gsap.timeline({ paused: true });
+      const ft = (target, a, b, at, duration, ease) => tl.fromTo(target, a, { ...b, duration, ease: ease ?? "power2.out", immediateRender: false }, at);
+      const rows = data.rows ?? [];
+      const cols = data.cols ?? [];
+      const values = data.values ?? [];
+      const card = document.getElementById("card");
+      const title = document.getElementById("title");
+      const note = document.getElementById("note");
+      const grid = document.getElementById("grid");
+      title.textContent = data.title ?? "";
+      const pad = 56 * u;
+      const titleH = data.title ? 100 * u : 0;
+      const noteH = steps.some((s) => s.note) ? 110 * u : 0;
+      const labelFont = (portrait ? 34 : 32) * u;
+      const longest = (list) => Math.max(0, ...list.map((t) => String(t).length));
+      const labelW = Math.min(260 * u, longest(rows) * labelFont * 0.6 + 24 * u);
+      const labelH = cols.length ? labelFont * 1.6 : 0;
+      const maxCardW = W - 144 * u;
+      const maxCardH = (portrait ? H * 0.62 : H - 120 * u);
+      const cell = Math.min(160 * u, (maxCardW - 2 * pad - labelW) / Math.max(1, cols.length || values[0]?.length || 1),
+        (maxCardH - 2 * pad - titleH - noteH - labelH) / Math.max(1, values.length));
+      const nCols = Math.max(cols.length, ...values.map((r) => r.length));
+      const cardW = 2 * pad + labelW + cell * nCols;
+      const cardH = 2 * pad + titleH + labelH + cell * values.length + noteH;
+      const left = (W - cardW) / 2;
+      const cardTop = portrait ? Math.max(120 * u, H * 0.43 - cardH / 2) : (H - cardH) / 2;
+      Object.assign(card.style, { left: `${left}px`, top: `${cardTop}px`, width: `${cardW}px`, height: `${cardH}px` });
+      Object.assign(title.style, { left: `${pad}px`, top: `${pad - 8 * u}px`, fontSize: `${54 * u}px` });
+      Object.assign(note.style, { left: `${pad}px`, right: `${pad}px`, top: `${cardH - pad - noteH + 30 * u}px`, fontSize: `${38 * u}px` });
+      const gx = pad + labelW;
+      const gy = pad + titleH + labelH;
+      const numbers = values.flat().filter((x) => typeof x === "number");
+      const lo = Math.min(...numbers);
+      const hi = Math.max(...numbers);
+      const decimals = Number.isInteger(data.decimals) ? data.decimals : 2;
+      const show = data.showValues !== false && cell >= 70 * u;
+      const label = (text, x, y, w, align) => {
+        const node = document.createElement("div");
+        node.className = "lab";
+        node.textContent = text;
+        Object.assign(node.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, fontSize: `${labelFont}px`, textAlign: align, lineHeight: `${labelFont * 1.2}px` });
+        card.appendChild(node);
+        return node;
+      };
+      const rowLabels = rows.map((t, r) => label(t, pad, gy + r * cell + cell / 2 - labelFont * 0.6, labelW - 16 * u, "right"));
+      const colLabels = cols.map((t, c) => label(t, gx + c * cell, gy - labelH, cell, "center"));
+      const cells = values.map((row, r) => row.map((value, c) => {
+        const node = document.createElement("div");
+        node.className = "cell";
+        const share = typeof value === "number" && hi > lo ? (value - lo) / (hi - lo) : 0.5;
+        const fill = typeof value === "string" ? value : `color-mix(in srgb, var(--accent) ${Math.round(12 + share * 88)}%, var(--background))`;
+        Object.assign(node.style, { left: `${gx + c * cell + 3 * u}px`, top: `${gy + r * cell + 3 * u}px`, width: `${cell - 6 * u}px`,
+          height: `${cell - 6 * u}px`, background: fill, borderRadius: `${10 * u}px`, fontSize: `${Math.min(34 * u, cell * 0.28)}px`,
+          color: share > 0.55 ? "var(--background)" : "var(--text)" });
+        if (show && typeof value === "number") node.textContent = value.toFixed(decimals);
+        card.appendChild(node);
+        return node;
+      }));
+      ft(card, { opacity: 0, y: 70 * u, scale: 0.95 }, { opacity: 1, y: 0, scale: 1 }, 0.1, 0.5, "power3.out");
+      ft([...rowLabels, ...colLabels], { opacity: 0 }, { opacity: 1 }, 0.4, 0.4);
+      // Fill order: row by row, column by column or along the diagonals, between fill[0] and fill[1] seconds.
+      const [from, to] = Array.isArray(data.fill) ? data.fill : [0.6, Math.min(2.6, END - 1.5)];
+      const order = cells.flatMap((row, r) => row.map((node, c) => ({ node, key: data.order === "col" ? c * 1000 + r : data.order === "diag" ? (r + c) * 1000 + r : r * 1000 + c })))
+        .sort((a, b) => a.key - b.key);
+      order.forEach(({ node }, i) => ft(node, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1 }, from + ((to - from) * i) / Math.max(1, order.length), 0.3, "back.out(1.8)"));
+      // Steps: a ring around a row, a column or a cell; the rest dims.
+      const ring = document.createElement("div");
+      ring.className = "ring";
+      Object.assign(ring.style, { borderWidth: `${6 * u}px`, borderRadius: `${14 * u}px` });
+      card.appendChild(ring);
+      const all = cells.flat();
+      let last = null;
+      steps.forEach((s, k) => {
+        const until = k + 1 < steps.length ? steps[k + 1].at : END - 0.5;
+        const [r0, c0, rn, cn] = Array.isArray(s.cell) ? [s.cell[0], s.cell[1], 1, 1] : Number.isInteger(s.row) ? [s.row, 0, 1, nCols]
+          : Number.isInteger(s.col) ? [0, s.col, values.length, 1] : [0, 0, values.length, nCols];
+        const box = { left: gx + c0 * cell - 4 * u, top: gy + r0 * cell - 4 * u, width: cn * cell + 8 * u, height: rn * cell + 8 * u };
+        ft(ring, last ? { ...last, opacity: 1 } : { ...box, opacity: 0 }, { ...box, opacity: 1 }, s.at - 0.2, 0.35);
+        last = box;
+        const inside = (node, i) => {
+          const r = Math.floor(i / nCols);
+          const c = i % nCols;
+          return r >= r0 && r < r0 + rn && c >= c0 && c < c0 + cn;
+        };
+        cells.flat().forEach((node, i) => {
+          if (!inside(node, values.slice(0, 0).length + i)) ft(node, { opacity: 1 }, { opacity: 0.3 }, s.at - 0.2, 0.3);
+          else ft(node, { opacity: 0.3 }, { opacity: 1 }, s.at - 0.2, 0.3);
+        });
+        if (s.note) {
+          const line = document.createElement("div");
+          line.textContent = s.note;
+          line.style.position = "absolute";
+          line.style.left = line.style.right = "0";
+          line.style.opacity = "0";
+          line.setAttribute("data-layout-allow-overlap", "");
+          note.appendChild(line);
+          ft(line, { opacity: 0, y: 16 * u }, { opacity: 1, y: 0 }, s.at, 0.3);
+          if (until < END - 0.5) ft(line, { opacity: 1 }, { opacity: 0 }, until - 0.2, 0.25);
+        }
+      });
+      tl.to(card, { rotationY: -70, x: -260 * u, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

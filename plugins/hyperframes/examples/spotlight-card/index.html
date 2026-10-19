@@ -1,0 +1,229 @@
+<!doctype html>
+<!-- A dark theatre: a warm light pool searches the stage, locks on a hero card, turns into card-shaped light, lifts
+     the card while a beam runs round its edge twice, then sets it down, with an optional two-line note above it (the
+     *keyword* gets a marker). The card is a screenshot (image) or a text card. Full frame, 1080×1920, 5.9 s. -->
+<!-- Pitfalls:
+  - The card sits above the card-shaped darkness; a dark layer with a hole cut round the card (blur ~40, hole 95 px
+    out) still greys the card edges and reads as a flat brown box. Soft hole (blur ~70) under the card works.
+  - A champagne beam inside a light card disappears: the beam rides the card's outer edge, glow stroke under ~20 px
+    (wider reads as a thick yellow frame).
+  - The lift is 50 px: keep the note 90+ px above the card or the lifted card touches it.
+  - The round pool (290 px) is smaller than the card on purpose (the search); never hold on it, it darkens the ends.
+  - Note lines are one line each (no wrap): a long line shrinks to fit, so over ~22 characters it gets small.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "image", "type": "image", "label": "Card picture: a screenshot or product shot file in this folder (empty shows the text card)", "default": ""},
+  {"id": "eyebrow", "type": "string", "label": "Text card: small label on top", "default": "Q3 RESULTS"},
+  {"id": "title", "type": "string", "label": "Text card: title", "default": "Monthly revenue"},
+  {"id": "value", "type": "string", "label": "Text card: big value", "default": "$48,200"},
+  {"id": "subtitle", "type": "string", "label": "Text card: line under the value (empty hides it)", "default": "up from $24,100"},
+  {"id": "noteLine1", "type": "string", "label": "Note above the card, line 1 (empty hides the note)", "default": "This quarter we"},
+  {"id": "noteLine2", "type": "string", "label": "Note line 2; wrap the keyword in *asterisks* for the marker", "default": "*doubled* revenue"},
+  {"id": "cardWidth", "type": "number", "label": "Card width (px)", "default": 800},
+  {"id": "cardHeight", "type": "number", "label": "Card height (px; 0 = fit the text, or square for a picture)", "default": 0},
+  {"id": "top", "type": "number", "label": "Card top (px)", "default": 720},
+  {"id": "accent", "type": "color", "label": "Value, label and marker colour", "default": "#D9622B"},
+  {"id": "background", "type": "color", "label": "Stage colour (near black)", "default": "#100D0B"},
+  {"id": "text", "type": "color", "label": "Note text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Card colour", "default": "#F7F2E9"},
+  {"id": "light", "type": "color", "label": "Light colour", "default": "#FFD49A"},
+  {"id": "beamColor", "type": "color", "label": "Outline beam colour", "default": "#F6DFAE"},
+  {"id": "fadeOut", "type": "boolean", "label": "Fade the whole frame out in the last 0.4 s", "default": false},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      #stage { position: absolute; inset: 0; overflow: hidden;
+        background: radial-gradient(ellipse 120% 70% at 50% 62%, color-mix(in srgb, var(--background) 72%, var(--light)), color-mix(in srgb, var(--background) 86%, var(--light)) 70%); }
+      .glow { position: absolute; left: 0; top: 0; border-radius: 50%;
+        background: radial-gradient(circle, color-mix(in srgb, var(--light) 55%, transparent) 0%, color-mix(in srgb, var(--light) 22%, transparent) 38%, transparent 68%); }
+      #hero { position: absolute; }
+      #glowCard { position: absolute; inset: -30px; border-radius: 70px; background: var(--light); filter: blur(46px); opacity: 0; }
+      #shadow { position: absolute; inset: 0; border-radius: 36px; background: #000; }
+      #card { position: relative; border-radius: 36px; overflow: hidden; background: var(--secondary); color: var(--background); }
+      #card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      #textCard { padding: 60px 64px 64px; }
+      #eyebrow { font-size: 50px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent); line-height: 1.2; }
+      #title { font-size: 64px; font-weight: 600; line-height: 1.2; margin-top: 10px; }
+      #value { font-family: var(--heading-font), Arial, sans-serif; font-size: 150px; font-weight: 800; line-height: 1.15;
+        letter-spacing: -0.035em; color: var(--accent); margin-top: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #subtitle { font-size: 58px; line-height: 1.2; margin-top: 4px; color: color-mix(in srgb, var(--background) 62%, var(--secondary)); }
+      #beam { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+      #beam rect { fill: none; }
+      .dark { position: absolute; box-shadow: 0 0 0 2600px color-mix(in srgb, var(--background) 95%, transparent); }
+      #darkCard { inset: -24px; border-radius: 60px; filter: blur(70px); opacity: 0; }
+      #darkRound { left: 0; top: 0; border-radius: 50%; filter: blur(75px); }
+      #note { position: absolute; color: var(--text); font-family: var(--heading-font), Arial, sans-serif; font-size: 80px;
+        font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; white-space: nowrap; }
+      .noteLine { display: block; }
+      .key { position: relative; display: inline-block; }
+      .keyText { position: relative; }
+      .bar { position: absolute; left: -10px; right: -10px; top: 16%; bottom: 2%; background: var(--accent);
+        border-radius: 8px; transform-origin: left center; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5.9" data-width="1080" data-height="1920">
+      <div id="stage">
+        <div id="glowRound" class="glow"></div>
+        <div id="hero">
+          <div id="darkCard" class="dark"></div>
+          <div id="glowCard"></div>
+          <div id="shadow"></div>
+          <div id="card">
+            <div id="textCard"><div id="eyebrow"></div><div id="title"></div><div id="value"></div><div id="subtitle"></div></div>
+          </div>
+          <svg id="beam"><rect id="beamGlow" x="0" y="0" width="100%" height="100%" rx="36" pathLength="100" />
+            <rect id="beamLine" x="0" y="0" width="100%" height="100%" rx="36" pathLength="100" /></svg>
+        </div>
+        <div id="darkRound" class="dark"></div>
+        <div id="note"></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary", "light"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const $ = (id) => document.getElementById(id);
+
+      // The card: a picture (cover) or the text card.
+      const W = Math.max(360, Math.min(980, Number(v.cardWidth) || 800));
+      const hero = $("hero"), card = $("card");
+      hero.style.width = `${W}px`;
+      hero.style.left = `${(1080 - W) / 2}px`;
+      hero.style.top = `${v.top}px`;
+      if (v.image) {
+        $("textCard").remove();
+        const img = document.createElement("img");
+        img.src = v.image;
+        card.prepend(img);
+        card.style.height = `${v.cardHeight > 0 ? v.cardHeight : W}px`;
+      } else {
+        $("eyebrow").textContent = v.eyebrow;
+        $("title").textContent = v.title;
+        $("value").textContent = v.value;
+        $("subtitle").textContent = v.subtitle;
+        for (const id of ["eyebrow", "title", "subtitle"]) if (!v[id]) $(id).style.display = "none";
+        if (v.cardHeight > 0) card.style.height = `${v.cardHeight}px`;
+        // A long value shrinks to fit the card instead of spilling out of it.
+        const value = $("value"), room = W - 128;
+        if (value.scrollWidth > room) value.style.fontSize = `${Math.floor(150 * room / value.scrollWidth)}px`;
+      }
+      const H = card.offsetHeight;
+      const beamLine = $("beamLine"), beamGlow = $("beamGlow");
+      beamLine.style.stroke = v.beamColor;
+      beamLine.style.strokeWidth = "7";
+      beamGlow.style.stroke = v.beamColor;
+      beamGlow.style.strokeWidth = "18";
+      beamGlow.style.opacity = "0.7";
+      beamGlow.style.filter = "blur(10px)";
+      for (const r of [beamLine, beamGlow]) { r.style.strokeDasharray = "16 84"; r.style.strokeLinecap = "round"; }
+      $("beam").style.opacity = "0";
+
+      // The note above the card: plain text, the *keyword* on an accent marker bar.
+      const note = $("note");
+      const bars = [];
+      for (const line of [v.noteLine1, v.noteLine2]) {
+        if (!line) continue;
+        const row = document.createElement("span");
+        row.className = "noteLine";
+        String(line).split(/(\*[^*]+\*)/).forEach((part) => {
+          if (!part) return;
+          if (/^\*[^*]+\*$/.test(part)) {
+            const key = document.createElement("span");
+            key.className = "key";
+            const bar = document.createElement("span");
+            bar.className = "bar";
+            const word = document.createElement("span");
+            word.className = "keyText";
+            word.textContent = part.slice(1, -1);
+            key.append(bar, word);
+            bars.push(bar);
+            row.appendChild(key);
+          } else row.appendChild(document.createTextNode(part));
+        });
+        note.appendChild(row);
+      }
+      note.style.left = `${(1080 - W) / 2}px`;
+      note.style.bottom = `${1920 - v.top + 96}px`;
+      const lines = Array.from(note.children);
+      const noteRoom = 1080 - (1080 - W) / 2 - 60;
+      if (note.scrollWidth > noteRoom) note.style.fontSize = `${Math.floor(80 * noteRoom / note.scrollWidth)}px`;
+
+      // Light geometry: the pool searches three stops, then locks on the card centre.
+      const cx = 540, cy = v.top + H / 2;
+      const R = 290;
+      const clampY = (y) => Math.max(260, Math.min(1660, y));
+      const stops = [[230, clampY(cy - 560)], [850, clampY(cy - 250)], [250, clampY(cy + 330)], [800, clampY(cy + 180)], [cx, cy]];
+      const glowRound = $("glowRound"), darkRound = $("darkRound");
+      gsap.set(glowRound, { width: R * 3, height: R * 3, xPercent: -50, yPercent: -50, x: stops[0][0], y: stops[0][1] });
+      gsap.set(darkRound, { width: R * 2, height: R * 2, xPercent: -50, yPercent: -50, x: stops[0][0], y: stops[0][1] });
+      const shadow = $("shadow"), darkCard = $("darkCard"), glowCard = $("glowCard");
+      gsap.set(shadow, { x: -8, y: 12, opacity: 0.5, filter: "blur(16px)" });
+
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#stage", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 0);
+      tl.fromTo([glowRound, darkRound], { scale: 0.7 }, { scale: 1, duration: 0.5, ease: "power2.out" }, 0);
+      // The search: eased moves with 2–3 frame pauses between them; the last move is longer and lands softly.
+      const moves = [[0.2, 0.38], [0.66, 0.38], [1.12, 0.38], [1.58, 0.42]];
+      moves.forEach(([at, d], i) => {
+        const [x, y] = stops[i + 1];
+        tl.to([glowRound, darkRound], { x, y, duration: d, ease: i === 3 ? "power3.inOut" : "power2.inOut" }, at);
+      });
+      const L = 2.0;
+      // Lock: a 6 % pulse, then the round pool cross-fades into card-shaped light.
+      tl.to([glowRound, darkRound], { scale: 1.06, duration: 0.12, ease: "power2.out" }, L);
+      tl.to([glowRound, darkRound], { scale: 1, duration: 0.2, ease: "power2.inOut" }, L + 0.12);
+      tl.to(darkCard, { opacity: 1, duration: 0.35, ease: "power1.inOut" }, L + 0.15);
+      tl.to(glowCard, { opacity: 0.22, duration: 0.45, ease: "power1.inOut" }, L + 0.2);
+      tl.to([darkRound, glowRound], { opacity: 0, duration: 0.35, ease: "power1.inOut" }, L + 0.25);
+      // Lift: rise with a slight overshoot, then a gentle bob; the shadow grows and falls away down-left.
+      tl.to([card, "#beam"], { y: -50, duration: 0.33, ease: "back.out(1.7)" }, L + 0.45);
+      tl.to(shadow, { x: -38, y: 58, opacity: 0.42, filter: "blur(44px)", scale: 1.02, duration: 0.33, ease: "power2.out" }, L + 0.45);
+      tl.to([card, "#beam"], { y: -38, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 3 }, L + 0.8);
+      tl.to(shadow, { x: -32, y: 48, filter: "blur(38px)", duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 3 }, L + 0.8);
+      // The beam: lap one fast and bright, lap two slower at 60 %, then it fades.
+      tl.set("#beam", { opacity: 1 }, L + 0.6);
+      tl.fromTo([beamLine, beamGlow], { strokeDashoffset: 0 }, { strokeDashoffset: -100, duration: 0.6, ease: "power1.inOut" }, L + 0.6);
+      tl.to("#beam", { opacity: 0.6, duration: 0.2, ease: "none" }, L + 1.15);
+      tl.to([beamLine, beamGlow], { strokeDashoffset: -200, duration: 1.0, ease: "sine.inOut" }, L + 1.2);
+      tl.to("#beam", { opacity: 0, duration: 0.25, ease: "power1.in" }, L + 1.95);
+      // The note rises in while the card floats; the marker grows behind the keyword.
+      tl.fromTo(lines, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out", stagger: 0.16 }, L + 0.95);
+      tl.fromTo(bars, { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power3.inOut" }, L + 1.4);
+      // Landing: down, a tiny press, a soft warm glow; then the frame holds still to the end.
+      const S = L + 2.22;
+      tl.to([card, "#beam"], { y: 0, duration: 0.28, ease: "power2.in" }, S);
+      tl.to(shadow, { x: -8, y: 12, opacity: 0.5, filter: "blur(16px)", scale: 1, duration: 0.28, ease: "power2.in" }, S);
+      tl.to(card, { scale: 0.985, duration: 0.07, ease: "power1.out" }, S + 0.28);
+      tl.to(card, { scale: 1, duration: 0.2, ease: "power2.out" }, S + 0.35);
+      tl.to(glowCard, { opacity: 0.42, duration: 0.1, ease: "power2.out" }, S + 0.28);
+      tl.to(glowCard, { opacity: 0.24, duration: 0.3, ease: "power2.inOut" }, S + 0.38);
+      if (v.fadeOut) tl.to("#stage", { opacity: 0, duration: 0.4, ease: "power1.in" }, END - 0.4);
+      else tl.set({}, {}, END);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

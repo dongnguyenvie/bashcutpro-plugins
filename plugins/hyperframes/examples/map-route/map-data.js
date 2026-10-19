@@ -1,0 +1,2 @@
+// A stand-in so the example renders offline. bin/osm-map overwrites this file with real tiles and a real route.
+window.MAP_DATA = {"width":1080,"height":1920,"zoom":15,"profile":"car","km":7.53,"minutes":15.9,"legs":[],"points":[{"x":636,"y":1396,"label":"Start"},{"x":645,"y":1172,"label":"Stop"},{"x":291,"y":730,"label":"End"}],"attribution":"© OpenStreetMap contributors","tiles":[],"route":[[636,1396],[700,1330],[690,1250],[645,1172],[560,1080],[470,1010],[400,900],[330,820],[291,730]]};

@@ -1,0 +1,11 @@
+{
+  "name": "bashcut-hyperframes-runtime",
+  "private": true,
+  "description": "What `plugin.py setup` installs into the plugin data folder with npm ci (copied there as package.json)",
+  "dependencies": {
+    "gsap": "3.14.2",
+    "hyperframes": "0.8.140",
+    "katex": "0.16.47",
+    "lottie-web": "5.13.0"
+  }
+}

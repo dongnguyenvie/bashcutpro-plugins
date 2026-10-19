@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- One big hand-drawn canvas for a whole video. The mind-map data laid out on a canvas `size` screens wide and tall, a pen drawing each branch on while the camera pans and zooms to it, sticky notes, and a final zoom-out to the whole map (data is mind-map JSON plus stops:[{at, focus: id | [x,y,w,h] (0–1), zoom?, note?}] and summary). Full frame (paints its paper), the project's canvas, 14 s; place it with --duration for the whole span. No cuts. -->
+<!-- Pitfalls:
+  - stops[].at: use `bin/graphic place … --steps-from voice` (stop i on voice line i) or `--steps-from sections`
+    (stop i on section marker i); without stops it visits the root, then each branch, evenly.
+  - Each stop draws its node's branch from its at and finishes before the camera leaves; give a stop ≥ 2 s (a
+    branch of 3 nodes draws in ~1.5 s). The end zoom-out takes the last ~12% (2–3.2 s).
+  - size 2 (default) keeps labels ≥ ~45 px at the end zoom-out on 9:16 (~37 px on 16:9); size 3 fits ~20 nodes but
+    labels get small. A stop frames its branch where its note leaves room, panning or zooming out so no label is cut.
+  - A 60 s render (1,800 frames) takes about a minute: one place call, wait for it.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Canvas (mind-map JSON + stops, summary)", "default": "{\"title\": \"Online shop\", \"root\": \"shop\", \"summary\": \"Product × traffic × trust = sales\", \"nodes\": [{\"id\": \"shop\", \"label\": \"Online shop\"}, {\"id\": \"product\", \"label\": \"Product\"}, {\"id\": \"traffic\", \"label\": \"Traffic\"}, {\"id\": \"sales\", \"label\": \"Sales\"}, {\"id\": \"ops\", \"label\": \"Operations\"}, {\"id\": \"p1\", \"label\": \"Sourcing\"}, {\"id\": \"t1\", \"label\": \"TikTok videos\"}, {\"id\": \"t2\", \"label\": \"Ads\"}, {\"id\": \"s1\", \"label\": \"Live selling\"}, {\"id\": \"o1\", \"label\": \"Shipping\"}], \"edges\": [{\"from\": \"shop\", \"to\": \"product\"}, {\"from\": \"shop\", \"to\": \"traffic\"}, {\"from\": \"shop\", \"to\": \"sales\"}, {\"from\": \"shop\", \"to\": \"ops\"}, {\"from\": \"product\", \"to\": \"p1\"}, {\"from\": \"traffic\", \"to\": \"t1\"}, {\"from\": \"traffic\", \"to\": \"t2\"}, {\"from\": \"sales\", \"to\": \"s1\"}, {\"from\": \"ops\", \"to\": \"o1\"}], \"stops\": [{\"at\": 0.5, \"focus\": \"shop\"}, {\"at\": 2.6, \"focus\": \"product\", \"note\": \"Find one product people already search for\"}, {\"at\": 5.2, \"focus\": \"traffic\"}, {\"at\": 7.8, \"focus\": \"sales\"}, {\"at\": 10.4, \"focus\": \"ops\"}]}"},
+  {"id": "size", "type": "number", "label": "Canvas size in screens (1.2–4)", "default": 2},
+  {"id": "pen", "type": "boolean", "label": "Pen follows the strokes", "default": true},
+  {"id": "accent", "type": "color", "label": "Focus colour (ring, packets, hot edges)", "default": "#FF6B4A"},
+  {"id": "background", "type": "color", "label": "Node plate colour", "default": "#FBF7EF"},
+  {"id": "text", "type": "color", "label": "Text and edge colour", "default": "#22252B"},
+  {"id": "secondary", "type": "color", "label": "Second group / block colour", "default": "#4C8DF6"},
+  {"id": "headingFont", "type": "font", "label": "Label font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Edge label font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="diagram.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* Brand look: diagram.js fills --accent, --background, --text, --secondary and the fonts from the variables. */
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --hand-font: "Chalkboard SE", "Marker Felt", "Comic Sans MS";
+        --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #585B63; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      .dg-label { font-family: var(--heading-font), Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="14" data-width="1080" data-height="1920" data-fit="canvas"></div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      const tl = gsap.timeline({ paused: true });
+      // Layout, steps and the exit (at END - 0.5 of the root's data-duration) come from diagram.js.
+      BCDiagram.mountCanvas(tl, v, document.getElementById("root"));
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,177 @@
+<!doctype html>
+<!-- A scale comparison on a log bar. A value multiplied step after step (fold a sheet 42 times, double a grain of rice), a counter and the value counting up while a bar grows on a log scale past reference objects with their real values (data is JSON {title, label, start, factor, count, unit, units:[{unit, per}], refs:[{label, value}], steps:[{at: count starts}, {at: count ends}]}). All numbers come from the agent's source. Transparent card, the project's canvas, 7.5 s. -->
+<!-- Pitfalls:
+  - steps[0].at is when the count starts and steps[1].at when it ends; `--steps-from voice` puts them on two voice
+    lines. Without steps it counts from 0.9 s to 1.6 s before the end.
+  - The bar is a log scale: say so in the words or the title when it matters. refs closer than ~×3 apart overlap
+    their labels on 16:9 (they alternate height); keep 3–5 refs.
+  - units picks the largest unit not above the value (mm → m → km); values and refs share the base unit (start
+    0.0001 with unit m is 0.1 mm).
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Comparison (JSON {title, label, start, factor, count, units, refs, steps})", "default": "{\"title\": \"Fold a sheet of paper 42 times\", \"label\": \"Fold\", \"start\": 0.0001, \"factor\": 2, \"count\": 42, \"unit\": \"m\", \"units\": [{\"unit\": \"mm\", \"per\": 0.001}, {\"unit\": \"m\", \"per\": 1}, {\"unit\": \"km\", \"per\": 1000}], \"refs\": [{\"label\": \"Paper\", \"value\": 0.0001}, {\"label\": \"Eiffel Tower\", \"value\": 330}, {\"label\": \"Everest\", \"value\": 8849}, {\"label\": \"Moon\", \"value\": 384400000}], \"steps\": [{\"at\": 0.9}, {\"at\": 6.0}]}"},
+  {"id": "accent", "type": "color", "label": "Highlight colour", "default": "#4FC3F7"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Muted colour", "default": "#8A8F99"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #8A8F99; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; color: var(--text); }
+      #card { opacity: 0; position: absolute; border-radius: 36px; background: color-mix(in srgb, var(--background) 92%, transparent);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); }
+      #title { position: absolute; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+      #note { position: absolute; font-family: var(--body-font), Arial, sans-serif; font-weight: 600; text-align: center;
+        color: color-mix(in srgb, var(--text) 85%, transparent); }
+      #root { perspective: 1600px; }
+      #counter { position: absolute; font-family: var(--heading-font), Arial, sans-serif; font-weight: 700;
+        color: color-mix(in srgb, var(--text) 75%, transparent); font-variant-numeric: tabular-nums; }
+      #amount { position: absolute; font-family: var(--heading-font), Arial, sans-serif; font-weight: 900; font-variant-numeric: tabular-nums; }
+      #track { position: absolute; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
+      #bar { position: absolute; inset: 0; border-radius: 999px; background: var(--accent); }
+      .mark { opacity: 0; position: absolute; border: 0 solid color-mix(in srgb, var(--text) 70%, transparent); white-space: nowrap; line-height: 1.15; }
+      .mark b { display: block; font-family: var(--heading-font), Arial, sans-serif; }
+      .mark span { display: block; font-weight: 500; opacity: 0.8; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7.5" data-width="1920" data-height="1080" data-fit="canvas">
+      <div id="card"><div id="title"></div><div id="counter"></div><div id="amount"></div><div id="track"><div id="bar"></div></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      // Colours as values GSAP can tween (it cannot tween var(--accent)).
+      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const ACCENT = css("--accent");
+      const TEXT = css("--text");
+      // The canvas is the project's (bin/graphic sets data-width/height on a data-fit="canvas" root): 9:16 or 16:9.
+      const root = document.getElementById("root");
+      const W = Number(root.dataset.width) || 1080;
+      const H = Number(root.dataset.height) || 1920;
+      for (const node of [document.documentElement, document.body, root]) Object.assign(node.style, { width: `${W}px`, height: `${H}px` });
+      const u = Math.min(W, H) / 1080;
+      const portrait = H > W;
+      const END = Number(root.dataset.duration);
+      const data = JSON.parse(v.data || "{}");
+      // Steps: seconds from the start (bin/graphic --steps-from voice fills them); a step without one is spread evenly.
+      const steps = (data.steps ?? []).map((s) => ({ ...s }));
+      const free = steps.filter((s) => typeof s.at !== "number");
+      free.forEach((s, i) => (s.at = 1.4 + ((END - 2.4) * i) / Math.max(1, free.length)));
+      steps.sort((a, b) => a.at - b.at);
+      const tl = gsap.timeline({ paused: true });
+      const ft = (target, a, b, at, duration, ease) => tl.fromTo(target, a, { ...b, duration, ease: ease ?? "power2.out", immediateRender: false }, at);
+      const card = document.getElementById("card");
+      const title = document.getElementById("title");
+      const counter = document.getElementById("counter");
+      const amount = document.getElementById("amount");
+      const track = document.getElementById("track");
+      const bar = document.getElementById("bar");
+      const start = Number(data.start) || 1;
+      const factor = Number(data.factor) || 2;
+      const count = Math.max(1, Math.round(Number(data.count) || 10));
+      const final = start * factor ** count;
+      const refs = (data.refs ?? []).filter((r) => Number(r.value) > 0);
+      const units = (data.units ?? [{ unit: data.unit ?? "", per: 1 }]).slice().sort((a, b) => a.per - b.per);
+      const numbers = new Intl.NumberFormat(data.locale || "en-US", { maximumSignificantDigits: 4 });
+      const format = (x) => {
+        const pick = units.filter((k) => x >= k.per * 0.999).pop() ?? units[0];
+        const sep = pick.unit && !/^[%°]/.test(pick.unit) ? " " : "";
+        return `${numbers.format(x / pick.per)}${sep}${pick.unit}`;
+      };
+      // A log scale from the smallest to the largest value: one doubling is one even step of the bar.
+      const lo = Math.log10(Math.min(start, ...refs.map((r) => Number(r.value)))) - 0.3;
+      const hi = Math.log10(Math.max(final, ...refs.map((r) => Number(r.value)))) + 0.15;
+      const share = (x) => (Math.log10(x) - lo) / (hi - lo);
+      const cardW = W - 144 * u;
+      const cardH = portrait ? H * 0.66 : H - 140 * u;
+      const left = 72 * u;
+      const cardTop = portrait ? H * 0.1 : 70 * u;
+      Object.assign(card.style, { left: `${left}px`, top: `${cardTop}px`, width: `${cardW}px`, height: `${cardH}px` });
+      title.textContent = data.title ?? "";
+      Object.assign(title.style, { left: `${56 * u}px`, right: `${56 * u}px`, top: `${44 * u}px`, fontSize: `${(portrait ? 52 : 56) * u}px` });
+      Object.assign(counter.style, { left: `${56 * u}px`, top: `${(data.title ? 130 : 50) * u}px`, fontSize: `${(portrait ? 72 : 80) * u}px` });
+      Object.assign(amount.style, { left: `${56 * u}px`, top: `${(data.title ? 225 : 145) * u}px`, fontSize: `${(portrait ? 92 : 104) * u}px` });
+      // The bar: up the card on 9:16, across it on 16:9; reference marks along it with their real values.
+      const head = (data.title ? 360 : 270) * u;
+      const track0 = portrait ? { x: cardW * 0.18, y: cardH - 120 * u, len: cardH - 120 * u - head } : { x: 56 * u, y: cardH - 150 * u, len: cardW - 112 * u };
+      const thick = 54 * u;
+      if (portrait) Object.assign(track.style, { left: `${track0.x}px`, top: `${track0.y - track0.len}px`, width: `${thick}px`, height: `${track0.len}px` });
+      else Object.assign(track.style, { left: `${track0.x}px`, top: `${track0.y - thick}px`, width: `${track0.len}px`, height: `${thick}px` });
+      bar.style.transformOrigin = portrait ? "50% 100%" : "0% 50%";
+      const marks = refs.map((r, i) => {
+        const at = share(Number(r.value)) * track0.len;
+        const mark = document.createElement("div");
+        mark.className = "mark";
+        mark.innerHTML = `<b></b><span></span>`;
+        mark.querySelector("b").textContent = r.label;
+        mark.querySelector("span").textContent = format(Number(r.value));
+        const fs = (portrait ? 34 : 30) * u;
+        if (portrait) Object.assign(mark.style, { left: `${track0.x - 14 * u}px`, top: `${track0.y - at}px`, width: `${cardW - track0.x - 40 * u}px`, fontSize: `${fs}px`, borderTopWidth: `${4 * u}px`, paddingLeft: `${thick + 40 * u}px` });
+        else {
+          // Marks near the end put their text left of the line, so it stays on the card.
+          const late = at > track0.len * 0.75;
+          Object.assign(mark.style, { left: `${track0.x + at}px`, top: `${track0.y - thick - (i % 2 ? 150 : 90) * u}px`, height: `${(i % 2 ? 150 : 90) * u + thick + 14 * u}px`, fontSize: `${fs}px` });
+          if (late) Object.assign(mark.style, { borderRightWidth: `${4 * u}px`, paddingRight: `${12 * u}px`, textAlign: "right", transform: "translateX(-100%)" });
+          else Object.assign(mark.style, { borderLeftWidth: `${4 * u}px`, paddingLeft: `${12 * u}px` });
+        }
+        card.appendChild(mark);
+        return { mark, value: Number(r.value), at, fs };
+      });
+      // On 9:16 the labels of close values are pushed apart (the line stays on its value).
+      if (portrait) {
+        let floor = Infinity;
+        for (const m of [...marks].sort((a, b) => a.at - b.at)) {
+          const y = track0.y - m.at;
+          const text = Math.min(y, floor - m.fs * 2.5);
+          m.mark.querySelector("b").style.marginTop = `${text - y}px`;
+          floor = text;
+        }
+      }
+      ft(card, { opacity: 0, y: 70 * u, scale: 0.96 }, { opacity: 1, y: 0, scale: 1 }, 0.1, 0.5, "power3.out");
+      ft(marks.map((m) => m.mark), { opacity: 0 }, { opacity: 0.55 }, 0.5, 0.4);
+      // Counting from steps[0].at to steps[1].at: one even beat per fold, the value multiplying each time.
+      const from = steps[0]?.at ?? 0.9;
+      const to = steps[1]?.at ?? Math.max(from + 1, END - 1.6);
+      const startShare = share(start);
+      ft(bar, portrait ? { scaleY: startShare } : { scaleX: startShare }, portrait ? { scaleY: share(final) } : { scaleX: share(final) }, from, to - from, "none");
+      tl.set(bar, portrait ? { scaleY: startShare } : { scaleX: startShare }, 0);
+      const label = data.label ?? "Step";
+      for (let k = 0; k <= count; k += 1) {
+        const t = k === 0 ? 0 : from + ((to - from) * k) / count;
+        tl.set(counter, { textContent: `${label} ${k}` }, t);
+        tl.set(amount, { textContent: format(start * factor ** k) }, t);
+      }
+      for (const m of marks) {
+        if (m.value > final || m.value <= start) continue;
+        const k = Math.log(m.value / start) / Math.log(factor);
+        const t = from + ((to - from) * k) / count;
+        ft(m.mark, { opacity: 0.55 }, { opacity: 1 }, t, 0.3);
+      }
+      ft(amount, { color: TEXT }, { color: ACCENT }, to, 0.3);
+      tl.to(card, { rotationY: -70, x: -260 * u, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

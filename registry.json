@@ -54,6 +54,19 @@
       "path": "plugins/image-gen",
       "manifest": "plugins/image-gen/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/image-gen"}
+    },
+    {
+      "id": "bashcut.hyperframes",
+      "name": "HyperFrames Graphics",
+      "version": "0.1.0",
+      "summary": "HTML/CSS + GSAP graphics rendered with HyperFrames to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
+      "category": "graphics",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/hyperframes",
+      "manifest": "plugins/hyperframes/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/hyperframes"}
     }
   ]
 }

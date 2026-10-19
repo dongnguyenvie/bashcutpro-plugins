@@ -1,0 +1,149 @@
+<!doctype html>
+<!-- A paper card with its bottom-right corner curled up: it uncurls from a big fold to a small resting curl, a heading
+     and lines build on their words (lines is a JSON string: text, at seconds, size px, weight, accent), and the corner
+     peels the card away at the end. A card over footage (transparent around it), or the whole frame with fullFrame.
+     1080×1920, 4 s (the card 900×640 at y 560 by default). Raw material: change the paper, the curl, the lines and the timing for the video. -->
+<!-- Pitfalls:
+  - The curl covers a triangle of the card (curl px from the right and the bottom, 150 by default) and nothing moves
+    the text away from it: in the 640 px card the heading and three 56 px lines end near y 440, so a fourth long line
+    or a curl over ~260 runs under the fold. Raise cardHeight with the line count.
+  - The uncurl takes the first 0.6 s: a line at under ~0.5 s appears on a card that is still opening.
+  - With peelOut the curl grows over the last 0.55 s and takes the card with it: keep every at under
+    data-duration − 0.8 (3.2 s at 4 s). Without it the card holds to the last frame; cut away on the timeline.
+  - Lines never wrap: at 72 px about 20 characters fit in the 760 px text column of the 900 px card; a longer line
+    shrinks itself to fit, so split long phrases instead.
+  - The fold's back is the paper colour darkened 18 % and the paper has a white sheen at its upper left: on a dark
+    paper (under ~#555) the sheen turns into a grey haze and the fold barely shows. Keep the paper light, or set back
+    lighter than the paper and accept the haze.
+  - The corner the curl lifts is see-through: in fullFrame the footage under the overlay shows in it (that is the
+    effect); over a black frame it reads as a hole.
+  - fullFrame ignores cardTop and cardHeight; the text then starts at y 700.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "heading", "type": "string", "label": "Heading (empty hides it)", "default": "Before you book"},
+  {"id": "lines", "type": "string", "label": "Lines (JSON [{text, at, size, weight, accent}])", "default": "[{\"text\":\"Check the dry season\",\"at\":0.8,\"size\":56},{\"text\":\"Book the bus early\",\"at\":1.3,\"size\":56},{\"text\":\"Save 30%\",\"at\":1.9,\"size\":96,\"weight\":800,\"accent\":true}]"},
+  {"id": "headingAt", "type": "number", "label": "Heading lands at (s)", "default": 0.5},
+  {"id": "curl", "type": "number", "label": "Resting curl (px from the corner)", "default": 150},
+  {"id": "peelOut", "type": "boolean", "label": "Peel the card away at the end", "default": true},
+  {"id": "fullFrame", "type": "boolean", "label": "Fill the whole frame", "default": false},
+  {"id": "cardTop", "type": "number", "label": "Card top (px)", "default": 560},
+  {"id": "cardHeight", "type": "number", "label": "Card height (px)", "default": 640},
+  {"id": "background", "type": "color", "label": "Paper colour", "default": "#F4EFE4"},
+  {"id": "back", "type": "color", "label": "Back of the fold (empty: the paper, darker)", "default": ""},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#22252B"},
+  {"id": "accent", "type": "color", "label": "Colour of lines with \"accent\": true", "default": "#D9622B"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; }
+      /* The shadow follows the clipped paper and the fold, so it sits on a wrapper. */
+      #sheet { position: absolute; filter: drop-shadow(0 22px 40px rgba(0, 0, 0, 0.38)); }
+      #paper { position: absolute; inset: 0; background: var(--background); }
+      #grain { position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 35% 30%, rgba(255, 255, 255, 0.55), rgba(0, 0, 0, 0.05) 80%); }
+      #content { position: absolute; left: 70px; right: 70px; top: 80px; color: var(--text); }
+      #heading { font-family: var(--heading-font), Arial, sans-serif; font-size: 76px; font-weight: 800;
+        letter-spacing: -0.025em; line-height: 1.05; margin-bottom: 40px; }
+      .line { display: block; white-space: nowrap; line-height: 1.2; margin-top: 18px; letter-spacing: -0.015em; }
+      /* The fold: the corner turned over along the diagonal, showing the back of the paper. */
+      #fold { position: absolute; right: 0; bottom: 0; clip-path: polygon(0 0, 100% 0, 0 100%);
+        filter: drop-shadow(-6px -6px 10px rgba(0, 0, 0, 0.18)); }
+      #foldFace { position: absolute; inset: 0; clip-path: polygon(0 0, 100% 0, 0 100%); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4" data-width="1080" data-height="1920">
+      <div id="sheet"><div id="paper"><div id="grain"></div><div id="content"><div id="heading"></div></div></div>
+        <div id="fold"><div id="foldFace"></div></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      // Card geometry: a 900 px card at cardTop, or the whole frame.
+      const W = v.fullFrame ? 1080 : 900;
+      const H = v.fullFrame ? 1920 : Math.max(300, Math.min(1700, Number(v.cardHeight) || 640));
+      const sheet = document.getElementById("sheet");
+      Object.assign(sheet.style, { left: `${v.fullFrame ? 0 : 90}px`, top: `${v.fullFrame ? 0 : Number(v.cardTop) || 560}px`,
+        width: `${W}px`, height: `${H}px` });
+      const content = document.getElementById("content");
+      if (v.fullFrame) Object.assign(content.style, { top: "700px", left: "110px", right: "110px" });
+      const back = String(v.back ?? "").trim() || `color-mix(in srgb, ${v.background} 82%, #000)`;
+      // Darker toward the crease (the hypotenuse), lighter at the lifted tip, as light falls on a bent sheet.
+      document.getElementById("foldFace").style.background =
+        `linear-gradient(135deg, color-mix(in srgb, ${back} 70%, #fff) 0%, ${back} 55%, color-mix(in srgb, ${back} 80%, #000) 100%)`;
+      const heading = document.getElementById("heading");
+      heading.textContent = v.heading;
+      if (!String(v.heading ?? "").trim()) heading.style.display = "none";
+      const lines = JSON.parse(v.lines);
+      const spans = lines.map((item) => {
+        const span = document.createElement("span");
+        span.className = "line";
+        span.textContent = item.text;
+        span.style.fontSize = `${item.size ?? 56}px`;
+        span.style.fontWeight = String(item.weight ?? 500);
+        if (item.accent) span.style.color = v.accent;
+        if ((item.size ?? 56) >= 80) span.style.fontFamily = "var(--heading-font), Arial, sans-serif";
+        content.appendChild(span);
+        return span;
+      });
+      // A line wider than the column shrinks to one line (sizes only, no timing); again once fonts load.
+      function fit() {
+        const room = content.clientWidth;
+        spans.forEach((span, index) => {
+          span.style.fontSize = `${lines[index].size ?? 56}px`;
+          if (span.scrollWidth > room) span.style.fontSize = `${Math.floor((lines[index].size ?? 56) * room / span.scrollWidth)}px`;
+        });
+      }
+      fit();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+      // The curl: the paper is clipped along the fold line and the fold (the cut corner mirrored over that line)
+      // covers the triangle beside it. One number drives both, tweened on the timeline.
+      const paper = document.getElementById("paper");
+      const fold = document.getElementById("fold");
+      const largest = Math.min(W, H) * 0.92;
+      const rest = Math.max(40, Math.min(largest, Number(v.curl) || 150));
+      const corner = { size: largest };
+      function draw() {
+        const c = corner.size;
+        paper.style.clipPath = `polygon(0 0, ${W}px 0, ${W}px ${H - c}px, ${W - c}px ${H}px, 0 ${H}px)`;
+        fold.style.width = fold.style.height = `${c}px`;
+      }
+      draw();
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(sheet, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.1, ease: "power2.out" }, 0);
+      tl.fromTo(corner, { size: largest }, { size: rest, duration: 0.6, ease: "power2.out", onUpdate: draw }, 0);
+      tl.fromTo(heading, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, Math.max(0, Number(v.headingAt) - 0.12));
+      spans.forEach((span, index) => {
+        tl.fromTo(span, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.22, ease: "power3.out" }, Math.max(0, lines[index].at - 0.12));
+      });
+      if (v.peelOut) {
+        tl.to(corner, { size: largest, duration: 0.45, ease: "power2.in", onUpdate: draw }, END - 0.55);
+        tl.to(sheet, { opacity: 0, x: -120, y: -60, rotation: -4, duration: 0.25, ease: "power2.in" }, END - 0.25);
+      }
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

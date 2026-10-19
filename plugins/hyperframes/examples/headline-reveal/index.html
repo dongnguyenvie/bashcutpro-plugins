@@ -1,0 +1,167 @@
+<!doctype html>
+<!-- A 1–3 line headline whose words letterpress in one by one (blur to sharp), the *starred* words in the accent
+     colour, then an accent underline grows under the last starred phrase (or the last line), with an optional kicker
+     above. Transparent, 1080×1920, 3 s. Fill it through its variables; the motion is tuned inside. -->
+<!-- Pitfalls:
+  - wordStagger under ~0.05 s reads as one flash, not words landing; above ~0.16 s a 10-word headline drags past 2 s.
+  - size 96–130 px fits 2–3 lines in the 900 px column; above ~140 px long Vietnamese words overflow or need 4 lines.
+  - Put a phrase in *one pair* of asterisks (*hoa dã quỳ*); the underline follows the last starred phrase, so star one.
+  - The underline sits under the descenders, ~0.25 em below the line: with three lines and line-height kept, it
+    needs the gap above the next line, so do not tighten line-height below 1.17.
+  - Keep top 380–720: below ~760 a three-line headline runs into the platform's bottom band.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "headline", "type": "string", "label": "Headline: *starred* words take the accent, | breaks a line", "default": "Three days in the *highlands* | for under $200"},
+  {"id": "kicker", "type": "string", "label": "Kicker above (empty hides it)", "default": "Travel guide"},
+  {"id": "size", "type": "number", "label": "Headline size (px)", "default": 116},
+  {"id": "top", "type": "number", "label": "Block top (px)", "default": 560},
+  {"id": "align", "type": "string", "label": "Align: left or center", "default": "left"},
+  {"id": "italicAccent", "type": "boolean", "label": "Starred words in italic", "default": true},
+  {"id": "underline", "type": "boolean", "label": "Accent underline", "default": true},
+  {"id": "wordStagger", "type": "number", "label": "Seconds between words", "default": 0.09},
+  {"id": "accent", "type": "color", "label": "Accent words and underline", "default": "#FFC83D"},
+  {"id": "text", "type": "color", "label": "Headline colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Kicker colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #FFC83D; --text: #FFFFFF; --secondary: #FFFFFF; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; }
+      #block { position: absolute; left: 84px; right: 96px; }
+      #kicker { font-family: var(--body-font), Arial, sans-serif; font-size: 58px; font-weight: 700; line-height: 1.2;
+        text-transform: uppercase; letter-spacing: 0.1em; color: var(--secondary); opacity: 0.88; margin-bottom: 18px;
+        text-shadow: 0 3px 16px rgba(0, 0, 0, 0.5); }
+      #headline { position: relative; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800;
+        line-height: 1.17; letter-spacing: -0.03em; color: var(--text); padding-top: 0.08em; text-wrap: balance; }
+      .run { white-space: nowrap; }
+      .word { display: inline-block; text-shadow: 0 5px 26px rgba(0, 0, 0, 0.5); }
+      .word.accent { color: var(--accent); }
+      .word.italic { font-style: italic; padding-right: 0.06em; }
+      #underline { position: absolute; left: 0; top: 0; width: 0; border-radius: 999px; background: var(--accent);
+        transform-origin: left center; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3" data-width="1080" data-height="1920">
+      <div id="block"><div id="kicker"></div><div id="headline"><div id="underline"></div></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+
+      const size = Math.max(40, Number(v.size) || 116);
+      const center = String(v.align).trim().toLowerCase() === "center";
+      const stagger = Math.max(0.02, Number(v.wordStagger) || 0.09);
+      const block = document.getElementById("block");
+      block.style.top = `${v.top}px`;
+      block.style.textAlign = center ? "center" : "left";
+      const kicker = document.getElementById("kicker");
+      kicker.textContent = v.kicker;
+      kicker.style.display = String(v.kicker ?? "").trim() ? "block" : "none";
+      const headline = document.getElementById("headline");
+      headline.style.fontSize = `${size}px`;
+      const underline = document.getElementById("underline");
+
+      // Words: *a phrase* is one accent run; trailing punctuation after the closing star stays with the word.
+      const words = [];
+      let run = -1;
+      let inRun = false;
+      let holder = headline;
+      String(v.headline ?? "").split("|").forEach((line, lineIndex) => {
+        if (lineIndex > 0) { holder = headline; inRun = false; headline.appendChild(document.createElement("br")); }
+        line.trim().split(/\s+/).filter(Boolean).forEach((token, index) => {
+          let word = token;
+          if (index > 0) holder.appendChild(document.createTextNode(" "));
+          // A starred phrase stays on one line (white-space: nowrap), so its underline is one stroke.
+          if (word.startsWith("*")) {
+            inRun = true; run += 1; word = word.slice(1);
+            holder = document.createElement("span");
+            holder.className = "run";
+            headline.appendChild(holder);
+          }
+          const close = /^(.*)\*([.,!?;:…"'”’)]*)$/.exec(word);
+          const accent = inRun;
+          if (close) { word = close[1] + close[2]; inRun = false; }
+          const span = document.createElement("span");
+          span.className = "word";
+          if (accent) span.classList.add("accent");
+          if (accent && v.italicAccent) span.classList.add("italic");
+          span.textContent = word;
+          holder.appendChild(span);
+          if (close) holder = headline;
+          words.push({ span, accent, run: accent ? run : -1 });
+        });
+      });
+
+      // The underline sits under the last starred phrase (its words on that phrase's last line), else the last line.
+      function placeUnderline() {
+        const starred = words.filter((w) => w.run === run && run >= 0);
+        const pool = starred.length ? starred : words;
+        if (!pool.length) return;
+        const lastTop = pool[pool.length - 1].span.offsetTop;
+        const row = pool.filter((w) => Math.abs(w.span.offsetTop - lastTop) < 4).map((w) => w.span);
+        const left = Math.min(...row.map((s) => s.offsetLeft));
+        const right = Math.max(...row.map((s) => s.offsetLeft + s.offsetWidth));
+        const thick = Math.round(size * 0.085);
+        underline.style.left = `${left + size * 0.02}px`;
+        underline.style.width = `${right - left - size * 0.04}px`;
+        underline.style.height = `${thick}px`;
+        // Below the descenders (g, y, p in an italic phrase), not on the baseline: the line box ends just under them.
+        underline.style.top = `${lastTop + row[0].offsetHeight + size * 0.08}px`;
+      }
+      placeUnderline();
+      // A font that loads after this script moves the words; the underline follows them (no timing changes).
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeUnderline);
+
+      // Every frame is a pure function of time: one paused timeline, no clocks or random.
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      if (kicker.style.display !== "none") {
+        tl.fromTo(kicker, { opacity: 0, x: center ? 0 : -24, y: 14 },
+          { opacity: 0.88, x: 0, y: 0, duration: 0.5, ease: "expo.out" }, 0);
+      }
+      // Letterpress: each word presses in from 1.06 with a short blur-to-sharp. The gaps shrink as the line runs
+      // (it accelerates), and a starred word gets a small beat before it so the hero lands on its own.
+      let at = kicker.style.display !== "none" ? 0.16 : 0.04;
+      let last = at;
+      words.forEach((w, index) => {
+        if (w.accent && (index === 0 || !words[index - 1].accent)) at += stagger * 0.7;
+        const hero = w.accent;
+        tl.fromTo(w.span, { opacity: 0, scale: hero ? 1.12 : 1.06, filter: `blur(${hero ? 12 : 9}px)`, y: hero ? -6 : -3 },
+          { opacity: 1, scale: 1, filter: "blur(0px)", y: 0, duration: hero ? 0.42 : 0.34, ease: hero ? "expo.out" : "power3.out" }, at);
+        last = at + (hero ? 0.42 : 0.34);
+        at += stagger * Math.max(0.62, 1 - 0.05 * index);
+      });
+      if (v.underline) {
+        tl.fromTo(underline, { scaleX: 0, opacity: 1 }, { scaleX: 1, duration: 0.5, ease: "expo.out" }, Math.max(0.2, last - 0.12));
+      } else {
+        underline.style.display = "none";
+      }
+      tl.to(block, { opacity: 0, y: -28, filter: "blur(6px)", duration: 0.35, ease: "power2.in" }, END - 0.35);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

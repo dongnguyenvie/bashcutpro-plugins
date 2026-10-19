@@ -1,0 +1,150 @@
+<!doctype html>
+<!-- A typeset LaTeX formula whose terms light up step by step. KaTeX is bundled (no network); it writes on left to right and lights its terms one step at a time, with a note under it per step (data is JSON {title, latex, steps:[{at, terms:[ids], note?}]}; mark a term in the latex as \hl{id}{tex}). Transparent card, the project's canvas, 7 s. -->
+<!-- Pitfalls:
+  - steps[].at are seconds from the graphic's start: `bin/graphic place … --steps-from voice` puts step i on the i-th
+    voice line (no frames to compute); a step without at is spread evenly. Pass data with `--set data=@file.json`.
+  - Every id in steps[].terms needs a \hl{id}{…} in latex; one id may mark several places (both V in attention).
+  - In JSON a backslash is doubled: "\\frac{a}{b}". \htmlClass is allowed only through \hl.
+  - The formula shrinks to the card width: past ~45 symbols on 9:16 it gets small; split it into two cards or use
+    \\ in an aligned block.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Formula (JSON {title, latex, steps:[{at, terms, note}]})", "default": "{\"title\": \"Scaled dot-product attention\", \"latex\": \"\\\\mathrm{Attention}(\\\\hl{q}{Q},\\\\hl{k}{K},\\\\hl{v}{V})=\\\\mathrm{softmax}\\\\left(\\\\frac{\\\\hl{qk}{QK^{\\\\top}}}{\\\\hl{d}{\\\\sqrt{d_k}}}\\\\right)\\\\hl{v}{V}\", \"steps\": [{\"at\": 1.8, \"terms\": [\"q\", \"k\", \"v\"], \"note\": \"Queries, keys and values\"}, {\"at\": 3.6, \"terms\": [\"qk\"], \"note\": \"How well each query matches each key\"}, {\"at\": 5.4, \"terms\": [\"d\"], \"note\": \"Scaled down so softmax stays smooth\"}]}"},
+  {"id": "accent", "type": "color", "label": "Highlight colour", "default": "#FFB020"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Muted colour", "default": "#8A8F99"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <link rel="stylesheet" href="katex/katex.min.css" />
+    <script src="katex/katex.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #8A8F99; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; color: var(--text); }
+      #card { opacity: 0; position: absolute; border-radius: 36px; background: color-mix(in srgb, var(--background) 92%, transparent);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); }
+      #title { position: absolute; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+      #note { position: absolute; font-family: var(--body-font), Arial, sans-serif; font-weight: 600; text-align: center;
+        color: color-mix(in srgb, var(--text) 85%, transparent); }
+      #root { perspective: 1600px; }
+      #card { isolation: isolate; }
+      #formula { position: absolute; left: 0; text-align: center; color: var(--text); }
+      #formula .katex-display { margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7" data-width="1920" data-height="1080" data-fit="canvas">
+      <div id="card"><div id="title"></div><div id="formula"></div><div id="note"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      // Colours as values GSAP can tween (it cannot tween var(--accent)).
+      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const ACCENT = css("--accent");
+      const TEXT = css("--text");
+      // The canvas is the project's (bin/graphic sets data-width/height on a data-fit="canvas" root): 9:16 or 16:9.
+      const root = document.getElementById("root");
+      const W = Number(root.dataset.width) || 1080;
+      const H = Number(root.dataset.height) || 1920;
+      for (const node of [document.documentElement, document.body, root]) Object.assign(node.style, { width: `${W}px`, height: `${H}px` });
+      const u = Math.min(W, H) / 1080;
+      const portrait = H > W;
+      const END = Number(root.dataset.duration);
+      const data = JSON.parse(v.data || "{}");
+      // Steps: seconds from the start (bin/graphic --steps-from voice fills them); a step without one is spread evenly.
+      const steps = (data.steps ?? []).map((s) => ({ ...s }));
+      const free = steps.filter((s) => typeof s.at !== "number");
+      free.forEach((s, i) => (s.at = 1.4 + ((END - 2.4) * i) / Math.max(1, free.length)));
+      steps.sort((a, b) => a.at - b.at);
+      const tl = gsap.timeline({ paused: true });
+      const ft = (target, a, b, at, duration, ease) => tl.fromTo(target, a, { ...b, duration, ease: ease ?? "power2.out", immediateRender: false }, at);
+      const card = document.getElementById("card");
+      const title = document.getElementById("title");
+      const box = document.getElementById("formula");
+      const note = document.getElementById("note");
+      // KaTeX is bundled (graphics.render copies it into katex/): no network. \hl{id}{tex} marks a term a step lights.
+      katex.render(String(data.latex ?? ""), box, { displayMode: true, throwOnError: false, trust: true, strict: false,
+        macros: { "\\hl": "\\htmlClass{hl-#1}{#2}" } });
+      const cardW = Math.min(W - 144 * u, portrait ? W : 1600 * u);
+      let size = (portrait ? 60 : 76) * u;
+      box.style.fontSize = `${size}px`;
+      const fits = () => box.querySelector(".katex-display > .katex")?.getBoundingClientRect().width ?? 0;
+      if (fits() > cardW - 240 * u) size *= (cardW - 240 * u) / fits();
+      box.style.fontSize = `${size}px`;
+      title.textContent = data.title ?? "";
+      title.style.cssText += `font-size:${(portrait ? 54 : 60) * u}px;left:${60 * u}px;right:${60 * u}px;top:${48 * u}px;`;
+      const titleH = data.title ? 110 * u : 0;
+      const formulaH = box.getBoundingClientRect().height;
+      const noteH = steps.some((s) => s.note) ? 130 * u : 0;
+      const cardH = titleH + formulaH + noteH + 120 * u;
+      const left = (W - cardW) / 2;
+      const cardTop = Math.max(60 * u, (portrait ? H * 0.42 : H * 0.5) - cardH / 2);
+      Object.assign(card.style, { left: `${left}px`, top: `${cardTop}px`, width: `${cardW}px`, height: `${cardH}px` });
+      Object.assign(box.style, { top: `${titleH + 60 * u}px`, width: `${cardW}px` });
+      Object.assign(note.style, { left: `${40 * u}px`, right: `${40 * u}px`, top: `${titleH + formulaH + 90 * u}px`, fontSize: `${40 * u}px` });
+      ft(card, { opacity: 0, y: 70 * u, scale: 0.95 }, { opacity: 1, y: 0, scale: 1 }, 0.1, 0.55, "power3.out");
+      ft(box, { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)" }, 0.45, 1.0, "power2.inOut");
+      // A lit term gets an accent wash and underline as its own background (no element over the formula) and turns
+      // the accent; one id may mark several places.
+      const probe = document.createElement("i");
+      probe.style.color = ACCENT;
+      document.body.appendChild(probe);
+      const rgb = getComputedStyle(probe).color.match(/[\d.]+/g).slice(0, 3).join(",");
+      probe.remove();
+      const OFF = { color: TEXT, backgroundColor: `rgba(${rgb},0)`, boxShadow: `inset 0 ${-6 * u}px 0 rgba(${rgb},0)` };
+      const ON = { color: ACCENT, backgroundColor: `rgba(${rgb},0.2)`, boxShadow: `inset 0 ${-6 * u}px 0 rgba(${rgb},1)` };
+      const lit = new Map();
+      for (const term of box.querySelectorAll('[class*="hl-"]')) {
+        const id = [...term.classList].find((c) => c.startsWith("hl-")).slice(3);
+        Object.assign(term.style, { borderRadius: `${10 * u}px`, padding: `0 ${3 * u}px` });
+        if (!lit.has(id)) lit.set(id, []);
+        lit.get(id).push(term);
+      }
+      const unknown = steps.flatMap((s) => [].concat(s.terms ?? [])).filter((id) => !lit.has(id));
+      if (unknown.length) console.warn(`no \\hl{${unknown[0]}}{…} in the latex`);
+      steps.forEach((s, k) => {
+        const until = k + 1 < steps.length ? steps[k + 1].at : END - 0.5;
+        for (const id of [].concat(s.terms ?? [])) {
+          for (const node of lit.get(id) ?? []) {
+            ft(node, OFF, ON, s.at - 0.2, 0.35);
+            if (until < END - 0.5) ft(node, ON, OFF, until - 0.2, 0.3);
+          }
+        }
+        if (s.note) {
+          const line = document.createElement("div");
+          line.textContent = s.note;
+          line.style.position = "absolute";
+          line.style.left = line.style.right = "0";
+          line.style.opacity = "0";
+          line.setAttribute("data-layout-allow-overlap", "");
+          note.appendChild(line);
+          ft(line, { opacity: 0, y: 20 * u }, { opacity: 1, y: 0 }, s.at, 0.35);
+          if (until < END - 0.5) ft(line, { opacity: 1 }, { opacity: 0 }, until - 0.2, 0.25);
+        }
+      });
+      tl.to(card, { rotationY: -70, x: -260 * u, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,351 @@
+<!doctype html>
+<!-- Routes to landmarks ("≈ 15 min · 6.3 km"), then a radius circle with the amenities inside counted per kind. On a
+     dark map, the routes glow from the project to each landmark, the camera moves onto the circle and the places in it
+     pop up by distance while a legend counts schools, hospitals, malls, parks…; a two-line title, an optional
+     disclosure line on top and a credit line under the legend only when the credit variable is set. Run bin/osm-map --dir <this folder> --points
+     "project;landmarks" --legs star --amenities "school,hospital,mall,park" first (the map-data.js here is an offline
+     stand-in with no tiles): every number on screen comes from it. The project's canvas (9:16 or 16:9), 8 s. -->
+<!-- Pitfalls:
+  - Run osm-map with the project's --width/--height: the map is fitted into the free zone between the title and the
+    legend by scaling, and a map made for another shape is scaled more (blurrier tiles, more empty edge).
+  - --legs star routes from the first point to each other one (the "≈ 15 min" from the project); without it the legs
+    run point to point and each label is from the previous stop.
+  - Landmarks far from the project shrink the radius circle: with stops over ~8 km away the 1 km circle is under
+    ~60 px and most places of a kind merge into one marker with a count. Keep the landmarks within ~6 km or show them
+    in a map-route scene of their own.
+  - Markers never overlap (amenity-map.js lays them out at the zoomed-in scale): places of one kind that would touch
+    merge into one marker with a count badge, different kinds are nudged apart with a leader line to their place.
+  - A tag that would leave the frame flips to the left of its pin; two landmarks closer than ~120 px still overlap.
+  - Up to 6 kinds fit the legend (2 columns on 9:16, 3 on 16:9). A kind with no place inside the radius is left out
+    of the legend: "0 hospitals" on screen reads as a claim. Never set showZero unless the user asks to show a zero.
+  - legText takes {min} and {km}; a leg without minutes (--route none) shows the km alone.
+  - routeAt + legs × (legSeconds + 0.15) and amenitiesAt + 1.6 must end before data-duration − 0.5 (the swing-out).
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title (white)", "default": "Lakeside homes"},
+  {"id": "subtitle", "type": "string", "label": "Second line (accent)", "default": "Everything within 1 km"},
+  {"id": "disclosure", "type": "string", "label": "Disclosure line on top (empty hides it)", "default": "Illustrative project"},
+  {"id": "kindLabels", "type": "string", "label": "Legend label per kind, JSON {kind: label}", "default": "{\"school\": \"Schools\", \"hospital\": \"Hospitals\", \"mall\": \"Malls\", \"park\": \"Parks\", \"supermarket\": \"Supermarkets\", \"clinic\": \"Clinics\", \"pharmacy\": \"Pharmacies\", \"metro\": \"Metro\"}"},
+  {"id": "nearestText", "type": "string", "label": "Nearest line under a count, {d} = distance (empty hides it)", "default": "nearest {d}"},
+  {"id": "legText", "type": "string", "label": "Route label on each landmark, {min} and {km}", "default": "≈ {min} min · {km}"},
+  {"id": "locale", "type": "string", "label": "Number format (vi-VN writes 6,3 km)", "default": "en-US"},
+  {"id": "routeAt", "type": "number", "label": "Routes start drawing (s)", "default": 0.6},
+  {"id": "legSeconds", "type": "number", "label": "Seconds per route leg", "default": 1.1},
+  {"id": "amenitiesAt", "type": "number", "label": "Radius circle and amenities appear (s)", "default": 3.4},
+  {"id": "showZero", "type": "boolean", "label": "Show kinds with no place in the radius as 0: only when the user asks for a zero (off: left out)", "default": false},
+  {"id": "zoomIn", "type": "boolean", "label": "Camera moves onto the circle when the amenities come (off: one view for all)", "default": true},
+  {"id": "darkMap", "type": "boolean", "label": "Dark map (off: the normal OpenStreetMap colours; osm-map --style dark|light overrides it)", "default": true},
+  {"id": "credit", "type": "string", "label": "Credit line under the legend (empty hides it; only when the user asks, e.g. © OpenStreetMap contributors)", "default": ""},
+  {"id": "accent", "type": "color", "label": "Route and circle colour", "default": "#C6FF3D"},
+  {"id": "background", "type": "color", "label": "Map base and tag colour", "default": "#0B0E14"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Muted text colour", "default": "#9AA3B2"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="map-data.js"></script>
+    <script src="amenity-map.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #C6FF3D; --background: #0B0E14;
+        --text: #FFFFFF; --secondary: #9AA3B2; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; perspective: 1600px; font-family: var(--body-font), Arial, sans-serif;
+        color: var(--text); background: var(--background); }
+      #stage { position: absolute; inset: 0; }
+      #map, #detail { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      #map img, #detail img { position: absolute; display: block; }
+      #base { position: absolute; inset: 0; background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 120px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 120px), #11151D; }
+      .dark #map img, .dark #detail img { filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(1.15) saturate(0.35); }
+      #shade { position: absolute; inset: 0; }
+      svg { position: absolute; left: 0; top: 0; overflow: visible; }
+      .glow { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; opacity: calc(0.35 * var(--legs, 1)); filter: blur(8px); }
+      .line { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; opacity: var(--legs, 1); }
+      #ring { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: var(--accent); }
+      #pulse { fill: none; stroke: var(--accent); }
+      .pin, .spot { position: absolute; width: 0; height: 0; }
+      .dot { position: absolute; border-radius: 50%; border-style: solid; border-color: var(--background);
+        box-shadow: 0 0 0 4px rgba(255,255,255,0.9), 0 8px 24px rgba(0,0,0,0.5); background: var(--accent); }
+      .tag { position: absolute; white-space: nowrap; border-radius: 14px; line-height: 1.15;
+        background: color-mix(in srgb, var(--background) 90%, transparent); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+      .tag b { display: block; font-weight: 800; }
+      .tag span { display: block; font-weight: 800; color: var(--accent); }
+      .pop, .spot b { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+      .spot i { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 0 0 3px var(--background), 0 4px 12px rgba(0,0,0,0.5); }
+      .spot s { position: absolute; left: 0; top: 0; transform-origin: 0 50%; opacity: 0.9; }
+      .spot u { position: absolute; border-radius: 50%; box-shadow: 0 0 0 2px var(--background); }
+      .spot em { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 999px;
+        font-style: normal; font-weight: 900; line-height: 1; color: var(--background); background: var(--text);
+        box-shadow: 0 0 0 2px var(--background); font-variant-numeric: tabular-nums; }
+      svg.icon { position: static; fill: #fff; }
+      #head { position: absolute; }
+      #title, #subtitle { font-family: var(--heading-font), Arial, sans-serif; font-weight: 900; line-height: 1.02; letter-spacing: -0.03em;
+        text-wrap: balance; }
+      #subtitle { color: var(--accent); }
+      #disclosure { position: absolute; padding: 0.3em 0.8em; border-radius: 999px; font-weight: 700;
+        background: color-mix(in srgb, var(--background) 80%, transparent); color: var(--text); }
+      #legend { position: absolute; display: grid; }
+      .chip { display: flex; align-items: center; border-radius: 24px;
+        background: color-mix(in srgb, var(--background) 96%, transparent); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+      .chip i { flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      .chip .n { font-family: var(--heading-font), Arial, sans-serif; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+      .chip .k { font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chip .near { color: var(--secondary); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #credit { position: absolute; color: rgba(255,255,255,0.75); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1080" data-height="1920" data-fit="canvas">
+      <div id="stage">
+        <div id="base"></div>
+        <div id="map" data-layout-allow-overflow></div>
+        <div id="detail" data-layout-allow-overflow></div>
+        <div id="shade"></div>
+        <svg id="lines"><circle id="pulse" /><circle id="ring" /></svg>
+        <div id="home"></div>
+        <div id="spots"></div>
+        <div id="pins"></div>
+      </div>
+      <div id="head"><div id="title"></div><div id="subtitle"></div></div>
+      <div id="legend"></div>
+      <div id="disclosure"></div>
+      <div id="credit"></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look: amenity-map.js fills --accent, --background, --text, --secondary and the fonts from the variables.
+      const AM = window.BCAmenityMap;
+      AM.applyLook(v, document);
+      // The canvas is the project's (bin/graphic sets data-width/height on a data-fit="canvas" root): 9:16 or 16:9.
+      const root = document.getElementById("root");
+      const W = Number(root.dataset.width) || 1080;
+      const H = Number(root.dataset.height) || 1920;
+      for (const node of [document.documentElement, document.body, root]) Object.assign(node.style, { width: `${W}px`, height: `${H}px` });
+      const u = Math.min(W, H) / 1080;
+      const portrait = H >= W;
+      const END = Number(root.dataset.duration);
+      function px(n) { return `${n * u}px`; }
+      const data = window.MAP_DATA;
+      const near = data.amenities ?? { kinds: [], markers: [] };
+      // osm-map --style dark / light decides; else darkMap. Your own --tiles are drawn as they are.
+      root.classList.toggle("dark", !data.customTiles && (data.style === "dark" || (data.style !== "light" && v.darkMap !== false)));
+
+      const labels = AM.parseJSON(v.kindLabels);
+      function number(digits) { return new Intl.NumberFormat(v.locale || "en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
+      function distance(km) { return km < 1 ? `${number(0).format(Math.round(km * 100) * 10)} m` : `${number(1).format(km)} km`; }
+
+      // Text blocks first: the map is fitted into the room they leave.
+      const disclosure = document.getElementById("disclosure");
+      disclosure.textContent = v.disclosure ?? "";
+      disclosure.style.display = v.disclosure ? "block" : "none";
+      Object.assign(disclosure.style, { left: px(72), top: px(portrait ? 92 : 48), fontSize: px(portrait ? 26 : 24) });
+      const head = document.getElementById("head");
+      document.getElementById("title").textContent = v.title;
+      document.getElementById("subtitle").textContent = v.subtitle;
+      Object.assign(head.style, portrait
+        ? { left: px(72), right: px(72), top: px(160), fontSize: px(88) }
+        : { left: px(72), width: px(720), top: px(110), fontSize: px(76) });
+      const kinds = near.kinds.filter((k) => k.count > 0 || v.showZero === true).slice(0, 6);
+      const legend = document.getElementById("legend");
+      const columns = portrait ? 2 : Math.min(2, Math.max(1, kinds.length));
+      const chipH = 116;
+      const rows = Math.ceil(kinds.length / columns);
+      const legendH = rows ? rows * chipH + (rows - 1) * 18 : 0;
+      const legendTop = portrait ? Math.min(H * 0.6, H - 500 * u) : H - 110 * u - legendH * u;
+      Object.assign(legend.style, {
+        left: px(72), top: `${legendTop}px`, width: portrait ? `${W - 144 * u}px` : px(720),
+        gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: px(18),
+      });
+      // Legend and markers: category colours and icons from amenity-map.js.
+      const chips = AM.mountLegend(legend, kinds, u, labels,
+        (k) => (k.nearest && v.nearestText ? v.nearestText.replace("{d}", distance(k.nearest.km)) : ""));
+      const credit = document.getElementById("credit");
+      // data.attribution stays in map-data.js as metadata; a credit line is drawn only when the credit variable asks.
+      credit.textContent = v.credit ?? "";
+      credit.style.display = v.credit ? "block" : "none";
+      Object.assign(credit.style, { left: px(72), top: `${(rows ? legendTop + legendH * u : H * 0.7) + 16 * u}px`, fontSize: px(22) });
+
+      // The map: first the project, the routes and the landmarks fitted into the free zone; then (zoomIn) the camera
+      // moves onto the radius circle, over the sharper tiles osm-map fetched around it.
+      const centre = near.centre ?? data.points[0] ?? { x: data.width / 2, y: data.height / 2 };
+      const radius = near.radius ?? 0;
+      const reach = [[centre.x - radius, centre.y - radius], [centre.x + radius, centre.y + radius]];
+      const content = reach.concat(data.points.map((p) => [p.x, p.y]), ...(data.legs ?? []).map((leg) => leg.line ?? []));
+      const margin = 50;
+      const minX = Math.min(...content.map((p) => p[0])) - margin;
+      const maxX = Math.max(...content.map((p) => p[0])) + margin;
+      const minY = Math.min(...content.map((p) => p[1])) - margin;
+      const maxY = Math.max(...content.map((p) => p[1])) + margin;
+      const zoomIn = v.zoomIn !== false && radius > 0;
+      const stage = document.getElementById("stage");
+      const shade = document.getElementById("shade");
+      // The free zone under the title, measured again once the fonts are in (a font swap can add a title line).
+      let view0, view1, zc;
+      function fitViews() {
+        const headBottom = head.offsetTop + head.offsetHeight;
+        const zone = portrait
+          ? { x: 60 * u, y: headBottom + 40 * u, w: W - 120 * u, h: legendTop - headBottom - 70 * u }
+          : { x: 860 * u, y: 60 * u, w: W - 920 * u, h: H - 120 * u };
+        const fit = Math.max(0.5, Math.min(1.6, zone.w / (maxX - minX), zone.h / (maxY - minY)));
+        view0 = { s: fit, c: [(minX + maxX) / 2, (minY + maxY) / 2] };
+        view1 = zoomIn ? { s: Math.max(fit, Math.min(fit * 6, (0.45 * Math.min(zone.w, zone.h)) / radius)), c: [centre.x, centre.y] } : view0;
+        zc = [zone.x + zone.w / 2, zone.y + zone.h / 2];
+        stage.style.transformOrigin = `${zc[0]}px ${zc[1]}px`;
+        shade.style.background = portrait
+          ? `linear-gradient(180deg, rgba(8,10,14,0.88) 0%, rgba(8,10,14,0) ${(headBottom / H) * 100 + 4}%, rgba(8,10,14,0) ${(legendTop / H) * 100 - 6}%, rgba(8,10,14,0.85) ${(legendTop / H) * 100 + 4}%)`
+          : "linear-gradient(90deg, rgba(8,10,14,0.9) 0%, rgba(8,10,14,0.75) 38%, rgba(8,10,14,0) 46%)";
+      }
+      fitViews();
+      const map = document.getElementById("map");
+      const detailLayer = document.getElementById("detail");
+      const detail = near.detail;
+      for (const [layer, list] of [[map, data.tiles], [detailLayer, detail?.tiles ?? []]]) AM.mountTiles(layer, data, list);
+
+      const svg = document.getElementById("lines");
+      Object.assign(svg.style, { width: `${W}px`, height: `${H}px` });
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const ring = document.getElementById("ring");
+      const pulse = document.getElementById("pulse");
+      ring.setAttribute("stroke-width", 4 * u);
+      ring.setAttribute("stroke-dasharray", `${14 * u} ${10 * u}`);
+      pulse.setAttribute("stroke-width", 6 * u);
+
+      // Map pixels → the frame at the camera's start (render() moves it).
+      let S = ([x, y]) => {
+        return [zc[0] + view0.s * (x - view0.c[0]), zc[1] + view0.s * (y - view0.c[1])];
+      };
+      // A pin: its dot in `layer`, its tag right of it above everything, flipped left when it would leave the frame.
+      const pins = document.getElementById("pins");
+      const anchored = [];
+      const flips = [];
+      function pin(point, lines, size, layer) {
+        const made = AM.mountPin(layer, pins, lines, size, u);
+        const gap = (size / 2 + 12) * u;
+        flips.push({ tag: made.tag, room: W - 40 * u - S([point.x, point.y])[0] - gap, gap });
+        anchored.push({ els: [made.at, made.label], point });
+        return made;
+      }
+
+      // Routes: one glowing line per leg, its landmark popping with "≈ 15 min · 6.3 km" when the line arrives.
+      const legs = (data.legs ?? []).map((leg, i) => {
+        const pts = leg.line ?? [data.points[leg.from], data.points[leg.to]].map((p) => [p.x, p.y]);
+        const paths = ["glow", "line"].map((cls) => {
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("class", cls);
+          // pathLength 1: the draw-on dash stays right while the camera rescales the line.
+          path.setAttribute("pathLength", 1);
+          path.setAttribute("stroke-width", (cls === "glow" ? 24 : 10) * u);
+          path.style.strokeDasharray = "1 1";
+          svg.appendChild(path);
+          return path;
+        });
+        const km = distance(leg.km);
+        const text = leg.minutes === null || leg.minutes === undefined ? `≈ ${km}`
+          : (v.legText || "≈ {min} min · {km}").replace("{min}", number(0).format(Math.max(1, Math.round(leg.minutes)))).replace("{km}", km);
+        const at = v.routeAt + i * (v.legSeconds + 0.15);
+        return { paths, pts, at, stop: pin(data.points[leg.to], [data.points[leg.to].label, text], 40, pins) };
+      });
+      // Amenities: markers by kind; the project's dot sits under them, its name over them.
+      const spots = document.getElementById("spots");
+      const project = pin(centre, [centre.label ?? data.points[0]?.label ?? ""], 48, document.getElementById("home"));
+      const shown = new Set(kinds.map((k) => k.kind));
+      const spread = AM.mountMarkers(spots, (near.markers ?? []).filter((m) => shown.has(m.kind)), u);
+      const markers = spread.items;
+      for (const m of markers) anchored.push({ els: [m.spot], point: m.point });
+      // Laid out at the scale they are seen at (the camera on the circle), clear of the project's dot and name.
+      function layoutMarkers() { spread.layout(view1.s, [{ x: centre.x, y: centre.y, r: 30 * u }, { x: centre.x, y: centre.y, el: project.tag }]); }
+      // Tags measured at build time (again after the fonts), never from a timeline callback.
+      function flipTags() {
+        for (const { tag, room, gap } of flips) tag.style.left = tag.offsetWidth > room ? `${-gap - tag.offsetWidth}px` : `${gap}px`;
+      }
+      flipTags();
+      layoutMarkers();
+
+      // Everything the camera moves is computed from the time alone (seek-safe): zoom, tiles, circle, lines, pins.
+      const A = v.amenitiesAt;
+      const ZOOM = zoomIn ? 1.0 : 0;
+      const RING = A + ZOOM * 0.75;
+      const radiusKm = (near.radiusM ?? 1000) / 1000;
+      const inOut = gsap.parseEase("power2.inOut");
+      const out = gsap.parseEase("power2.out");
+      function span(t, at, d) { return d > 0 ? Math.max(0, Math.min(1, (t - at) / d)) : t >= at ? 1 : 0; }
+      function render(t) {
+        const k = zoomIn ? inOut(span(t, A, ZOOM)) : 0;
+        const s = view0.s * (view1.s / view0.s) ** k;
+        const c = [view0.c[0] + (view1.c[0] - view0.c[0]) * k, view0.c[1] + (view1.c[1] - view0.c[1]) * k];
+        const tx = zc[0] - s * c[0];
+        const ty = zc[1] - s * c[1];
+        S = ([x, y]) => {
+          return [tx + s * x, ty + s * y];
+        };
+        map.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+        if (detail) {
+          detailLayer.style.transform = `translate(${tx + s * detail.x}px, ${ty + s * detail.y}px) scale(${s * detail.scale})`;
+          detailLayer.style.opacity = span(k, 0.3, 0.5);
+        }
+        const [cx, cy] = S([centre.x, centre.y]);
+        const grow = out(span(t, RING, 0.9));
+        const wave = span(t, RING + 0.2, 1.1);
+        for (const [circle, r, o] of [[ring, radius * s * grow, grow > 0 ? 1 : 0], [pulse, radius * s * 1.08 * out(wave), wave > 0 ? 0.9 * (1 - wave) : 0]]) {
+          circle.setAttribute("cx", cx);
+          circle.setAttribute("cy", cy);
+          circle.setAttribute("r", r);
+          circle.style.opacity = o;
+        }
+        // The routes step back once the camera is on the circle.
+        svg.style.setProperty("--legs", 1 - 0.55 * k);
+        for (const leg of legs) {
+          const d = leg.pts.map((p, j) => `${j ? "L" : "M"}${S(p).join(" ")}`).join(" ");
+          for (const path of leg.paths) path.setAttribute("d", d);
+        }
+        for (const { els, point } of anchored) {
+          const [x, y] = S([point.x, point.y]);
+          for (const el of els) Object.assign(el.style, { left: `${x}px`, top: `${y}px` });
+        }
+      }
+      render(0);
+
+      const tl = gsap.timeline({ paused: true });
+      function ft(target, a, b, at, duration, ease) { return tl.fromTo(target, a, { ...b, duration, ease: ease ?? "power2.out", immediateRender: false }, at); }
+      const clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, { t: END, duration: END, ease: "none", onUpdate: () => render(clock.t) }, 0);
+      tl.fromTo(stage, { scale: 1.08 }, { scale: 1.0, duration: END - 0.6, ease: "sine.out" }, 0);
+      tl.fromTo("#head > div", { opacity: 0, y: 50 * u }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.15, ease: "power3.out" }, 0.15);
+      tl.fromTo([disclosure, credit], { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo(project.dot, { scale: 0 }, { scale: 1, duration: 0.4, ease: "back.out(3)" }, 0.3);
+      tl.fromTo(project.tag, { opacity: 0, x: -20 * u }, { opacity: 1, x: 0, duration: 0.3 }, 0.4);
+      for (const leg of legs) {
+        tl.fromTo(leg.paths, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: v.legSeconds, ease: "power1.inOut" }, leg.at);
+        tl.fromTo(leg.stop.dot, { scale: 0 }, { scale: 1, duration: 0.35, ease: "back.out(3)" }, leg.at + v.legSeconds - 0.1);
+        tl.fromTo(leg.stop.tag, { opacity: 0, x: -20 * u }, { opacity: 1, x: 0, duration: 0.3 }, leg.at + v.legSeconds);
+      }
+      // Zooming onto the circle, the landmarks leave (their lines stay, running out of the frame).
+      if (zoomIn && legs.length) ft(legs.flatMap((leg) => [leg.stop.at, leg.stop.label]), { opacity: 1 }, { opacity: 0 }, A, 0.3);
+      for (const m of markers) ft(m.pop, { scale: 0 }, { scale: 1 }, RING + 0.1 + Math.min(1, m.km / radiusKm) * 0.8, 0.3, "back.out(3)");
+      tl.set(markers.map((m) => m.pop), { scale: 0 }, 0);
+      ft(chips.map((c) => c.chip), { opacity: 0, y: 40 * u }, { opacity: 1, y: 0 }, A + 0.2, 0.45, "power3.out");
+      tl.set(chips.map((c) => c.chip), { opacity: 0 }, 0);
+      // Counts: one text per whole number while the markers pop.
+      for (const c of chips) {
+        for (let k = 0; k <= c.count; k += 1) tl.set(c.n, { textContent: number(0).format(k) }, RING + 0.2 + (c.count ? k / c.count : 0));
+      }
+      // The card swings away in 3D, the way the reference explainers change scene.
+      tl.to(root.children, { rotationY: -70, x: -260 * u, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
+        fitViews();
+        flipTags();
+        layoutMarkers();
+        render(clock.t);
+      });
+    </script>
+  </body>
+</html>

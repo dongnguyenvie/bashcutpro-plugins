@@ -1,0 +1,217 @@
+<!doctype html>
+<!-- A route that draws itself over a map, pins popping as it reaches each stop, with a title and "≈ 16 min · 7.5 km".
+     Full frame, 1080×1920, 6 s. Run bin/osm-map --dir <this folder> first: it writes map/ tiles and map-data.js
+     (the one here is an offline stand-in with no tiles); with --places, the measured outlines are drawn too. No credit
+     line by default; when the user asks for one, set credit (e.g. map-data.js's attribution). -->
+<!-- Pitfalls:
+  - Title and subtitle are 104 px each in a 936 px block: each wraps after ~17 characters ("Chợ Đà Lạt đến Hồ") and
+    every extra line pushes the stat pill ~106 px further down over the map.
+  - osm-map's default --padding 0.2 lets the route reach y 384 (under the title block) and y 1536 (the platform's
+    bottom band); run it with --padding 0.3 to keep the route in 576–1344.
+  - Pin tags never wrap and start 34 px right of the pin: a pin at x 864 shows only ~8 characters before the frame
+    edge ("Hồ Tuyền Lâm" is cut). Use short labels (--points) for stops on the right.
+  - drawAt + drawSeconds past data-duration − 0.5 (5.5 s at 6 s) pops the last pin during the swing-out.
+  - A narrated route lands each pin on its name: arriveAt ["@Hồ Gươm", "@chợ Đồng Xuân", "@Hồ Tây"] in graphic plan
+    (one entry per stop, rising); the line runs at its own speed between them.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title (white)", "default": "Old Quarter"},
+  {"id": "subtitle", "type": "string", "label": "Second line (accent)", "default": "to West Lake"},
+  {"id": "stat", "type": "string", "label": "Stat line", "default": "≈ 16 min · 7.5 km"},
+  {"id": "accent", "type": "color", "label": "Route colour", "default": "#C6FF3D"},
+  {"id": "darkMap", "type": "boolean", "label": "Dark map (off: the normal OpenStreetMap colours; osm-map --style dark|light overrides it)", "default": true},
+  {"id": "credit", "type": "string", "label": "Credit line at the top (empty hides it; only when the user asks, e.g. © OpenStreetMap contributors)", "default": ""},
+  {"id": "drawAt", "type": "number", "label": "Route starts drawing (s)", "default": 0.6},
+  {"id": "drawSeconds", "type": "number", "label": "Route draw length (s)", "default": 2.6},
+  {"id": "arriveAt", "type": "string", "label": "Seconds the line reaches each stop, a JSON list in stop order (the first is when it leaves); empty: drawAt + drawSeconds by distance", "default": ""},
+  {"id": "background", "type": "color", "label": "Map base and tag colour", "default": "#0B0E14"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <script src="map-data.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; perspective: 1600px;
+        font-family: var(--body-font), Arial, sans-serif; }
+      #stage { position: absolute; inset: 0; transform-origin: 50% 50%; }
+      #map { position: absolute; inset: 0; background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 120px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 120px), #11151D; }
+      #map img { position: absolute; display: block; }
+      .dark #map img { filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(1.15) saturate(0.35); }
+      #shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,10,14,0.85) 0%,
+        rgba(8,10,14,0) 30%, rgba(8,10,14,0) 75%, rgba(8,10,14,0.6) 100%); }
+      svg { position: absolute; inset: 0; width: 1080px; height: 1920px; overflow: visible; }
+      #glow { fill: none; stroke-width: 26; stroke-linecap: round; stroke-linejoin: round; opacity: 0.35;
+        filter: blur(10px); }
+      #line { fill: none; stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+      .area { stroke-width: 5; stroke-linejoin: round; }
+      .pin { position: absolute; width: 0; height: 0; }
+      .dot { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%;
+        border: 8px solid var(--background); box-shadow: 0 0 0 4px rgba(255,255,255,0.9), 0 8px 24px rgba(0,0,0,0.5); }
+      .tag { position: absolute; left: 34px; top: -30px; white-space: nowrap; padding: 8px 18px; border-radius: 14px;
+        background: color-mix(in srgb, var(--background) 88%, transparent); color: var(--text); font-size: 34px; font-weight: 700; }
+      #head { position: absolute; left: 72px; right: 72px; top: 150px; color: var(--text); }
+      #title, #subtitle { font-family: var(--heading-font), Arial, sans-serif; font-size: 104px; line-height: 1.02; font-weight: 900; letter-spacing: -0.03em; }
+      #stat { margin-top: 26px; display: inline-block; padding: 12px 26px; border-radius: 999px; font-size: 44px;
+        font-weight: 800; color: var(--background); }
+      #credit { position: absolute; left: 72px; top: 92px; font-size: 24px; color: rgba(255,255,255,0.7); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6" data-width="1080" data-height="1920">
+      <div id="stage">
+        <div id="map" data-layout-allow-overflow></div>
+        <div id="shade"></div>
+        <svg viewBox="0 0 1080 1920"><g id="areas"></g><path id="glow" /><path id="line" /></svg>
+        <div id="pins"></div>
+      </div>
+      <div id="credit"></div>
+      <div id="head"><div id="title"></div><div id="subtitle"></div><div id="stat"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const data = window.MAP_DATA;
+      const root = document.getElementById("root");
+      // osm-map --style dark / light decides; else darkMap. Your own --tiles are drawn as they are.
+      root.classList.toggle("dark", !data.customTiles && (data.style === "dark" || (data.style !== "light" && v.darkMap !== false)));
+      const map = document.getElementById("map");
+      for (const tile of data.tiles) {
+        const img = document.createElement("img");
+        img.src = tile.src;
+        Object.assign(img.style, { left: `${tile.x}px`, top: `${tile.y}px`, width: `${tile.size}px`, height: `${tile.size}px` });
+        map.appendChild(img);
+      }
+      // data.attribution stays in map-data.js as metadata; a credit line is drawn only when the credit variable asks.
+      const credit = document.getElementById("credit");
+      credit.textContent = v.credit ?? "";
+      credit.style.display = v.credit ? "block" : "none";
+      document.getElementById("title").textContent = v.title;
+      const subtitle = document.getElementById("subtitle");
+      subtitle.textContent = v.subtitle;
+      subtitle.style.color = v.accent;
+      const stat = document.getElementById("stat");
+      stat.textContent = v.stat;
+      stat.style.background = v.accent;
+      stat.style.display = v.stat ? "inline-block" : "none";
+
+      // Outlines of the places osm-map --places measured (lakes, parks, districts), drawn to scale under the route.
+      const areas = [];
+      for (const place of data.places ?? []) {
+        for (const ring of place.rings ?? []) {
+          const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          area.setAttribute("class", "area");
+          area.setAttribute("d", ring.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ") + " Z");
+          area.style.fill = `color-mix(in srgb, ${v.accent} 22%, transparent)`;
+          area.style.stroke = v.accent;
+          document.getElementById("areas").appendChild(area);
+          areas.push(area);
+        }
+      }
+
+      const d = data.route.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ");
+      const line = document.getElementById("line");
+      const glow = document.getElementById("glow");
+      line.setAttribute("d", d);
+      glow.setAttribute("d", d);
+      for (const path of [line, glow]) path.style.stroke = v.accent;
+      const length = line.getTotalLength();
+      for (const path of [line, glow]) path.style.strokeDasharray = `${length}`;
+
+      // Where along the route each stop sits (0–1), so its pin pops when the line reaches it.
+      const along = [0];
+      for (let i = 1; i < data.route.length; i += 1) {
+        const [ax, ay] = data.route[i - 1];
+        const [bx, by] = data.route[i];
+        along.push(along[i - 1] + Math.hypot(bx - ax, by - ay));
+      }
+      const total = along[along.length - 1] || 1;
+      const pins = document.getElementById("pins");
+      const stops = data.points.map((p) => {
+        let best = 0;
+        data.route.forEach(([x, y], i) => {
+          const [bx, by] = data.route[best];
+          if (Math.hypot(x - p.x, y - p.y) < Math.hypot(bx - p.x, by - p.y)) best = i;
+        });
+        const pin = document.createElement("div");
+        pin.className = "pin";
+        pin.style.left = `${p.x}px`;
+        pin.style.top = `${p.y}px`;
+        pin.innerHTML = '<div class="dot"></div><div class="tag"></div>';
+        pin.querySelector(".dot").style.background = v.accent;
+        pin.querySelector(".tag").textContent = p.label;
+        if (!p.label) pin.querySelector(".tag").style.display = "none";
+        pins.appendChild(pin);
+        return { pin, frac: along[best] / total, at: v.drawAt + (along[best] / total) * v.drawSeconds };
+      });
+      // arriveAt: the line reaches each stop on its own second (its name in the voice), leg by leg.
+      let arrive = [];
+      try {
+        arrive = v.arriveAt ? JSON.parse(v.arriveAt).map(Number) : [];
+      } catch {
+        arrive = [];
+      }
+      // Used only when the stops come in route order with rising times; otherwise the distance timing stays.
+      const legs = arrive.length === stops.length && arrive.every((t, i) => Number.isFinite(t) && (i === 0 || t > arrive[i - 1]))
+        && stops.every((s, i) => i === 0 || s.frac >= stops[i - 1].frac)
+        ? stops.map((s, i) => ({ frac: i === 0 ? 0 : s.frac, at: arrive[i] })) : null;
+      if (legs) stops.forEach((s, i) => { s.at = arrive[i]; });
+      const drawStart = legs ? legs[0].at : v.drawAt;
+      const drawEnd = legs ? legs[legs.length - 1].at : v.drawAt + v.drawSeconds;
+
+      const xs = data.route.map((p) => p[0]);
+      const ys = data.route.map((p) => p[1]);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+      const stage = document.getElementById("stage");
+      stage.style.transformOrigin = `${cx}px ${cy}px`;
+
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(stage, { scale: 1.12 }, { scale: 1.0, duration: END - 0.6, ease: "sine.out" }, 0);
+      if (areas.length) tl.fromTo(areas, { opacity: 0 }, { opacity: 1, duration: 0.5, stagger: 0.2, ease: "power2.out" }, Math.max(0, drawStart - 0.3));
+      tl.fromTo("#head > div", { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.15, ease: "power3.out" }, 0.15);
+      if (legs) {
+        for (let i = 1; i < legs.length; i += 1) {
+          tl.fromTo([line, glow], { strokeDashoffset: length * (1 - legs[i - 1].frac) },
+            { strokeDashoffset: length * (1 - (i === legs.length - 1 ? 1 : legs[i].frac)), duration: legs[i].at - legs[i - 1].at,
+              ease: "power1.inOut", immediateRender: i === 1 }, legs[i - 1].at);
+        }
+      } else {
+        tl.fromTo([line, glow], { strokeDashoffset: length }, { strokeDashoffset: 0, duration: v.drawSeconds, ease: "power1.inOut" }, v.drawAt);
+      }
+      for (const stop of stops) {
+        tl.fromTo(stop.pin.querySelector(".dot"), { scale: 0 }, { scale: 1, duration: 0.35, ease: "back.out(3)" }, stop.at);
+        tl.fromTo(stop.pin.querySelector(".tag"), { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, stop.at + 0.1);
+      }
+      tl.fromTo(stat, { scale: 1 }, { scale: 1.08, duration: 0.14, yoyo: true, repeat: 1, ease: "power2.out", transformOrigin: "left center" }, drawEnd);
+      // The card swings away in 3D, the way the reference explainers change scene.
+      tl.to(root.children, { rotationY: -70, x: -260, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

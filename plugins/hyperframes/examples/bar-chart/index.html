@@ -1,0 +1,202 @@
+<!doctype html>
+<!-- A bar chart on a card whose bars rise one by one, each value counting up as its bar grows (items is a JSON array
+     of {label, value, at}: at = seconds from the start when that bar lands on its word); layout "rows" makes it a
+     ranked table of horizontal bars (a benchmark table) with the highlight row banded, look "paper" a cream paper
+     card with ink text and a serif title. Transparent, the project's canvas (9:16 or 16:9), 5 s. Raw material: change
+     the card, the bars, the units and the timing for the video. -->
+<!-- Pitfalls:
+  - Values sit over bars of a 780 px row: 6-character values (41,000) touch their neighbours from 6 bars, 4-character
+    ones (410K) from 8 bars when neighbouring bars are close in height. Set unit to K or M and round the values.
+  - Labels have the bar width + 40 px: at 8 bars "January" runs into "Feb"; use 3-letter labels from 6 bars up.
+  - Bars scale to the largest value: one under ~2% of it gets a bar under 10 px (300 next to 125,000 draws none) and
+    its number sits on the axis. Split the chart or plot the small ones on their own.
+  - Decimals follow the values (11.2 and 528.5 show one) unless decimals is set; locale vi-VN writes 528,5.
+  - The card spans top to top + 900 px: over captions low in the frame, raise it (top 360 ends at 1260). On 16:9 the
+    card is kept inside the frame (top at most height − 960).
+  - layout "rows" fits up to ~8 rows (rows get thinner); labels over ~16 characters are cut, shorten them.
+  - look "paper" draws its own cream card and ink text: the brand's background and text colours are not used.
+  - highlight counts from 0 (3 is the fourth bar); -1 leaves every bar grey.
+  - A bar rises for 0.5 s and lands on its at, but never starts before 0.3 s, so an at under 0.8 lands late; the last
+    at must be before data-duration − 0.5 (4.5 s at 5 s), where the card swings out.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title", "default": "Visitors per month"},
+  {"id": "items", "type": "string", "label": "Bars (JSON [{label, value, at}])", "default": "[{\"label\":\"Jan\",\"value\":120,\"at\":0.8},{\"label\":\"Feb\",\"value\":180,\"at\":1.3},{\"label\":\"Mar\",\"value\":260,\"at\":1.8},{\"label\":\"Apr\",\"value\":410,\"at\":2.3}]"},
+  {"id": "unit", "type": "string", "label": "Unit after each value, as written (\" ha\" keeps a space)", "default": "K"},
+  {"id": "decimals", "type": "number", "label": "Decimals (-1: as many as the values have, up to 2)", "default": -1},
+  {"id": "locale", "type": "string", "label": "Number format locale (vi-VN: 528,5)", "default": "en-US"},
+  {"id": "top", "type": "number", "label": "Card top (px; the card is 900 px tall)", "default": 460},
+  {"id": "highlight", "type": "number", "label": "Bar to highlight (index, -1 none)", "default": 3},
+  {"id": "layout", "type": "string", "label": "columns (bars rise) or rows (a table of horizontal bars)", "default": "columns"},
+  {"id": "look", "type": "string", "label": "card (brand colours) or paper (cream paper, ink, serif title)", "default": "card"},
+  {"id": "accent", "type": "color", "label": "Highlight colour", "default": "#FFB020"},
+  {"id": "source", "type": "string", "label": "Source line (empty hides it; only when the user asks)", "default": ""},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Other bars colour", "default": "#585B63"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { overflow: hidden; background: transparent; }
+      #root { position: relative; perspective: 1600px;
+        font-family: var(--body-font), Arial, sans-serif; }
+      #card { position: absolute; left: 90px; top: 460px; width: 900px; height: 900px; padding: 56px 60px;
+        border-radius: 36px; background: color-mix(in srgb, var(--background) 86%, transparent); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        color: var(--text); }
+      #title { font-family: var(--heading-font), Arial, sans-serif; font-size: 58px; font-weight: 800; letter-spacing: -0.02em; }
+      #bars { position: absolute; left: 60px; right: 60px; bottom: 130px; height: 560px; display: flex;
+        align-items: flex-end; gap: 28px; border-bottom: 3px solid color-mix(in srgb, var(--text) 25%, transparent); }
+      .col { flex: 1; height: 100%; position: relative; }
+      .bar { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 18px 18px 6px 6px;
+        background: var(--secondary); transform-origin: 50% 100%; }
+      .value { position: absolute; left: -20px; right: -20px; text-align: center; font-family: var(--heading-font), Arial, sans-serif; font-size: 46px; font-weight: 800;
+        font-variant-numeric: tabular-nums; }
+      .label { position: absolute; left: -20px; right: -20px; bottom: -66px; text-align: center; font-size: 36px;
+        font-weight: 600; color: color-mix(in srgb, var(--text) 80%, transparent); }
+      #source { position: absolute; left: 60px; bottom: 34px; font-size: 26px; color: color-mix(in srgb, var(--text) 55%, transparent); }
+      #bars.rows { display: block; left: 60px; right: 60px; bottom: 100px; height: auto; border-bottom: 0; }
+      .row { position: relative; display: flex; align-items: center; gap: 24px; }
+      .row .band { position: absolute; left: -24px; right: -24px; top: 4px; bottom: 4px; border-radius: 14px;
+        background: color-mix(in srgb, var(--accent) 18%, transparent); }
+      .row .name { position: relative; width: 30%; font-size: 36px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .row .track { position: relative; flex: 1; height: 44%; }
+      .row .bar { border-radius: 6px 14px 14px 6px; transform-origin: 0% 50%; top: 0; height: 100%; }
+      .row .value { position: relative; left: auto; right: auto; width: 20%; text-align: right; bottom: auto; }
+      #card.paper { --background: #F3ECDD; --text: #2B2620; --secondary: #A79E8B; border: 2px solid #D9CDB3;
+        background: #F3ECDD radial-gradient(circle at 30% 20%, rgba(255,255,255,.55), transparent 60%);
+        box-shadow: 0 18px 40px rgba(60, 40, 10, 0.28); }
+      #card.paper #title { font-family: Georgia, serif; font-weight: 700; }
+      #card.paper .row + .row { border-top: 2px solid rgba(43, 38, 32, 0.12); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1080" data-height="1920" data-fit="canvas">
+      <div id="card"><div id="title"></div><div id="bars"></div><div id="source"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      // The canvas is the project's (bin/graphic sets data-width/height on a data-fit="canvas" root).
+      const rootEl = document.getElementById("root");
+      const W = Number(rootEl.dataset.width) || 1080;
+      const H = Number(rootEl.dataset.height) || 1920;
+      for (const node of [document.documentElement, document.body, rootEl]) Object.assign(node.style, { width: `${W}px`, height: `${H}px` });
+      const rows = v.layout === "rows";
+      const items = JSON.parse(v.items);
+      document.getElementById("title").textContent = v.title;
+      const source = document.getElementById("source");
+      source.textContent = v.source;
+      source.style.display = v.source ? "block" : "none";
+      const max = Math.max(...items.map((item) => item.value)) || 1;
+      const bars = document.getElementById("bars");
+      const places = (n) => (String(n).split(".")[1] ?? "").length;
+      const decimals = Number(v.decimals) >= 0 ? Math.min(4, Math.round(Number(v.decimals))) : Math.min(2, Math.max(...items.map((item) => places(item.value))));
+      let numbers;
+      try {
+        numbers = new Intl.NumberFormat(v.locale || "en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      } catch {
+        numbers = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      }
+      const format = (n) => `${numbers.format(n)}${v.unit}`;
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      const card = document.getElementById("card");
+      if (v.look === "paper") card.classList.add("paper");
+      // Paper sets its title in a serif unless the brand gives a heading font.
+      if (v.look === "paper" && String(v.headingFont ?? "").trim()) document.getElementById("title").style.fontFamily = "var(--heading-font), Georgia, serif";
+      const cardW = rows ? Math.min(W - 180, 1500) : 900;
+      const rowH = Math.min(120, 620 / Math.max(1, items.length));
+      const cardH = rows ? Math.round(300 + rowH * items.length) : 900;
+      Object.assign(card.style, { left: `${(W - cardW) / 2}px`, width: `${cardW}px`, height: `${cardH}px` });
+      card.style.top = `${Math.max(60, Math.min(Number(v.top ?? 460), H - cardH - 60))}px`;
+      if (rows) bars.classList.add("rows");
+      tl.fromTo(card, { opacity: 0, y: 80, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      items.forEach((item, i) => {
+        if (rows) {
+          // A table row: name, a bar growing to the right, the value; the highlighted row is banded in the accent.
+          const row = document.createElement("div");
+          row.className = "row";
+          row.style.height = `${rowH}px`;
+          row.innerHTML = '<div class="name"></div><div class="track"><div class="bar"></div></div><div class="value"></div>';
+          const bar = row.querySelector(".bar");
+          const value = row.querySelector(".value");
+          const name = row.querySelector(".name");
+          name.textContent = item.label;
+          bar.style.width = `${(item.value / max) * 100}%`;
+          bar.style.right = "auto";
+          value.textContent = format(0);
+          value.style.fontSize = `${Math.min(46, rowH * 0.42)}px`;
+          name.style.fontSize = `${Math.min(36, rowH * 0.36)}px`;
+          if (i === v.highlight) {
+            bar.style.background = v.accent;
+            name.style.fontWeight = "800";
+            const band = document.createElement("div");
+            band.className = "band";
+            row.prepend(band);
+            tl.fromTo(band, { opacity: 0, scaleX: 0.9 }, { opacity: 1, scaleX: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, Math.max(0.3, item.at - 0.1));
+            band.style.opacity = "0";
+          }
+          bars.appendChild(row);
+          const rise = 0.5;
+          const start = Math.max(0.3, item.at - rise);
+          tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: rise, ease: "power2.out" }, start);
+          tl.fromTo([name, value], { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: rise, ease: "power2.out" }, start);
+          const steps = Math.round(rise * 30);
+          for (let s = 0; s <= steps; s += 1) {
+            const t = 1 - Math.pow(1 - s / steps, 2);
+            tl.set(value, { textContent: format(item.value * t) }, start + (s / steps) * rise);
+          }
+          return;
+        }
+        const col = document.createElement("div");
+        col.className = "col";
+        col.innerHTML = '<div class="bar"></div><div class="value"></div><div class="label"></div>';
+        const bar = col.querySelector(".bar");
+        const value = col.querySelector(".value");
+        const share = item.value / max;
+        bar.style.height = `${share * 86}%`;
+        if (i === v.highlight) bar.style.background = v.accent;
+        value.style.bottom = `calc(${share * 86}% + 14px)`;
+        value.textContent = format(0);
+        col.querySelector(".label").textContent = item.label;
+        col.querySelector(".label").setAttribute("data-layout-allow-overflow", "");
+        bars.appendChild(col);
+        // The bar finishes rising on its word (item.at).
+        const rise = 0.5;
+        const start = Math.max(0.3, item.at - rise);
+        tl.fromTo(bar, { scaleY: 0 }, { scaleY: 1, duration: rise, ease: "power2.out" }, start);
+        tl.fromTo(value, { opacity: 0, y: share * 480 }, { opacity: 1, y: 0, duration: rise, ease: "power2.out" }, start);
+        // Text cannot be tweened: one tl.set per frame.
+        const steps = Math.round(rise * 30);
+        for (let s = 0; s <= steps; s += 1) {
+          const t = 1 - Math.pow(1 - s / steps, 2);
+          tl.set(value, { textContent: format(item.value * t) }, start + (s / steps) * rise);
+        }
+      });
+      tl.to(card, { rotationY: -70, x: -260, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

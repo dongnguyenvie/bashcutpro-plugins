@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- A ranked list that deals in like cards: each item flies into its slot faster than the last and lands with a
+     press while the header counter rolls up (items is a JSON array of {title, meta, at}). Transparent, 1080×1920, 4 s. -->
+<!-- Pitfalls:
+  - 5 items with a meta line fill the panel to y≈1500 at top 180; 6 fit only without meta or with top ~120; 8 run off
+    the frame bottom: split the list into two graphics.
+  - a title past ~22 characters takes two lines at 96 px and pushes every slot down; keep it short or raise the panel with a smaller `top`.
+  - leave `at` out to get the accelerating deal (0.42 s → 0.12 s gaps); `at`s closer than ~0.15 s apart pile up in flight.
+  - the counter rolls to `count` (0 = item count) in item-sized steps; a word like "picks" reads "1 picks" mid-roll.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title", "default": "Cafés worth the climb"},
+  {"id": "counterLabel", "type": "string", "label": "Word after the counter (empty hides the counter)", "default": "picks"},
+  {"id": "count", "type": "number", "label": "Counter end value (0 = the number of items)", "default": 0},
+  {"id": "items", "type": "string", "label": "Items (JSON [{title, meta, at}]; meta and at optional, at = seconds the item lands)", "default": "[{\"title\":\"Là Việt\",\"meta\":\"Specialty roaster · 45k\"},{\"title\":\"Túi Mơ To\",\"meta\":\"Forest view · 55k\"},{\"title\":\"An Cafe\",\"meta\":\"Garden terrace · 40k\"},{\"title\":\"Kho Bể Cafe\",\"meta\":\"Valley sunrise · 35k\"},{\"title\":\"Mê Linh Hill\",\"meta\":\"Weasel coffee farm · 60k\"}]"},
+  {"id": "numbered", "type": "boolean", "label": "Number the items", "default": true},
+  {"id": "top", "type": "number", "label": "Panel top (px)", "default": 180},
+  {"id": "width", "type": "number", "label": "Panel width (px)", "default": 940},
+  {"id": "accent", "type": "color", "label": "Counter and number colour", "default": "#FFC93C"},
+  {"id": "background", "type": "color", "label": "Panel colour", "default": "#14161C"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Meta line colour", "default": "#A9B0BE"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; }
+      #panel { position: absolute; padding: 44px 40px 40px; border-radius: 40px; color: var(--text);
+        background: color-mix(in srgb, var(--background) 88%, transparent);
+        border: 2px solid color-mix(in srgb, var(--text) 10%, transparent); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }
+      #counter { display: flex; align-items: baseline; gap: 16px; font-size: 58px; font-weight: 700; line-height: 1.25;
+        color: var(--accent); margin-bottom: 4px; }
+      #count { font-family: var(--heading-font), Arial, sans-serif; font-weight: 900; font-variant-numeric: tabular-nums;
+        display: inline-block; transform-origin: left 70%; }
+      #title { font-family: var(--heading-font), Arial, sans-serif; font-size: 96px; font-weight: 800; line-height: 1.12;
+        letter-spacing: -0.025em; padding-top: 0.06em; margin-bottom: 26px; }
+      #list { display: flex; flex-direction: column; gap: 12px; }
+      .slot { border-radius: 28px; outline: 3px dashed color-mix(in srgb, var(--text) 16%, transparent); outline-offset: -3px; }
+      .item { display: flex; align-items: center; gap: 30px; padding: 17px 30px; border-radius: 28px;
+        background: color-mix(in srgb, var(--text) 8%, var(--background));
+        border: 2px solid color-mix(in srgb, var(--text) 9%, transparent); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+        transform-origin: 50% 100%; }
+      .num { flex: none; width: 84px; height: 84px; border-radius: 22px; display: flex; align-items: center;
+        justify-content: center; font-family: var(--heading-font), Arial, sans-serif; font-size: 50px; font-weight: 900;
+        background: var(--accent); color: var(--background); }
+      .words { min-width: 0; }
+      .name { font-size: 62px; font-weight: 700; line-height: 1.22; letter-spacing: -0.01em; padding-top: 0.04em; }
+      .meta { font-size: 42px; font-weight: 500; line-height: 1.3; color: var(--secondary); margin-top: 2px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4" data-width="1080" data-height="1920">
+      <div id="panel">
+        <div id="counter"><span id="count"></span><span id="counterLabel"></span></div>
+        <div id="title"></div>
+        <div id="list"></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      let items = [];
+      try { items = JSON.parse(v.items); } catch (error) { items = []; }
+      items = items.map((item) => (typeof item === "string" ? { title: item } : item ?? {}));
+      const width = Math.min(1000, Math.max(520, Number(v.width) || 940));
+      const panel = document.getElementById("panel");
+      panel.style.width = `${width}px`;
+      panel.style.left = `${Math.round((1080 - width) / 2)}px`;
+      panel.style.top = `${v.top}px`;
+      document.getElementById("title").textContent = v.title;
+      const counter = document.getElementById("counter");
+      const count = document.getElementById("count");
+      document.getElementById("counterLabel").textContent = v.counterLabel;
+      if (!v.counterLabel) counter.style.display = "none";
+      const total = Number(v.count) > 0 ? Math.round(Number(v.count)) : items.length;
+      count.textContent = "0";
+      const list = document.getElementById("list");
+      const cards = items.map((item, i) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = '<div class="num"></div><div class="words"><div class="name"></div><div class="meta"></div></div>';
+        el.querySelector(".num").textContent = String(i + 1);
+        if (!v.numbered) el.querySelector(".num").remove();
+        el.querySelector(".name").textContent = item.title ?? "";
+        const meta = el.querySelector(".meta");
+        if (item.meta) meta.textContent = item.meta;
+        else meta.remove();
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.appendChild(el);
+        list.appendChild(slot);
+        return el;
+      });
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(panel, { opacity: 0, y: 70, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" }, 0);
+      tl.fromTo(["#counter", "#title"], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.08, ease: "power2.out" }, 0.12);
+      // Dealing: the gap between landings shrinks (0.42 s → 0.12 s), so the batch speeds up like a hand dealing cards.
+      // An item with `at` lands on that second instead.
+      const FLIGHT = 0.34;
+      let land = 0.62 + FLIGHT;
+      let gap = 0.42;
+      cards.forEach((el, i) => {
+        const given = Number(items[i].at);
+        if (Number.isFinite(given) && items[i].at !== undefined && items[i].at !== null && items[i].at !== "") land = Math.max(FLIGHT, given);
+        else if (i > 0) { land += gap; gap = Math.max(0.12, gap * 0.7); }
+        const from = land - FLIGHT;
+        // Thrown from the lower right, with a turn that straightens as it lands in its slot.
+        tl.fromTo(el, { opacity: 0, x: 420, y: 160, rotation: 9 },
+          { opacity: 1, x: 0, y: 0, rotation: 0, duration: FLIGHT, ease: "power3.out" }, from);
+        tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, from);
+        // The press: a small squash on landing, back in 0.16 s.
+        tl.to(el, { scaleY: 0.955, scaleX: 1.012, duration: 0.07, ease: "power2.out" }, land - 0.03);
+        tl.to(el, { scaleY: 1, scaleX: 1, duration: 0.16, ease: "back.out(2.5)" }, land + 0.04);
+        // The counter rolls from the last value to this item's share of the total (one tl.set per frame).
+        const before = Math.round((total * i) / cards.length);
+        const after = Math.round((total * (i + 1)) / cards.length);
+        const steps = Math.max(1, Math.min(6, after - before));
+        for (let s = 1; s <= steps; s += 1) {
+          tl.set(count, { textContent: String(Math.round(before + ((after - before) * s) / steps)) }, land + (s - 1) * 0.033);
+        }
+      });
+      if (cards.length) {
+        tl.fromTo(count, { scale: 1 }, { scale: 1.18, duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out", immediateRender: false }, land + 0.08);
+      }
+      tl.to(panel, { opacity: 0, y: -40, scale: 0.98, duration: 0.4, ease: "power2.in" }, END - 0.4);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

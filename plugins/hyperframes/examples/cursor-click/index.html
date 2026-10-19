@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- A big pointer glides to a spot, clicks it with a ripple and leaves: "look here" over a screenshot, a button or a
+     card. Transparent, 1080×1920, 2.2 s. Raw material: change the path, the target, the timing and the cursor. -->
+<!-- Pitfalls:
+  - The arrow is 120×150 px and hangs right and below its tip: targetX over ~960 or targetY over ~1770 cuts it off at
+    the frame edge, and a target below ~1500 px points into the platform's caption and button band.
+  - clickAt is also the glide: the pointer travels for clickAt − 0.1 s, so clickAt under ~0.4 s jumps in instead of
+    gliding.
+  - clickAt later than data-duration − 1.0 (1.2 s at 2.2 s) lets the after-click drift override the exit: the pointer
+    fades out where it stands instead of sliding away. Stretch the duration rather than moving the click.
+  - The ripple is white by default and disappears over a light screenshot; set accent to a dark or brand colour there.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "targetX", "type": "number", "label": "Target x (px)", "default": 560},
+  {"id": "targetY", "type": "number", "label": "Target y (px)", "default": 1360},
+  {"id": "clickAt", "type": "number", "label": "Click at (s)", "default": 0.8},
+  {"id": "accent", "type": "color", "label": "Ripple colour", "default": "#FFFFFF"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; }
+      #ring { position: absolute; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%;
+        border: 8px solid; opacity: 0; }
+      #cursor { position: absolute; width: 120px; height: 150px; transform-origin: 8px 8px;
+        filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45)); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="2.2" data-width="1080" data-height="1920">
+      <div id="ring"></div>
+      <svg id="cursor" viewBox="0 0 24 30"><path d="M2 2 L2 24 L8 18.5 L12.2 27.5 L16 25.8 L11.9 17 L20 17 Z"
+        fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round" /></svg>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const ring = document.getElementById("ring");
+      ring.style.left = `${v.targetX}px`;
+      ring.style.top = `${v.targetY}px`;
+      ring.style.borderColor = v.accent;
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      // The tip of the arrow (8 px, 8 px into the cursor) lands on the target.
+      const land = { x: v.targetX - 8, y: v.targetY - 8 };
+      tl.set("#cursor", { x: land.x + 260, y: land.y + 420, opacity: 1 }, 0);
+      tl.to("#cursor", { x: land.x, y: land.y, duration: Math.max(0.2, v.clickAt - 0.1), ease: "power3.out" }, 0);
+      tl.to("#cursor", { scale: 0.82, duration: 0.08, ease: "power2.in" }, v.clickAt - 0.08);
+      tl.to("#cursor", { scale: 1, duration: 0.14, ease: "back.out(3)" }, v.clickAt);
+      // immediateRender: false, or the ripple would show its start state from frame 0.
+      tl.fromTo(ring, { opacity: 0.9, scale: 0.3 }, { opacity: 0, scale: 1.4, duration: 0.5, ease: "power2.out", immediateRender: false }, v.clickAt);
+      tl.to("#cursor", { x: land.x + 40, y: land.y + 70, duration: 0.3, ease: "power2.out" }, v.clickAt + 0.25);
+      tl.to("#cursor", { opacity: 0, x: land.x + 300, y: land.y + 500, duration: 0.4, ease: "power2.in" }, END - 0.45);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

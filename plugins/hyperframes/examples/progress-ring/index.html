@@ -1,0 +1,205 @@
+<!doctype html>
+<!-- A ring gauge on a dark card: the track fades in, the arc sweeps to the value while the centre number rolls digit by
+     digit like an odometer and lands exactly on it, the label sits under the ring and an optional delta chip pops on
+     the landing. Transparent, 1080×1920, 3.5 s. -->
+<!-- Pitfalls:
+  - Mid-roll a digit is cut by its cell (the foot of a 2 shows as a bar over the 3): that is the odometer, but a
+    countSeconds under ~1 s makes it flicker; 1.4–2 s reads.
+  - The arc and the number share one ease (power3.out); giving the arc its own ease makes the tip land before the number.
+  - Leading digits fade in as they roll from 0 and the number re-centres: a from of 100 counting down keeps a column
+    that fades away at the end, so the landing is centred either way.
+  - A label over ~18 characters wraps to two lines (balanced); keep it short or the card grows taller.
+-->
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "value", "type": "number", "label": "Value (0–100, where the arc and the number land)", "default": 78},
+  {"id": "from", "type": "number", "label": "Start value (0–100)", "default": 0},
+  {"id": "decimals", "type": "number", "label": "Decimals shown (0 or 1)", "default": 0},
+  {"id": "unit", "type": "string", "label": "Unit after the number", "default": "%"},
+  {"id": "label", "type": "string", "label": "Label under the ring", "default": "Course completion"},
+  {"id": "deltaText", "type": "string", "label": "Delta chip, a sourced change (\"▲ 12 pts\"; empty hides it)", "default": ""},
+  {"id": "countSeconds", "type": "number", "label": "Sweep and count length (s)", "default": 1.6},
+  {"id": "size", "type": "number", "label": "Ring diameter (px)", "default": 560},
+  {"id": "top", "type": "number", "label": "Card top (px)", "default": 500},
+  {"id": "accent", "type": "color", "label": "Arc and chip colour", "default": "#4ADE80"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#15171D"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; color: var(--text); }
+      #card { position: absolute; display: flex; flex-direction: column; align-items: center; padding: 64px 60px 70px;
+        border-radius: 48px; background: color-mix(in srgb, var(--background) 92%, transparent);
+        border: 2px solid color-mix(in srgb, var(--text) 10%, transparent); box-shadow: 0 34px 80px rgba(0, 0, 0, 0.5); }
+      #ring { position: relative; }
+      #ring svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+      #track { fill: none; stroke: color-mix(in srgb, var(--text) 11%, transparent); }
+      #arc { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 100 100;
+        filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 45%, transparent)); }
+      #center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #number { display: flex; align-items: flex-start; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800;
+        letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+      .col { position: relative; overflow: hidden; }
+      .strip { position: absolute; left: 0; top: 0; width: 100%; display: flex; flex-direction: column; }
+      .strip span { display: block; text-align: center; }
+      .dot { line-height: 1.1; }
+      #unit { font-weight: 700; margin-left: 0.06em; opacity: 0.85; }
+      #label { font-size: 64px; font-weight: 600; line-height: 1.2; margin-top: 44px; text-align: center; text-wrap: balance; }
+      #delta { margin-top: 26px; padding: 8px 30px 10px; border-radius: 999px; background: var(--accent); color: var(--background);
+        font-size: 58px; font-weight: 800; line-height: 1.2; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3.5" data-width="1080" data-height="1920">
+      <div id="card">
+        <div id="ring">
+          <svg><circle id="track" pathLength="100" /><circle id="arc" pathLength="100" /></svg>
+          <div id="center"><div id="number"></div></div>
+        </div>
+        <div id="label"></div><div id="delta"></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const $ = (id) => document.getElementById(id);
+      const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+      // Geometry: the ring, then the card around it, centred.
+      const D = clamp(Number(v.size) || 560, 300, 900);
+      const stroke = Math.round(D * 0.075);
+      const ring = $("ring");
+      ring.style.width = ring.style.height = `${D}px`;
+      for (const c of [$("track"), $("arc")]) {
+        c.setAttribute("cx", D / 2);
+        c.setAttribute("cy", D / 2);
+        c.setAttribute("r", (D - stroke) / 2);
+        c.style.strokeWidth = `${stroke}px`;
+      }
+      const card = $("card");
+      card.style.top = `${v.top}px`;
+      const cardW = Math.min(960, D + 240);
+      card.style.width = `${cardW}px`;
+      card.style.left = `${(1080 - cardW) / 2}px`;
+      $("label").textContent = v.label;
+      if (!v.label) $("label").style.display = "none";
+      const delta = $("delta");
+      delta.textContent = v.deltaText;
+      if (!v.deltaText) delta.style.display = "none";
+
+      // The odometer: one column per digit (tabular), a strip 0–9,0 in each that slides; higher digits only roll
+      // while the one below passes 9 → 0, and leading zeros fade out (the number re-centres as they do).
+      const dec = clamp(Math.round(Number(v.decimals) || 0), 0, 1);
+      const scale = 10 ** dec;
+      const target = clamp(Number(v.value) || 0, 0, 100), start = clamp(Number(v.from) || 0, 0, 100);
+      const N1 = Math.round(target * scale), N0 = Math.round(start * scale);
+      const ncols = Math.max(dec + 1, String(Math.max(N0, N1)).length);
+      const fontSize = Math.round(D * 0.3);
+      const cellH = Math.round(fontSize * 1.1);
+      const number = $("number");
+      number.style.fontSize = `${fontSize}px`;
+      number.style.height = `${cellH}px`;
+      const cols = [];
+      for (let p = ncols - 1; p >= 0; p -= 1) {
+        const col = document.createElement("div");
+        col.className = "col";
+        col.style.width = "0.6em";
+        col.style.height = `${cellH}px`;
+        const strip = document.createElement("div");
+        strip.className = "strip";
+        for (const d of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]) {
+          const s = document.createElement("span");
+          s.textContent = d;
+          s.style.height = `${cellH}px`;
+          s.style.lineHeight = `${cellH}px`;
+          strip.appendChild(s);
+        }
+        col.appendChild(strip);
+        number.appendChild(col);
+        cols.push({ p, col, strip });
+        if (p === dec && dec > 0) {
+          const dot = document.createElement("div");
+          dot.className = "dot";
+          dot.textContent = ".";
+          dot.style.lineHeight = `${cellH}px`;
+          number.appendChild(dot);
+        }
+      }
+      const unit = document.createElement("div");
+      unit.id = "unit";
+      unit.textContent = v.unit;
+      unit.style.fontSize = `${Math.round(fontSize * 0.42)}px`;
+      unit.style.lineHeight = `${Math.round(fontSize * 0.42 * 1.2)}px`;
+      unit.style.marginTop = `${Math.round(cellH * 0.16)}px`;
+      number.appendChild(unit);
+      const colW = cols[0].col.offsetWidth;
+      // A long number (wide font) shrinks to sit inside the ring.
+      const inner = D - 2 * stroke - 60;
+      const fitScale = number.scrollWidth > inner ? inner / number.scrollWidth : 1;
+
+      // State of the dial at a (continuous) count N: strip offsets, leading-digit fade, centring shift.
+      function dial(N) {
+        const out = [];
+        let hidden = 0;
+        for (const { p, strip, col } of cols) {
+          const unitP = 10 ** p;
+          let pos;
+          if (p === 0) pos = N;
+          else pos = Math.floor(N / unitP) + clamp((N % unitP) - (unitP - 1), 0, 1);
+          const digit = ((pos % 10) + 10) % 10;
+          const lead = p > dec ? clamp(pos, 0, 1) : 1;
+          hidden += (1 - lead) * colW;
+          out.push([strip, { y: -digit * cellH }], [col, { opacity: lead }]);
+        }
+        out.push([number, { x: -hidden / 2, scale: fitScale }]);
+        return out;
+      }
+
+      const arc = $("arc");
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      const T0 = 0.45, CS = Math.max(0.4, Number(v.countSeconds) || 1.6);
+      for (const [el, props] of dial(N0)) tl.set(el, props, 0);
+      tl.fromTo(card, { opacity: 0, y: 60, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      tl.fromTo("#track", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power1.out" }, 0.15);
+      tl.fromTo("#label", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0.4);
+      // The sweep and the count share one ease-out, so the arc tip and the number land together.
+      tl.fromTo(arc, { strokeDashoffset: 100 - start, opacity: start > 0 ? 1 : 0 },
+        { strokeDashoffset: 100 - target, duration: CS, ease: "power3.out" }, T0);
+      if (start <= 0) tl.to(arc, { opacity: 1, duration: 0.08, ease: "none" }, T0);
+      const ease = gsap.parseEase("power3.out");
+      const steps = Math.round(CS * 60);
+      for (let i = 1; i <= steps; i += 1) {
+        const N = i === steps ? N1 : N0 + (N1 - N0) * ease(i / steps);
+        for (const [el, props] of dial(N)) tl.set(el, props, T0 + (i / steps) * CS);
+      }
+      const land = T0 + CS;
+      tl.fromTo("#center", { scale: 1 }, { scale: 1.06, duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out" }, land);
+      if (v.deltaText) tl.fromTo(delta, { opacity: 0, scale: 0.6, y: 10 }, { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "back.out(2)" }, land + 0.05);
+      tl.to(card, { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, END - 0.35);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

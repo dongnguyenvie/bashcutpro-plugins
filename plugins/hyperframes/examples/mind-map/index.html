@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- A mind-map from JSON data, laid out for the canvas. The centre node (data.root, else the first nothing points to) with branches all around it, each drawn on and lit up when its step comes, optional hand-drawn strokes (data is JSON {title, root, nodes:[{id,label,icon?,group?}], edges:[{from,to}], steps:[{at,focus,reveal,note?}]}). Transparent, the project's canvas, 8 s. big-canvas takes the same data. -->
+<!-- Pitfalls:
+  - steps[].at are seconds from the graphic's start. Do not compute them: `bin/graphic place … --steps-from voice`
+    gives step i the start of the i-th voice line from --at-frame on (placing the graphic just before the first one and
+    ending it after the last when --at-frame/--duration are left out); `"at": "line:3"` or `"section:Label"` picks one.
+    A step without a number is spread evenly.
+  - Pass the data with `--set data=@diagram.json` (a file; ids are short strings, labels the words on screen).
+  - Edges make a tree from the root (extra edges are left out); 3–5 branches with 0–3 leaves each read best; at 12
+    nodes on 9:16 the leaf labels drop to ~26 px, keep them to 1–3 words.
+  - A branch revealed by a step should list its leaves in the same reveal, or they show from the start.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Mind-map (JSON {title, root, nodes, edges, steps})", "default": "{\"title\": \"Run an online shop\", \"root\": \"shop\", \"nodes\": [{\"id\": \"shop\", \"label\": \"Online shop\"}, {\"id\": \"product\", \"label\": \"Product\"}, {\"id\": \"traffic\", \"label\": \"Traffic\"}, {\"id\": \"sales\", \"label\": \"Sales\"}, {\"id\": \"ops\", \"label\": \"Operations\"}, {\"id\": \"p1\", \"label\": \"Sourcing\"}, {\"id\": \"t1\", \"label\": \"TikTok videos\"}, {\"id\": \"t2\", \"label\": \"Ads\"}, {\"id\": \"s1\", \"label\": \"Live selling\"}, {\"id\": \"o1\", \"label\": \"Shipping\"}], \"edges\": [{\"from\": \"shop\", \"to\": \"product\"}, {\"from\": \"shop\", \"to\": \"traffic\"}, {\"from\": \"shop\", \"to\": \"sales\"}, {\"from\": \"shop\", \"to\": \"ops\"}, {\"from\": \"product\", \"to\": \"p1\"}, {\"from\": \"traffic\", \"to\": \"t1\"}, {\"from\": \"traffic\", \"to\": \"t2\"}, {\"from\": \"sales\", \"to\": \"s1\"}, {\"from\": \"ops\", \"to\": \"o1\"}], \"steps\": [{\"at\": 1.6, \"focus\": [\"product\"], \"reveal\": [\"product\", \"p1\"]}, {\"at\": 3.0, \"focus\": [\"traffic\"], \"reveal\": [\"traffic\", \"t1\", \"t2\"]}, {\"at\": 4.4, \"focus\": [\"sales\"], \"reveal\": [\"sales\", \"s1\"]}, {\"at\": 5.8, \"focus\": [\"ops\"], \"reveal\": [\"ops\", \"o1\"]}]}"},
+  {"id": "title", "type": "string", "label": "Title when data has none (empty: no title)", "default": ""},
+  {"id": "sketch", "type": "boolean", "label": "Hand-drawn strokes and font", "default": true},
+  {"id": "packets", "type": "boolean", "label": "Packets run along focused edges", "default": false},
+  {"id": "accent", "type": "color", "label": "Focus colour (ring, packets, hot edges)", "default": "#FF6B4A"},
+  {"id": "background", "type": "color", "label": "Node plate colour", "default": "#FFF8EC"},
+  {"id": "text", "type": "color", "label": "Text and edge colour", "default": "#1E1E24"},
+  {"id": "secondary", "type": "color", "label": "Second group / block colour", "default": "#4C8DF6"},
+  {"id": "headingFont", "type": "font", "label": "Label font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Edge label font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="diagram.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* Brand look: diagram.js fills --accent, --background, --text, --secondary and the fonts from the variables. */
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --hand-font: "Chalkboard SE", "Marker Felt", "Comic Sans MS";
+        --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #585B63; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      .dg-label { font-family: var(--heading-font), Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1080" data-height="1920" data-fit="canvas"></div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      const tl = gsap.timeline({ paused: true });
+      // Layout, steps and the exit (at END - 0.5 of the root's data-duration) come from diagram.js.
+      BCDiagram.mount(tl, v, "mind", document.getElementById("root"));
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- A Lottie accent (check, arrow, loader, confetti): pops in, plays once or loops, fades out. It follows the frame
+     clock, so every render is the same. lottie-web is bundled (no network); `file` is a pick from
+     `fetch_lottie.py --pick` (its `place` line). Transparent, the project's canvas, 3 s (--duration sets it). -->
+<!-- Pitfalls:
+  - file is a .json path (an absolute path is copied next to the page by bin/graphic) or the JSON itself
+    (`--set file=@pick.json`). A .lottie (zip) or an animation with image assets does not load: pick another.
+  - color recolours every fill and stroke but white: right for a `mono` pick (fetch_lottie says so), it flattens a
+    many-coloured one (an emoji, confetti) into one colour; leave it empty there.
+  - Without loop the animation holds its last frame: a 1 s check over a 3 s graphic sits still for 2 s, which is the
+    point for a check, not for a loader (loop=true).
+  - size is the box the animation fits in (aspect kept); many files have empty margins, so 360–600 px reads on 9:16.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "file", "type": "string", "label": "Lottie JSON: a file path (from fetch_lottie --pick) or the JSON itself", "default": "check.json"},
+  {"id": "loop", "type": "boolean", "label": "Loop until the end (else play once and hold the last frame)", "default": false},
+  {"id": "speed", "type": "number", "label": "Playback speed (1 = as authored)", "default": 1},
+  {"id": "color", "type": "string", "label": "Recolour: empty keeps its colours, accent = the brand accent, or #hex", "default": "accent"},
+  {"id": "size", "type": "number", "label": "Box size (px) the animation fits in", "default": 520},
+  {"id": "x", "type": "number", "label": "Centre across the canvas (0 left, 1 right)", "default": 0.5},
+  {"id": "y", "type": "number", "label": "Centre down the canvas (0 top, 1 bottom)", "default": 0.5},
+  {"id": "start", "type": "number", "label": "Seconds from the graphic start to the first frame", "default": 0.15},
+  {"id": "accent", "type": "color", "label": "Accent colour (color=accent)", "default": "#22C55E"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="lottie.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; }
+      #anim { position: absolute; opacity: 0; }
+      #anim svg { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3" data-width="1080" data-height="1920" data-fit="canvas">
+      <div id="anim"></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // lottie-web's SVG player, copied next to the page by graphics.render. The runtime's own lottie adapter seeks
+      // every animation on window.lottie by composition time; this page drives its own (start, speed, loop), so it
+      // keeps the player to itself.
+      const player = window.lottie;
+      delete window.lottie;
+      delete window.bodymovin;
+      // The canvas is the project's (bin/graphic sets data-width/height on a data-fit="canvas" root): 9:16 or 16:9.
+      const root = document.getElementById("root");
+      const W = Number(root.dataset.width) || 1080;
+      const H = Number(root.dataset.height) || 1920;
+      for (const node of [document.documentElement, document.body, root]) Object.assign(node.style, { width: `${W}px`, height: `${H}px` });
+      const END = Number(root.dataset.duration);
+      // The file is served next to the page (render serves the composition folder): read it before the timeline.
+      const text = String(v.file ?? "").trim();
+      let data;
+      if (text.startsWith("{")) data = JSON.parse(text);
+      else {
+        const request = new XMLHttpRequest();
+        request.open("GET", text, false);
+        request.send();
+        data = JSON.parse(request.responseText);
+      }
+      // Recolour: every static or animated fill/stroke colour and solid layer but near-white (highlights, cut-outs).
+      const wanted = String(v.color ?? "").trim() === "accent" ? String(v.accent ?? "") : String(v.color ?? "").trim();
+      const probe = document.createElement("i");
+      probe.style.color = wanted;
+      document.body.appendChild(probe);
+      const rgb = wanted && probe.style.color ? getComputedStyle(probe).color.match(/[\d.]+/g).slice(0, 3).map(Number) : null;
+      probe.remove();
+      const paint = (c) => {
+        if (!Array.isArray(c) || c.length < 3 || typeof c[0] !== "number") return c;
+        const scale = Math.max(c[0], c[1], c[2]) > 1 ? 255 : 1;
+        if (Math.min(c[0], c[1], c[2]) / scale > 0.95) return c;
+        return [...rgb.map((n) => (n / 255) * scale), ...c.slice(3)];
+      };
+      const recolour = (items) => {
+        for (const item of items ?? []) {
+          if (item.ty === "gr") recolour(item.it);
+          if (!["fl", "st"].includes(item.ty) || !item.c) continue;
+          if (item.c.a) for (const key of item.c.k) { key.s = paint(key.s); if (key.e) key.e = paint(key.e); }
+          else item.c.k = paint(item.c.k);
+        }
+      };
+      const hex = (c) => `#${c.map((n) => Math.round(n).toString(16).padStart(2, "0")).join("")}`;
+      if (rgb) {
+        for (const layer of [data, ...(data.assets ?? [])].flatMap((owner) => owner.layers ?? [])) {
+          recolour(layer.shapes);
+          const solid = layer.ty === 1 && /^#[0-9a-f]{6}$/i.test(layer.sc ?? "") ? layer.sc.slice(1).match(/../g).map((n) => parseInt(n, 16)) : null;
+          if (solid && paint(solid) !== solid) layer.sc = hex(rgb);
+        }
+      }
+      // Size and place: a box of `size` px centred on (x, y) of the canvas, the animation fitted in it.
+      const size = Math.max(40, Number(v.size) || 520);
+      const box = document.getElementById("anim");
+      Object.assign(box.style, { width: `${size}px`, height: `${size}px`,
+        left: `${W * (Number(v.x) || 0) - size / 2}px`, top: `${H * (Number(v.y) || 0) - size / 2}px` });
+      const anim = player.loadAnimation({ container: box, renderer: "svg", loop: false, autoplay: false, animationData: data,
+        rendererSettings: { preserveAspectRatio: "xMidYMid meet", progressiveLoad: false } });
+      // Frame clock: the composition time maps to a frame (from ip), stepped with goToAndStop on every seek, so the
+      // render is the same frame for the same time. Looping wraps; else it holds the last frame.
+      const FPS = Number(data.fr) || 30;
+      const FRAMES = Math.max(1, anim.totalFrames);
+      const START = Math.max(0, Number(v.start) || 0);
+      const SPEED = Number(v.speed) > 0 ? Number(v.speed) : 1;
+      let shown = 0;
+      const clock = {
+        time(seconds) {
+          if (seconds === undefined) return shown;
+          shown = seconds;
+          const frame = Math.max(0, (seconds - START) * SPEED * FPS);
+          anim.goToAndStop(v.loop ? frame % FRAMES : Math.min(frame, FRAMES - 1), true);
+        },
+      };
+      clock.time(0);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(clock, { time: 0 }, { time: END, duration: END, ease: "none", immediateRender: false }, 0);
+      tl.fromTo(box, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)", immediateRender: false }, START);
+      tl.to(box, { opacity: 0, scale: 0.92, duration: 0.3, ease: "power2.in" }, END - 0.3);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
