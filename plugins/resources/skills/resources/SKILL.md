@@ -29,6 +29,10 @@ a path has spaces or backslashes: `--args '["--dest", "C:/film/media/stock", "--
    `--video-track` (V2) or `--audio-track` (A2) with `timeline.place`; `RS import --frame 120 --duration 90`
    places files one after another from that frame.
 
+Quick look without downloading: `RS search --kind music|sfx|photo|video|icon|font --query "…"` lists candidates
+with licence and preview URL; `RS download --kind … --url … --title … --license … --author … --source …` fetches one
+with its record (then `RS import --path <file>`). The app's Library ▸ Online tab uses the same two commands.
+
 Music and SFX: `--script audio --args "--dest <dir>/media/audio --music 'acoustic folk' --sfx whoosh,pop"`.
 Without `FREESOUND_API_KEY`, sound effects come from Openverse. Never NonCommercial for SFX.
 

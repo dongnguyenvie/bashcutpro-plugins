@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.resources",
   "name": "Online Resources",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them; credit lines only when asked.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -105,6 +105,33 @@
         {"id": "frame", "flag": "--frame", "type": "integer", "optional": true},
         {"id": "duration", "flag": "--duration", "type": "integer", "optional": true},
         {"id": "credits", "flag": "--credits", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "search",
+      "title": "Search open media…",
+      "args": ["search"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
+        {"id": "query", "flag": "--query", "type": "string"},
+        {"id": "count", "flag": "--count", "type": "integer", "default": 12, "minimum": 1, "maximum": 40}
+      ]
+    },
+    {
+      "id": "download",
+      "title": "Download a search result",
+      "args": ["download"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
+        {"id": "url", "flag": "--url", "type": "string"},
+        {"id": "title", "flag": "--title", "type": "string", "default": ""},
+        {"id": "license", "flag": "--license", "type": "string", "default": ""},
+        {"id": "author", "flag": "--author", "type": "string", "default": ""},
+        {"id": "source", "flag": "--source", "type": "string", "default": ""}
       ]
     },
     {
