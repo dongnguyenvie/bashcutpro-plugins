@@ -8,6 +8,7 @@ its ten fetch scripts are carried over as they are; the browser window and BashC
 
 ```sh
 python3 plugin.py scripts                                                    # what each script fetches, keys set
+python3 plugin.py search --kind music --query "acoustic folk"                 # candidates + licences, no download
 python3 plugin.py fetch --script stock --args "--query 'clay pot' --orientation portrait"
 python3 plugin.py fetch --script stock --import --project film.fcproj --args '["--ids", "wikimedia-41936", "--dest", "/abs/film/media/stock"]'
 py -3 plugin.py fetch --script audio --bridge 127.0.0.1:9876 --import --args '["--dest", "C:/film/media/audio", "--music", "acoustic folk", "--sfx", "whoosh"]'
@@ -22,6 +23,8 @@ py -3 plugin.py fetch --script audio --bridge 127.0.0.1:9876 --import --args '["
 | `fetch` | runs one script (`--script`, its own flags in `--args` as a string or JSON list, or after `--`); every file it saves gets `<file>.licence.json`; with `--import` every fetched file is imported (`--credits`: and credited in the project notes); files the script picked with `@frame[:duration]` are placed on `--video-track` (V2) or `--audio-track` (A2) | `media_import`, `sequence_inspect`, `sequence.addTracks`, `timeline.place`, `project.notes`, `project.setNotes`, `file.save` |
 | `import` | imports `--path` files or every file of `--folder` that has a licence record, with `--frame` places them one after another, with `--credits` writes their credit lines into the project notes | the same |
 | `credits` | the credit lines of a folder's files, from their records | – |
+| `search` | candidates of `--kind` `music`, `sfx`, `photo`, `video`, `icon` or `font` for `--query`, each with title, author, licence, source page, file URL and preview URL; **nothing is downloaded** (BashCutPro's Library ▸ Online tab shows the licence before anything is fetched) | – |
+| `download` | one search result (`--kind`, `--url`, `--title`, `--license`, `--author`, `--source`) into `<data dir>/bashcut-plugins/bashcut.resources/downloads/<kind>/` with its licence record; returns the path and the credit line. Importing and placing is the caller's (the app uses its own commands); a font downloads the family's whole Regular and Bold `.ttf` from Google Fonts | – |
 
 Output and exit status follow `bashcut-result/1` (see the [repository README](../../README.md#how-a-plugin-runs)).
 

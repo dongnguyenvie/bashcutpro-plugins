@@ -1,4 +1,4 @@
-"""Command line: `scripts`, `setup`, `fetch`, `import`, `credits`.
+"""Command line: `scripts`, `setup`, `fetch`, `import`, `credits`, `search`, `download`.
 
 Every command prints one JSON object on stdout: `{"ok": true, "message", "data"}` or
 `{"ok": false, "error": {"code", "message"}}`. Progress and the scripts' own messages go to stderr. Exit status 0
@@ -16,6 +16,7 @@ import tempfile
 from . import __version__
 from .licences import credit_line, from_line, merge_notes, read_sidecar, write_sidecar
 from .mcp import AppError, McpClient
+from . import search as finder
 from .settings import KEYS, PACKAGES, plugin_dir, script_env, script_python, venv_python
 from .timeline import import_files, importable, place
 
@@ -87,6 +88,20 @@ def build_parser():
 
     p = sub.add_parser("credits", help="the credits of the files in a folder, from their licence records")
     p.add_argument("--folder", required=True)
+
+    p = sub.add_parser("search", help="candidates with title, licence, source and preview URL; nothing is downloaded")
+    p.add_argument("--kind", required=True, choices=finder.KINDS)
+    p.add_argument("--query", required=True, help="search words")
+    p.add_argument("--count", type=int, default=12, help="candidates (1-%d)" % finder.MAX_COUNT)
+
+    p = sub.add_parser("download", help="fetch one search result with its licence record; prints its path and credit line")
+    p.add_argument("--kind", required=True, choices=finder.KINDS)
+    p.add_argument("--url", required=True, help="the item's url from search")
+    p.add_argument("--title", default="")
+    p.add_argument("--license", default="")
+    p.add_argument("--author", default="")
+    p.add_argument("--source", default="", help="the item's source page")
+    p.add_argument("--dest", help="folder for the file (default <plugin data>/downloads/<kind>)")
     return parser
 
 
@@ -285,7 +300,18 @@ def cmd_credits(args):
     return "%d credits" % len(lines), {"credits": lines, "records": records}
 
 
-COMMANDS = {"scripts": cmd_scripts, "setup": cmd_setup, "fetch": cmd_fetch, "import": cmd_import, "credits": cmd_credits}
+def cmd_search(args):
+    items = finder.search(args.kind, args.query, args.count)
+    return "%d %s results for %s" % (len(items), args.kind, args.query), {"kind": args.kind, "query": args.query, "items": items}
+
+
+def cmd_download(args):
+    data = finder.download(args.kind, args.url, args.title, args.license, args.author, args.source, args.dest)
+    return "Downloaded %s (%s)" % (os.path.basename(data["path"]), data.get("license") or "licence unknown"), data
+
+
+COMMANDS = {"scripts": cmd_scripts, "setup": cmd_setup, "fetch": cmd_fetch, "import": cmd_import, "credits": cmd_credits,
+            "search": cmd_search, "download": cmd_download}
 
 
 def emit(value):
