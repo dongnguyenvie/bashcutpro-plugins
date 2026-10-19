@@ -27,14 +27,14 @@ def review_view(lines, translated=None, target="vi", tone="natural", glossary=""
             detail += "  (reads too fast: shorten it)"
         items.append({"id": "c%d" % line.caption, "text": text or line.text, "detail": detail})
     rows = [
-        {"type": "text", "text": title, "style": "title"},
-        {"type": "select", "id": "target", "label": "Language", "options": sorted(LANGUAGES), "value": target},
-        {"type": "select", "id": "tone", "label": "Tone", "options": ["natural", "casual", "formal"], "value": tone},
+        {"type": "text", "text": title},
+        {"type": "select", "id": "target", "label": "Language", "choices": sorted(LANGUAGES), "value": target},
+        {"type": "select", "id": "tone", "label": "Tone", "choices": ["natural", "casual", "formal"], "value": tone},
         {"type": "input", "id": "glossary", "label": "Glossary (names and terms, ; separated)", "value": glossary},
-        {"type": "button", "label": "Translate again" if translated else "Translate", "action": "translate", "primary": True},
-        {"type": "button", "label": "Export lines for the agent", "action": "export-lines"},
-        {"type": "list", "id": "lines", "items": items},
+        {"type": "button", "id": "translate", "label": "Translate again" if translated else "Translate", "action": "translate"},
+        {"type": "button", "id": "export", "label": "Export lines for the agent", "action": "export-lines"},
+        {"type": "list", "id": "lines", "label": "Captions", "items": items},
     ]
     if len(lines) > MAX_ITEMS:
-        rows.append({"type": "text", "text": "%d more not shown" % (len(lines) - MAX_ITEMS), "style": "dim"})
+        rows.append({"type": "text", "text": "%d more not shown" % (len(lines) - MAX_ITEMS), "muted": True})
     return {"schema": SCHEMA, "title": "Translate captions", "rows": rows}

@@ -45,13 +45,24 @@ class ReviewViewTests(unittest.TestCase):
             if b["action"] == "translate":
                 self.assertTrue(fields <= declared, fields - declared)
         self.assertTrue(manifest_params("review"))
+        # the shipped protocol (BashCutPro bashcut/plugin-host.md, Views): buttons need ids, selects take choices,
+        # and the actions that show the form are marked "view": true
+        for r in view["rows"]:
+            if r["type"] in ("button", "list", "select", "input"):
+                self.assertTrue(r.get("id"), r)
+            self.assertNotIn("options", r)
+            self.assertNotIn("style", r)
+        with open(os.path.join(HERE, "bashcut-plugin.json"), encoding="utf-8") as f:
+            actions = {a["id"]: a for a in json.load(f)["actions"]}
+        self.assertTrue(actions["review"].get("view"))
+        self.assertTrue(actions["translate"].get("view"))
 
     def test_long_lists_are_capped(self):
         lines = [Line(i, i, "l%d" % i, 1.0) for i in range(MAX_ITEMS + 5)]
         view = review_view(lines)
         items = [r for r in view["rows"] if r["type"] == "list"][0]["items"]
         self.assertEqual(len(items), MAX_ITEMS)
-        self.assertEqual(view["rows"][-1]["style"], "dim")
+        self.assertTrue(view["rows"][-1]["muted"])
 
 
 if __name__ == "__main__":
