@@ -232,7 +232,7 @@ def cmd_fetch(args):
             "files": [{"path": p, "license": (r or {}).get("license"), "author": (r or {}).get("author"),
                        "source": (r or {}).get("source"), "record": (p + ".licence.json") if r else None} for p, r in files.items()]}
     if text:
-        data["text"] = text[:40]
+        data["text"] = text[:400]
     wanted = [p for p in files if importable(p)] if args.import_ else [os.path.abspath(e["file"]) for e in placements]
     if wanted and connected(args):
         with connect(args) as app:
@@ -282,8 +282,15 @@ COMMANDS = {"scripts": cmd_scripts, "setup": cmd_setup, "fetch": cmd_fetch, "imp
 
 
 def emit(value):
-    sys.stdout.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
+    """The result as UTF-8 whatever the console's code page is (Windows), so a caller can always decode it."""
+    text = json.dumps(value, ensure_ascii=False, indent=1) + "\n"
     sys.stdout.flush()
+    out = getattr(sys.stdout, "buffer", None)
+    if out is None:  # a text stream (tests)
+        sys.stdout.write(text)
+    else:
+        out.write(text.encode("utf-8"))
+        out.flush()
 
 
 def main(argv=None):

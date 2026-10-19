@@ -242,8 +242,15 @@ COMMANDS = {"voices": cmd_voices, "check": cmd_check, "setup": cmd_setup, "synth
 
 
 def emit(value):
-    sys.stdout.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
+    """The result as UTF-8 whatever the console's code page is (Windows), so a caller can always decode it."""
+    text = json.dumps(value, ensure_ascii=False, indent=1) + "\n"
     sys.stdout.flush()
+    out = getattr(sys.stdout, "buffer", None)
+    if out is None:  # a text stream (tests)
+        sys.stdout.write(text)
+    else:
+        out.write(text.encode("utf-8"))
+        out.flush()
 
 
 def main(argv=None):
