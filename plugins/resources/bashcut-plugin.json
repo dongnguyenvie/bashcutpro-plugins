@@ -1,0 +1,120 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.resources",
+  "name": "Online Resources",
+  "version": "0.1.0",
+  "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them with the credits in the project notes.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/resources",
+  "category": "resources",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": ["pillow>=10.1", "numpy>=1.26", "fonttools>=4.40", "resvg-py>=0.5", "rlottie-python>=1.3"],
+    "note": "Searching and downloading need only the standard library; contact sheets, PNG rendering, font measuring and LUT measuring need the packages, installed by `setup` into a private environment. Some scripts call curl (shipped with macOS, Windows 10+ and most Linux)."
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["media_import", "command_run", "sequence_inspect"],
+    "commands": ["file.import", "sequence.addTracks", "timeline.place", "project.notes", "project.setNotes", "file.save"],
+    "effects": []
+  },
+  "settings": [
+    {
+      "id": "pixabayKey",
+      "title": "Pixabay API key",
+      "type": "secret",
+      "env": ["PIXABAY_API_KEY"],
+      "optional": true,
+      "help": "Free key from pixabay.com/api/docs: Pixabay photos and video in `stock`."
+    },
+    {
+      "id": "pexelsKey",
+      "title": "Pexels API key",
+      "type": "secret",
+      "env": ["PEXELS_API_KEY"],
+      "optional": true,
+      "help": "Free key from pexels.com/api: Pexels photos and video in `stock`."
+    },
+    {
+      "id": "freesoundKey",
+      "title": "Freesound API key",
+      "type": "secret",
+      "env": ["FREESOUND_API_KEY"],
+      "optional": true,
+      "help": "Free key from freesound.org/apiv2/apply: Freesound sound effects in `audio` (else Openverse)."
+    }
+  ],
+  "actions": [
+    {
+      "id": "scripts",
+      "title": "List the fetch scripts",
+      "args": ["scripts"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "setup",
+      "title": "Install the image packages…",
+      "args": ["setup"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "fetch",
+      "title": "Fetch resources…",
+      "args": ["fetch"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "script", "flag": "--script", "type": "enum",
+         "choices": ["audio", "emoji", "facts", "font", "fonts", "illustrations", "logos", "lottie", "luts", "stock"], "default": "stock"},
+        {"id": "args", "flag": "--args", "type": "string", "default": ""},
+        {"id": "import", "flag": "--import", "type": "bool", "default": false},
+        {"id": "videoTrack", "flag": "--video-track", "type": "string", "default": "V2"},
+        {"id": "audioTrack", "flag": "--audio-track", "type": "string", "default": "A2"}
+      ]
+    },
+    {
+      "id": "import",
+      "title": "Import fetched files",
+      "args": ["import"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "path", "flag": "--path", "type": "path", "optional": true},
+        {"id": "folder", "flag": "--folder", "type": "path", "optional": true},
+        {"id": "frame", "flag": "--frame", "type": "integer", "optional": true},
+        {"id": "duration", "flag": "--duration", "type": "integer", "optional": true}
+      ]
+    },
+    {
+      "id": "credits",
+      "title": "Credits of a folder",
+      "args": ["credits"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "folder", "flag": "--folder", "type": "path"}
+      ]
+    }
+  ],
+  "skills": ["skills/resources/SKILL.md"]
+}

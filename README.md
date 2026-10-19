@@ -9,6 +9,7 @@ commands. Why and how: [`bashcut/decisions.md`](https://github.com/dongnguyenvie
 |---|---|
 | [`translate-captions`](plugins/translate-captions) | translates captions with your own Gemini or OpenAI key (or your agent), keeping their timing; blurs subtitles burned into the footage |
 | [`vieneu-tts`](plugins/vieneu-tts) | Vietnamese voiceover with VieNeu-TTS on this computer (25 voices, cloning with consent), imported and placed on an audio track |
+| [`resources`](plugins/resources) | open music, sound effects, stock, emoji, logos, illustrations, fonts and LUTs from official APIs, each file's licence recorded next to it; imported and placed with credits in the project notes |
 
 ```
 registry.json                      every plugin, its version and where its manifest is
@@ -25,6 +26,7 @@ python3 tools/check_registry.py
 python3 -m unittest discover -s tests
 (cd plugins/translate-captions && python3 -m unittest discover -s tests)
 (cd plugins/vieneu-tts && python3 -m unittest discover -s tests)
+(cd plugins/resources && python3 -X utf8 -m unittest discover -s tests)
 ```
 
 ## How a plugin runs

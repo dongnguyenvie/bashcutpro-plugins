@@ -28,6 +28,19 @@
       "path": "plugins/vieneu-tts",
       "manifest": "plugins/vieneu-tts/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/vieneu-tts"}
+    },
+    {
+      "id": "bashcut.resources",
+      "name": "Online Resources",
+      "version": "0.1.0",
+      "summary": "Open music, SFX, stock photos and video, emoji, logos, illustrations, fonts and LUTs from official APIs, with each file's licence recorded; imported with credits.",
+      "category": "resources",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/resources",
+      "manifest": "plugins/resources/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/resources"}
     }
   ]
 }
