@@ -13,6 +13,7 @@ commands. Why and how: [`bashcut/decisions.md`](https://github.com/dongnguyenvie
 | [`image-gen`](plugins/image-gen) | AI pictures with your own Gemini or OpenAI key (or a local server): every scene in one batch, one locked style, the same character from reference pictures, imported labelled as AI-generated |
 | [`hyperframes`](plugins/hyperframes) | animated HTML/CSS + GSAP graphics (counters, charts, cards, diagrams, maps) rendered with HyperFrames and placed over the picture with alpha |
 | [`align`](plugins/align) | puts a known script, subtitle file or translation on the speech with word timing (better captions than transcription alone), flags low-confidence spans, and checks a script's lines against the time they have |
+| [`library`](plugins/library) | reusable looks, titles, stickers, sounds, effect presets, project templates and brand kits: saved from a project, searched, applied to another, shared as packs |
 
 ```
 registry.json                      every plugin, its version and where its manifest is
@@ -37,6 +38,7 @@ python3 -m unittest discover -s tests
 (cd plugins/resources && python3 -X utf8 -m unittest discover -s tests)
 (cd plugins/image-gen && python3 -m unittest discover -s tests)
 (cd plugins/hyperframes && python3 -m unittest discover -s tests)
+(cd plugins/library && python3 -m unittest discover -s tests)
 ```
 
 ## How a plugin runs

@@ -80,6 +80,19 @@
       "path": "plugins/align",
       "manifest": "plugins/align/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/align"}
+    },
+    {
+      "id": "bashcut.library",
+      "name": "Library",
+      "version": "0.1.0",
+      "summary": "Reusable looks, titles, stickers, sounds, effect presets, project templates and brand kits: save from a project, search, apply to another, share as packs.",
+      "category": "library",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/library",
+      "manifest": "plugins/library/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/library"}
     }
   ]
 }
