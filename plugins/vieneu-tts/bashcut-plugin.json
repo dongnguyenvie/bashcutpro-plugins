@@ -1,0 +1,144 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.vieneu-tts",
+  "name": "VieNeu TTS (Vietnamese)",
+  "version": "0.1.0",
+  "summary": "Vietnamese voiceover on this computer with VieNeu-TTS v3 Turbo (25 preset voices, voice cloning with consent), imported and placed on an audio track.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/vieneu-tts",
+  "category": "voice",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": ["vieneu>=3.8,<4", "onnxruntime>=1.20,<1.23"],
+    "note": "The plugin runs on Python 3.9+ with the standard library; the model runs in a private Python 3.10+ environment made by `setup` (about 750 MB, plus a 600 MB model on first use)."
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["media_import", "command_run", "sequence_inspect"],
+    "commands": ["file.import", "sequence.addTracks", "timeline.place", "file.save"],
+    "effects": []
+  },
+  "settings": [
+    {
+      "id": "voice",
+      "title": "Voice",
+      "type": "enum",
+      "choices": ["Hải Đăng", "Adam bựa", "Trúc Ly", "Thiện Minh", "Mai Anh", "Thùy Dung", "Thiền Tâm Đức", "Ngọc Huyền",
+                  "Quang Sơn", "Ngọc Trân", "Minh Đức", "Phạm Tuyên", "Thái Sơn", "Xuân Vĩnh", "Thanh Bình", "Ngọc Linh",
+                  "Đoan Trang", "Thục Đoan", "Minh Triết", "Mỹ Duyên", "Quỳnh Anh", "Đức Trí", "Kim Thanh", "Adam", "Quốc Tuấn"],
+      "default": "Hải Đăng",
+      "env": ["BASHCUT_VIENEU_VOICE"],
+      "flag": "--voice",
+      "help": "Preset voice used when no reference clip is given (`voices` lists region, style and gender)."
+    },
+    {
+      "id": "variation",
+      "title": "Variation between takes",
+      "type": "number",
+      "default": 0.8,
+      "env": ["BASHCUT_VIENEU_VARIATION"],
+      "flag": "--variation",
+      "help": "Sampling temperature 0.3-1.2: lower is steadier, higher gives more different takes."
+    },
+    {
+      "id": "python",
+      "title": "Python with VieNeu",
+      "type": "path",
+      "default": "",
+      "env": ["BASHCUT_VIENEU_PYTHON"],
+      "flag": "--python",
+      "optional": true,
+      "help": "The interpreter that has the vieneu package; empty = the private environment `setup` makes."
+    }
+  ],
+  "actions": [
+    {
+      "id": "voices",
+      "title": "List the voices",
+      "args": ["voices"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "check",
+      "title": "Check the VieNeu install",
+      "args": ["check"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "setup",
+      "title": "Install VieNeu…",
+      "args": ["setup"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "downloadModel", "flag": "--download-model", "type": "bool", "default": false},
+        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "synthesize",
+      "title": "Voice lines into takes",
+      "args": ["synthesize"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "text", "flag": "--text", "type": "string", "optional": true},
+        {"id": "lines", "flag": "--lines", "type": "path", "optional": true},
+        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "cloneConsent", "flag": "--clone-consent", "type": "bool", "default": false},
+        {"id": "takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+      ]
+    },
+    {
+      "id": "place",
+      "title": "Place a take",
+      "args": ["place"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "audio", "flag": "--audio", "type": "path"},
+        {"id": "seconds", "flag": "--seconds", "type": "number"},
+        {"id": "track", "flag": "--track", "type": "string", "default": "A2"}
+      ]
+    },
+    {
+      "id": "speak",
+      "title": "Vietnamese voiceover…",
+      "args": ["speak"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "text", "flag": "--text", "type": "string", "optional": true},
+        {"id": "lines", "flag": "--lines", "type": "path", "optional": true},
+        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "cloneConsent", "flag": "--clone-consent", "type": "bool", "default": false},
+        {"id": "takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
+        {"id": "rate", "flag": "--rate", "type": "number", "optional": true},
+        {"id": "track", "flag": "--track", "type": "string", "default": "A2"},
+        {"id": "at", "flag": "--at", "type": "number", "default": 0},
+        {"id": "gap", "flag": "--gap", "type": "number", "default": 0.4},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+      ]
+    }
+  ],
+  "skills": ["skills/vieneu-tts/SKILL.md"]
+}
