@@ -117,8 +117,17 @@ class CreditTests(unittest.TestCase):
 
 
 class FetchTests(Base):
+    def test_no_credits_in_the_notes_unless_asked(self):
+        code, out = self.run_cli("fetch", "--script", "stock", "--import", "--args", json.dumps(["--ids", "pot", "--dest", self.dest]))
+        self.assertEqual((code, out["data"]["credits"]), (0, 0))
+        self.assertEqual(read_sidecar(os.path.join(self.dest, "pot.jpg"))["license"], "CC BY 4.0")  # the record stays
+        state = self.state()
+        self.assertEqual(state["notes"], "Brief: a pottery video.")
+        self.assertFalse(any(e["id"] in ("project.notes", "project.setNotes") for e in state["log"]))
+        self.assertNotIn("credits", out["message"])
+
     def test_download_records_licences_and_imports_with_credits(self):
-        code, out = self.run_cli("fetch", "--script", "stock", "--import", "--args", json.dumps(["--ids", "pot,river", "--dest", self.dest]))
+        code, out = self.run_cli("fetch", "--script", "stock", "--import", "--credits", "--args", json.dumps(["--ids", "pot,river", "--dest", self.dest]))
         self.assertEqual(code, 0, out)
         data = out["data"]
         pot = os.path.join(self.dest, "pot.jpg")
@@ -141,7 +150,7 @@ class FetchTests(Base):
         self.assertNotIn("imported", out["data"])  # no connection: nothing imported
 
     def test_pick_places_at_the_frame_on_a_new_video_track(self):
-        code, out = self.run_cli("fetch", "--script", "stock", "--args", "--pick slot=1@12:30 --dest " + self.dest.replace("\\", "/"))
+        code, out = self.run_cli("fetch", "--script", "stock", "--credits", "--args", "--pick slot=1@12:30 --dest " + self.dest.replace("\\", "/"))
         self.assertEqual(code, 0, out)
         data = out["data"]
         line = data["lines"][0]

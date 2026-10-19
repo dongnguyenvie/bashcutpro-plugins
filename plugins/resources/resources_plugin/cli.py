@@ -52,6 +52,8 @@ def connection_args(parser):
 def place_args(parser):
     parser.add_argument("--video-track", default="V2", help="where pictures and video go (default V2; added when missing)")
     parser.add_argument("--audio-track", default="A2", help="where music and sound effects go (default A2)")
+    parser.add_argument("--credits", action="store_true",
+                        help="also write the credit lines into the project notes (only when the user asked for credits)")
 
 
 def build_parser():
@@ -75,7 +77,7 @@ def build_parser():
     p.add_argument("--timeout", type=float, default=900, help="seconds before the script is stopped (default 900)")
     p.add_argument("rest", nargs=argparse.REMAINDER, help="after --: more script arguments")
 
-    p = sub.add_parser("import", help="import fetched files (or a folder of them) and note their credits in the project")
+    p = sub.add_parser("import", help="import fetched files (or a folder of them); --credits notes their credits in the project")
     connection_args(p)
     place_args(p)
     p.add_argument("--path", action="append", default=[], help="a file to import (repeatable)")
@@ -173,18 +175,21 @@ def folder_files(folder):
 
 
 def bring_in(app, args, paths, placements):
-    """Imports `paths`, places `placements`, writes the credits into the project notes. Returns the report."""
+    """Imports `paths`, places `placements`; with --credits also writes the credit lines into the project notes."""
     paths = list(dict.fromkeys(os.path.abspath(p) for p in paths))
     if not paths:
         return {"imported": [], "placed": [], "credits": 0, "unlicensed": []}
     items = dict(zip(paths, import_files(app, paths)))
     placed = place(app, items, placements, args.video_track, args.audio_track) if placements else []
-    records = [read_sidecar(p) or {"file": os.path.basename(p)} for p in paths]
-    notes = app.run("project.notes", {}) or {}
-    text = notes.get("text", "") if isinstance(notes, dict) else str(notes)
-    app.run("project.setNotes", {"text": merge_notes(text, records)})
+    credited = 0
+    if args.credits:  # opt-in: by default nothing about licences goes into the project
+        records = [read_sidecar(p) or {"file": os.path.basename(p)} for p in paths]
+        notes = app.run("project.notes", {}) or {}
+        text = notes.get("text", "") if isinstance(notes, dict) else str(notes)
+        app.run("project.setNotes", {"text": merge_notes(text, records)})
+        credited = len(records)
     return {"imported": [{"path": p, "item": items[p], "license": (read_sidecar(p) or {}).get("license")} for p in paths],
-            "placed": placed, "credits": len(records),
+            "placed": placed, "credits": credited,
             "unlicensed": [p for p in paths if not (read_sidecar(p) or {}).get("license")]}
 
 
@@ -243,7 +248,9 @@ def cmd_fetch(args):
     message = "%s: %d lines, %d files with %d licence records" % (
         script, len(lines), len(files), sum(1 for r in files.values() if r))
     if data.get("imported"):
-        message += "; imported %d, placed %d, credits in the project notes" % (len(data["imported"]), len(data.get("placed") or []))
+        message += "; imported %d, placed %d" % (len(data["imported"]), len(data.get("placed") or []))
+        if data.get("credits"):
+            message += ", credits in the project notes"
     if data.get("pending"):
         message += "; %d picks not placed: pass --project or --bridge" % len(placements)
     if code not in (0, None) and not lines:
@@ -266,7 +273,7 @@ def cmd_import(args):
     with connect(args) as app:
         data = bring_in(app, args, paths, placements)
         data["saved"] = save(app, args)
-    message = "Imported %d files; credits in the project notes" % len(data["imported"])
+    message = "Imported %d files" % len(data["imported"]) + ("; credits in the project notes" if data["credits"] else "")
     if data["unlicensed"]:
         message += "; %d have no licence record: check them before publishing" % len(data["unlicensed"])
     return message, data

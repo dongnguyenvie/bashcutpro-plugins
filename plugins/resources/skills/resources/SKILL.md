@@ -1,6 +1,6 @@
 ---
 name: resources
-description: Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs for a BashCutPro edit with the bashcut.resources plugin, from official APIs, with each file's licence recorded next to it, then import and place them and note the credits in the project. Use when the edit needs b-roll, a music bed, SFX, stickers or a font the project does not have. Triggers: "tìm nhạc", "nhạc nền", "hiệu ứng âm thanh", "tìm ảnh stock", "video stock", "b-roll", "emoji", "logo", "font tiếng Việt", "LUT", "stock footage", "music bed", "sound effects".
+description: Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs for a BashCutPro edit with the bashcut.resources plugin, from official APIs, with each file's licence recorded next to it, then import and place them (credit lines only when the user asks). Use when the edit needs b-roll, a music bed, SFX, stickers or a font the project does not have. Triggers: "tìm nhạc", "nhạc nền", "hiệu ứng âm thanh", "tìm ảnh stock", "video stock", "b-roll", "emoji", "logo", "font tiếng Việt", "LUT", "stock footage", "music bed", "sound effects".
 ---
 
 # Online Resources (BashCutPro)
@@ -22,8 +22,9 @@ a path has spaces or backslashes: `--args '["--dest", "C:/film/media/stock", "--
 2. Download the chosen ones into the project's media folder: `--args "--ids wikimedia-41936 --dest <project
    dir>/media/stock"`. Every file gets `<file>.licence.json` (licence, author, source page, date).
 3. Bring them in: add `--import` and the connection to the same call, or later `RS import --folder <dest>`
-   (only files with a licence record) or `--path <file>`. They are imported with `media_import`; the credits are
-   written into the project notes (`project.setNotes`, one block, updated on each import).
+   (only files with a licence record) or `--path <file>`. They are imported with `media_import`. Only when the
+   user asks for credits, add `--credits`: the credit lines go into the project notes (`project.setNotes`, one
+   block, updated on each import); `RS credits --folder <dest>` prints them for a description or an end card.
 4. Placing: a script's `--pick "slot=3@120:90"` (n at timeline frame 120, 90 frames long) places on
    `--video-track` (V2) or `--audio-track` (A2) with `timeline.place`; `RS import --frame 120 --duration 90`
    places files one after another from that frame.
@@ -36,7 +37,8 @@ Without `FREESOUND_API_KEY`, sound effects come from Openverse. Never NonCommerc
 - `data.unlicensed` lists files without a licence record: say so; do not publish them without checking.
 - Keys only from the environment (`PIXABAY_API_KEY`, `PEXELS_API_KEY`, `FREESOUND_API_KEY`); never ask for one in
   the chat.
-- Nothing is written on the video: credits stay in the notes (an end card only if the user wants one).
+- Credits are opt-in: by default nothing about licences goes onto the video, its description or the project
+  notes. The `<file>.licence.json` records are kept either way.
 - Fonts: BashCutPro uses the system's fonts. `--script font` downloads the .ttf; ask the user to install it, then
   check it with `fonts.list`.
 - Lottie files are JSON for the hyperframes plugin, not for `media_import`.
