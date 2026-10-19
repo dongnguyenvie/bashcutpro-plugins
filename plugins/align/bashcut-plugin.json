@@ -1,0 +1,73 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.align",
+  "name": "Align Script to Speech",
+  "version": "0.1.0",
+  "summary": "Put a known script, subtitle file or translation on the speech with word timing (better captions than transcription alone), report low-confidence spans, and check a script's lines against the time they have.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/align",
+  "category": "captions",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": [],
+    "note": "Standard library only. The heard words come from the project's transcript (transcript.generate in a Whisper build, or words imported with transcript.set) or from an outside transcriber's JSON."
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["command_run", "command_batch", "sequence_inspect"],
+    "commands": ["transcript.inspect", "transcript.set", "captions.import", "file.save"],
+    "effects": []
+  },
+  "settings": [],
+  "actions": [
+    {
+      "id": "align",
+      "title": "Align a script or subtitles to the speech…",
+      "args": ["align"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "script", "flag": "--script", "type": "path"},
+        {"id": "words", "flag": "--words", "type": "path", "optional": true},
+        {"id": "item", "flag": "--item", "type": "integer", "optional": true},
+        {"id": "lang", "flag": "--lang", "type": "string", "optional": true},
+        {"id": "to", "flag": "--to", "type": "enum", "choices": ["both", "transcript", "captions", "none"], "default": "both"},
+        {"id": "captionName", "flag": "--caption-name", "type": "string", "default": "Aligned"},
+        {"id": "low", "flag": "--low", "type": "number", "default": 0.5},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true},
+        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Check a script against its time…",
+      "args": ["check"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "script", "flag": "--script", "type": "path"},
+        {"id": "lang", "flag": "--lang", "type": "string", "optional": true},
+        {"id": "rate", "flag": "--rate", "type": "number", "optional": true},
+        {"id": "rateFrom", "flag": "--rate-from", "type": "path", "optional": true},
+        {"id": "windows", "flag": "--windows", "type": "path", "optional": true},
+        {"id": "seconds", "flag": "--seconds", "type": "number", "optional": true},
+        {"id": "margin", "flag": "--margin", "type": "number", "default": 0.0}
+      ]
+    }
+  ],
+  "skills": ["skills/align/SKILL.md"]
+}

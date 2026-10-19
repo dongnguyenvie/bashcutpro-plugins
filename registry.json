@@ -67,6 +67,19 @@
       "path": "plugins/hyperframes",
       "manifest": "plugins/hyperframes/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/hyperframes"}
+    },
+    {
+      "id": "bashcut.align",
+      "name": "Align Script to Speech",
+      "version": "0.1.0",
+      "summary": "Put a known script, subtitles or translation on the speech with word timing; report low-confidence spans; check a script against its time.",
+      "category": "captions",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/align",
+      "manifest": "plugins/align/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/align"}
     }
   ]
 }

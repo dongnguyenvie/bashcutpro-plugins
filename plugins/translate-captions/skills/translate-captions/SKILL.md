@@ -50,6 +50,12 @@ never ask them to paste it into the chat. Translate the lines yourself instead:
    `TC apply --answer answer.json --lines lines.json --target vi`. Lines whose text changed since the
    export are skipped (`data.stale`).
 
+## Captions from a script, not a transcription
+
+When the source captions should follow a known script or subtitle file (better wording than transcription, word
+timing kept), make them with the `bashcut.align` plugin first (`align --script … --to captions`, its skill
+`align`), then translate those. Align the original language only: a translation is timed from the original cues.
+
 ## Limits
 
 - Subtitles are found by their look (light strokes with an outline or shadow, centred, changing), not
