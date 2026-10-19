@@ -137,12 +137,30 @@ class McpClient:
         """`command_run {id, params}`: one engine command."""
         return self.tool("command_run", {"id": command, "params": params or {}})
 
-    def batch(self, steps, stop_on_error=True):
-        """`command_batch`: several commands in order, `[(id, params)…]`."""
-        return self.tool("command_batch", {
-            "steps": [{"id": command, "params": params} for command, params in steps],
-            "stop_on_error": stop_on_error,
-        })
+    def batch(self, steps, stop_on_error=True, label=None):
+        """Several commands in order, `[(id, params)…]`, as one undo step: `bashcut.batch` (all or nothing
+        with `stop_on_error`), or upstream's `command_batch` (an undo step per edit) on a build without it.
+        Returns `command_batch`'s shape, `{completed, failed, results: [{ok, result | error}]}`."""
+        commands = [{"id": command, "params": params if params is not None else {}} for command, params in steps]
+        arguments = {"commands": commands, "atomic": bool(stop_on_error)}
+        if label:
+            arguments["label"] = label
+        try:
+            answer = self.run("bashcut.batch", arguments) or {}
+        except AppError as e:
+            if "unknown command" not in e.message:
+                raise
+            return self.tool("command_batch", {
+                "steps": [{"id": command, "params": params} for command, params in steps],
+                "stop_on_error": stop_on_error,
+            })
+        results = [{"ok": True, "result": r.get("result")} if r.get("ok") else {"ok": False, "error": r.get("error")}
+                   for r in answer.get("results", [])]
+        failed = sum(1 for r in results if not r["ok"])
+        out = {"completed": len(results) - failed, "failed": failed, "results": results}
+        if failed:
+            raise AppError("command_failed", json.dumps(out))
+        return out
 
     def close(self):
         try:
