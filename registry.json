@@ -1,0 +1,20 @@
+{
+  "schema": "bashcut-registry/1",
+  "name": "BashCutPro plugins",
+  "repo": "dongnguyenvie/bashcutpro-plugins",
+  "plugins": [
+    {
+      "id": "bashcut.translate-captions",
+      "name": "Translate Captions",
+      "version": "0.1.0",
+      "summary": "Translate captions with your own Gemini or OpenAI key (or your agent), keeping their timing; blur burned-in subtitles.",
+      "category": "captions",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/translate-captions",
+      "manifest": "plugins/translate-captions/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/translate-captions"}
+    }
+  ]
+}
