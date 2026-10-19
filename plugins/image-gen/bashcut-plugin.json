@@ -1,0 +1,139 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.image-gen",
+  "name": "Image Generation",
+  "version": "0.1.0",
+  "summary": "AI pictures for an edit with your own Gemini or OpenAI key (or a local OpenAI-compatible server): every scene in one batch, one locked style and the same character from reference pictures, imported labelled as AI-generated.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/image-gen",
+  "category": "graphics",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": [],
+    "note": "Standard library only. ffmpeg on PATH (optional) gives a smoother scale and fits JPEG and WebP answers too."
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["media_import", "command_run", "sequence_inspect"],
+    "commands": ["file.import", "metadata.set", "sequence.addTracks", "timeline.place", "file.save"],
+    "effects": []
+  },
+  "settings": [
+    {
+      "id": "service",
+      "title": "Service",
+      "type": "enum",
+      "choices": ["gemini", "openai"],
+      "default": "gemini",
+      "env": ["BASHCUT_IMAGE_SERVICE"],
+      "flag": "--service",
+      "help": "Who makes the pictures. The key is sent only to this service."
+    },
+    {
+      "id": "apiKey",
+      "title": "API key",
+      "type": "secret",
+      "env": ["BASHCUT_IMAGE_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
+      "flag": "--api-key",
+      "optional": true,
+      "help": "Your Gemini or OpenAI key. Nothing is sent without one, except to a server on this machine."
+    },
+    {
+      "id": "model",
+      "title": "Model",
+      "type": "string",
+      "default": "auto",
+      "env": ["BASHCUT_IMAGE_MODEL"],
+      "flag": "--model",
+      "help": "auto = gemini-2.5-flash-image (Gemini) or gpt-image-1 (OpenAI); or any image model id of the service."
+    },
+    {
+      "id": "endpoint",
+      "title": "Endpoint",
+      "type": "string",
+      "default": "",
+      "env": ["BASHCUT_IMAGE_ENDPOINT"],
+      "flag": "--endpoint",
+      "help": "For OpenAI: any server with /v1/images/generations and /v1/images/edits, such as a local model (needs no key)."
+    }
+  ],
+  "actions": [
+    {
+      "id": "style",
+      "title": "Show the locked style",
+      "args": ["style"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+      ]
+    },
+    {
+      "id": "generate",
+      "title": "Generate pictures",
+      "args": ["generate"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "scenes", "flag": "--scenes", "type": "path", "optional": true},
+        {"id": "prompt", "flag": "--prompt", "type": "string", "optional": true},
+        {"id": "style", "flag": "--style", "type": "path", "optional": true},
+        {"id": "styleText", "flag": "--style-text", "type": "string", "optional": true},
+        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "seed", "flag": "--seed", "type": "integer", "optional": true},
+        {"id": "restyle", "flag": "--restyle", "type": "bool", "default": false},
+        {"id": "width", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "height", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+      ]
+    },
+    {
+      "id": "import",
+      "title": "Import and place pictures",
+      "args": ["import"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "image", "flag": "--image", "type": "path"},
+        {"id": "seconds", "flag": "--seconds", "type": "number", "optional": true},
+        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "track", "flag": "--track", "type": "string", "default": "V2"}
+      ]
+    },
+    {
+      "id": "illustrate",
+      "title": "Illustrate scenes…",
+      "args": ["illustrate"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "scenes", "flag": "--scenes", "type": "path", "optional": true},
+        {"id": "prompt", "flag": "--prompt", "type": "string", "optional": true},
+        {"id": "style", "flag": "--style", "type": "path", "optional": true},
+        {"id": "styleText", "flag": "--style-text", "type": "string", "optional": true},
+        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "seed", "flag": "--seed", "type": "integer", "optional": true},
+        {"id": "restyle", "flag": "--restyle", "type": "bool", "default": false},
+        {"id": "width", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "height", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true},
+        {"id": "track", "flag": "--track", "type": "string", "default": "V2"}
+      ]
+    }
+  ],
+  "skills": ["skills/image-gen/SKILL.md"]
+}

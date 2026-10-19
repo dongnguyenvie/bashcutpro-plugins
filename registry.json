@@ -41,6 +41,19 @@
       "path": "plugins/resources",
       "manifest": "plugins/resources/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/resources"}
+    },
+    {
+      "id": "bashcut.image-gen",
+      "name": "Image Generation",
+      "version": "0.1.0",
+      "summary": "AI pictures with your own Gemini or OpenAI key (or a local server): every scene in one batch, one locked style, the same character from reference pictures, imported labelled as AI-generated.",
+      "category": "graphics",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/image-gen",
+      "manifest": "plugins/image-gen/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/image-gen"}
     }
   ]
 }
