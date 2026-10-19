@@ -167,6 +167,78 @@
           "mirror": "https://web.archive.org/web/2024id_/https://rawtherapee.com/shared/HaldCLUT.zip"
         }
       ]
+    },
+    {
+      "id": "u2net-human-seg",
+      "title": "U²-Net human segmentation (ONNX, from rembg)",
+      "kind": "segmentation",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE",
+      "usedBy": [
+        "bashcut.vision"
+      ],
+      "huggingface": {
+        "repo": "jellybox/u2net-human-seg",
+        "revision": "f5c523ea3d391bf2f366ba98a84b280b6bd23c61"
+      },
+      "size": 175997641,
+      "files": [
+        {
+          "path": "u2net_human_seg.onnx",
+          "size": 175997641,
+          "sha256": "01eb6a29a5c4d8edb30b56adad9bb3a2a0535338e480724a213e0acfd2d1c73c",
+          "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx",
+          "mirror": "https://huggingface.co/jellybox/u2net-human-seg/resolve/f5c523ea3d391bf2f366ba98a84b280b6bd23c61/u2net-human-seg_320.onnx"
+        }
+      ]
+    },
+    {
+      "id": "isnet-general-use",
+      "title": "IS-Net general use (ONNX, from rembg)",
+      "kind": "segmentation",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://github.com/xuebinqin/DIS/blob/main/LICENSE.md",
+      "usedBy": [
+        "bashcut.vision"
+      ],
+      "huggingface": {
+        "repo": "jellybox/isnet-general-use",
+        "revision": "bc3706ce4ee38a3db2c3c58082a92582fcdfcfdc"
+      },
+      "size": 178648008,
+      "files": [
+        {
+          "path": "isnet-general-use.onnx",
+          "size": 178648008,
+          "sha256": "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
+          "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx",
+          "mirror": "https://huggingface.co/jellybox/isnet-general-use/resolve/bc3706ce4ee38a3db2c3c58082a92582fcdfcfdc/isnet-general-use_1024.onnx"
+        }
+      ]
+    },
+    {
+      "id": "yunet-face-2023mar",
+      "title": "YuNet face detector 2023mar (OpenCV Zoo)",
+      "kind": "face-detection",
+      "license": "MIT",
+      "licenseUrl": "https://huggingface.co/opencv/face_detection_yunet/blob/3cc26e7f1014a5ee5d74a42acee58bafc9d0a310/LICENSE",
+      "usedBy": [
+        "bashcut.vision"
+      ],
+      "huggingface": {
+        "repo": "opencv/face_detection_yunet",
+        "revision": "3cc26e7f1014a5ee5d74a42acee58bafc9d0a310"
+      },
+      "size": 232589,
+      "files": [
+        {
+          "path": "face_detection_yunet_2023mar.onnx",
+          "size": 232589,
+          "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+          "url": "https://huggingface.co/opencv/face_detection_yunet/resolve/3cc26e7f1014a5ee5d74a42acee58bafc9d0a310/face_detection_yunet_2023mar.onnx",
+          "mirror": "https://hf-mirror.com/opencv/face_detection_yunet/resolve/3cc26e7f1014a5ee5d74a42acee58bafc9d0a310/face_detection_yunet_2023mar.onnx"
+        }
+      ]
     }
   ]
 }
