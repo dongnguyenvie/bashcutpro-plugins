@@ -58,6 +58,13 @@ class DetectTests(unittest.TestCase):
         self.assertAlmostEqual(logo["y"], 0.6, delta=0.03)
         self.assertGreater(logo["x"], 0.5)
 
+    def test_a_subtitle_held_over_several_samples_is_still_a_subtitle(self):
+        # most neighbouring samples show the same line; one change is enough to tell it from a logo
+        spec = dict(SPEC, subtitle={"y": 0.82, "h": 0.07, "hold": 3})
+        found = find_subtitles([grey(spec, i) for i in range(8)])
+        self.assertIsNotNone(found["subtitles"])
+        self.assertEqual(len(found["fixedText"]), 1)
+
     def test_two_line_subtitles_are_one_cover(self):
         spec = dict(SPEC, subtitle={"y": 0.74, "h": 0.14, "lines": 2}, logo=None)
         box = find_subtitles([grey(spec, i) for i in range(8)])["subtitles"]

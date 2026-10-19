@@ -95,13 +95,15 @@ def edge_set(grid, first, last):
 
 
 def band_similarity(frames, first, last):
-    """How alike the band's stroke edges are from frame to frame (mean Jaccard index; 0 for one frame).
+    """How alike the band's stroke edges stay from frame to frame: the lowest Jaccard index of two
+    neighbouring frames (0 for one frame).
 
-    Fixed text keeps its edges where they are (near 1) whatever moves behind it; subtitles change them.
+    Fixed text keeps its edges where they are in every pair whatever moves behind it; a subtitle stays a
+    few seconds, so many neighbouring samples show the same line, but at least one pair shows a change.
     """
     sets = [edge_set(f, first, last) for f in frames]
     scores = [len(a & b) / len(a | b) for a, b in zip(sets, sets[1:]) if a | b]
-    return sum(scores) / len(scores) if scores else 0.0
+    return min(scores) if scores else 0.0
 
 
 def find_subtitles(frames, where="bottom"):
@@ -126,14 +128,15 @@ def find_subtitles(frames, where="bottom"):
     for first, last in bands:
         with_text = [f for f, rows in zip(frames, per_frame) if any(first <= y <= last for y in rows)]
         changing = band_similarity(with_text, first, last) < STATIC_SIMILARITY if len(with_text) > 1 else True
-        cols = []
+        # each frame's own extent (its 1st-99th percentile of edge columns), then the widest of them
+        spans = []
         for f, rows in zip(frames, per_frame):
-            cols += edge_columns(f, [y for y in rows if first <= y <= last])
-        if not cols:
+            cols = sorted(edge_columns(f, [y for y in rows if first <= y <= last]))
+            if cols:
+                spans.append((cols[int(len(cols) * 0.01)], cols[min(len(cols) - 1, int(len(cols) * 0.99))]))
+        if not spans:
             continue
-        cols.sort()
-        x0 = cols[int(len(cols) * 0.02)]
-        x1 = cols[min(len(cols) - 1, int(len(cols) * 0.98))]
+        x0, x1 = min(a for a, _ in spans), max(b for _, b in spans)
         lines = [r for r in runs(set().union(*[{y for y in rows if first <= y <= last} for rows in per_frame]), gap=0)]
         line = max((b - a + 1 for a, b in lines), default=last - first + 1)
         entry = {"first": first, "last": last, "x0": x0, "x1": x1, "line": line, "frames": len(with_text)}

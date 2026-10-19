@@ -6,8 +6,8 @@ import random
 def draw_frame(spec, index):
     """Rows of (r, g, b) for frame `index` of `spec`:
 
-    {"width", "height", "subtitle": {"y", "h", "lines"?} | null, "logo": {"x", "y", "w", "h"} | null}
-    The background moves with `index`; subtitle text changes every frame, the logo never does.
+    {"width", "height", "subtitle": {"y", "h", "lines"?, "hold"?} | null, "logo": {"x", "y", "w", "h"} | null}
+    The background moves with `index`; subtitle text changes every `hold` frames (default 1), the logo never.
     """
     w, h = spec["width"], spec["height"]
     rnd = random.Random(index * 7919 + 1)
@@ -22,13 +22,14 @@ def draw_frame(spec, index):
                 rows[y][x] = (grey, grey, grey)
     sub = spec.get("subtitle")
     if sub:
+        text_rnd = random.Random(index // sub.get("hold", 1) * 104729 + 5)
         lines = sub.get("lines", 1)
         line_h = int(sub["h"] * h / lines)
         for line in range(lines):
             top = int(sub["y"] * h) + line * line_h
-            text_w = int(w * rnd.uniform(0.35, 0.7))
+            text_w = int(w * text_rnd.uniform(0.35, 0.7))
             x0 = (w - text_w) // 2
-            strokes(rows, x0, top, text_w, line_h, random.Random(index * 31 + line))
+            strokes(rows, x0, top, text_w, line_h, random.Random(index // sub.get("hold", 1) * 31 + line))
     logo = spec.get("logo")
     if logo:
         strokes(rows, int(logo["x"] * w), int(logo["y"] * h), int(logo["w"] * w), int(logo["h"] * h), random.Random(99))
