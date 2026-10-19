@@ -93,6 +93,19 @@
       "path": "plugins/library",
       "manifest": "plugins/library/bashcut-plugin.json",
       "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/library"}
+    },
+    {
+      "id": "bashcut.vision",
+      "name": "Vision",
+      "version": "0.1.0",
+      "summary": "Cut out a person or object, find faces and people per shot and reframe following the face, read on-screen text, describe shots with your agent.",
+      "category": "vision",
+      "platforms": ["macos", "windows", "linux"],
+      "minAppVersion": "0.9.0",
+      "runtime": "python>=3.9",
+      "path": "plugins/vision",
+      "manifest": "plugins/vision/bashcut-plugin.json",
+      "source": {"type": "git", "repo": "dongnguyenvie/bashcutpro-plugins", "ref": "main", "path": "plugins/vision"}
     }
   ]
 }

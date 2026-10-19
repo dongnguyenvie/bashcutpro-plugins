@@ -14,6 +14,7 @@ commands. Why and how: [`bashcut/decisions.md`](https://github.com/dongnguyenvie
 | [`hyperframes`](plugins/hyperframes) | animated HTML/CSS + GSAP graphics (counters, charts, cards, diagrams, maps) rendered with HyperFrames and placed over the picture with alpha |
 | [`align`](plugins/align) | puts a known script, subtitle file or translation on the speech with word timing (better captions than transcription alone), flags low-confidence spans, and checks a script's lines against the time they have |
 | [`library`](plugins/library) | reusable looks, titles, stickers, sounds, effect presets, project templates and brand kits: saved from a project, searched, applied to another, shared as packs |
+| [`vision`](plugins/vision) | cuts out a person or object (alpha sequence placed above the clip), finds faces and people per shot and reframes following the face, reads on-screen text, stores shot descriptions from your agent |
 
 ```
 registry.json                      every plugin, its version and where its manifest is
@@ -35,6 +36,7 @@ python3 -m unittest discover -s tests
 (cd plugins/translate-captions && python3 -m unittest discover -s tests)
 (cd plugins/vieneu-tts && python3 -m unittest discover -s tests)
 (cd plugins/align && python3 -m unittest discover -s tests)
+(cd plugins/vision && python3 -m unittest discover -s tests)
 (cd plugins/resources && python3 -X utf8 -m unittest discover -s tests)
 (cd plugins/image-gen && python3 -m unittest discover -s tests)
 (cd plugins/hyperframes && python3 -m unittest discover -s tests)

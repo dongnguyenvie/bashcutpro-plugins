@@ -1,0 +1,161 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.vision",
+  "name": "Vision",
+  "version": "0.1.0",
+  "summary": "Picture understanding out of process: cut out a person or object (alpha PNG sequence placed above the clip), face and person boxes per shot with face-following reframe, on-screen text with boxes, and shot descriptions by your agent.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/vision",
+  "category": "vision",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": ["onnxruntime>=1.17", "numpy>=1.26", "pillow>=10.1"],
+    "note": "The plugin runs on Python 3.9+ with the standard library; cutout and subjects run the models with the packages, installed by `setup` into a private environment (the plugin switches to it by itself). Text reading uses Tesseract when it is on PATH, else hands the frames to the agent."
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["command_run", "command_batch", "sequence_inspect", "media_import"],
+    "commands": ["file.exportFrame", "file.import", "prefs.get", "prefs.set", "sequence.addTracks", "timeline.place", "effects.setParam", "file.save"],
+    "effects": ["motion"]
+  },
+  "settings": [
+    {
+      "id": "python",
+      "title": "Python for the models",
+      "type": "path",
+      "default": "",
+      "env": ["BASHCUT_VISION_PYTHON"],
+      "flag": "--python",
+      "optional": true,
+      "help": "A Python with onnxruntime, numpy and Pillow; default: the private environment `setup` makes."
+    },
+    {
+      "id": "tesseract",
+      "title": "Tesseract program",
+      "type": "path",
+      "default": "tesseract",
+      "env": ["BASHCUT_VISION_TESSERACT"],
+      "flag": "--tesseract",
+      "optional": true,
+      "help": "Reads on-screen text locally; without it `ocr` hands the frames to the agent."
+    }
+  ],
+  "actions": [
+    {
+      "id": "models",
+      "title": "Models…",
+      "args": ["models"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "download", "flag": "--download", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "setup",
+      "title": "Install the model packages…",
+      "args": ["setup"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "python", "flag": "--python", "type": "path", "optional": true},
+        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "cutout",
+      "title": "Cut out the subject…",
+      "args": ["cutout"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "kind", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto"},
+        {"id": "output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba"},
+        {"id": "smooth", "flag": "--smooth", "type": "number", "default": 0.6},
+        {"id": "maxFrames", "flag": "--max-frames", "type": "integer", "default": 900},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true},
+        {"id": "noPlace", "flag": "--no-place", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "subjects",
+      "title": "Find faces and people…",
+      "args": ["subjects"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "samples", "flag": "--samples", "type": "integer", "default": 6},
+        {"id": "sidecar", "flag": "--sidecar", "type": "path", "optional": true},
+        {"id": "reframe", "flag": "--reframe", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "ocr",
+      "title": "Read on-screen text",
+      "args": ["ocr"],
+      "needs": "project",
+      "edits": false,
+      "params": [
+        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "samples", "flag": "--samples", "type": "integer", "default": 4},
+        {"id": "sidecar", "flag": "--sidecar", "type": "path", "optional": true},
+        {"id": "tesseract", "flag": "--tesseract", "type": "path", "optional": true},
+        {"id": "languages", "flag": "--languages", "type": "string", "default": "eng"}
+      ],
+      "handoff": {"exit": 3, "then": "ocr-apply"}
+    },
+    {
+      "id": "ocr-apply",
+      "title": "Store read text",
+      "args": ["ocr-apply"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "sidecar", "flag": "--sidecar", "type": "path"},
+        {"id": "answer", "flag": "--answer", "type": "path"}
+      ]
+    },
+    {
+      "id": "describe",
+      "title": "Describe shots",
+      "args": ["describe"],
+      "needs": "project",
+      "edits": false,
+      "params": [
+        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "samples", "flag": "--samples", "type": "integer", "default": 3},
+        {"id": "sidecar", "flag": "--sidecar", "type": "path", "optional": true}
+      ],
+      "handoff": {"exit": 3, "then": "describe-apply"}
+    },
+    {
+      "id": "describe-apply",
+      "title": "Store shot descriptions",
+      "args": ["describe-apply"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "sidecar", "flag": "--sidecar", "type": "path"},
+        {"id": "answer", "flag": "--answer", "type": "path"}
+      ]
+    }
+  ],
+  "models": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"],
+  "skills": ["skills/vision/SKILL.md"]
+}
