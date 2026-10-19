@@ -1,0 +1,53 @@
+{
+  "schema": "bashcut-batch/1",
+  "inputs": [
+    "."
+  ],
+  "projectsFolder": "bashcut-batch/projects",
+  "outputsFolder": "bashcut-batch/exports",
+  "onFailure": "skip",
+  "name": "captions-draft",
+  "description": "Captions draft for a folder: auto captions, a clean word style, an SRT and a YouTube preview per clip",
+  "concurrency": 2,
+  "steps": [
+    {
+      "label": "transcribe",
+      "command": "sequence.transcribe",
+      "params": {
+        "language": "auto"
+      },
+      "timeoutSeconds": 3600
+    },
+    {
+      "label": "captions from the transcript",
+      "command": "transcript.createCaptions",
+      "params": {
+        "maxChars": 42,
+        "lines": 2
+      }
+    },
+    {
+      "label": "clean word style",
+      "command": "bashcut.captions.wordStyle",
+      "params": {
+        "style": {
+          "preset": "clean"
+        }
+      }
+    },
+    {
+      "label": "SRT",
+      "command": "captions.export",
+      "params": {
+        "path": "{outputs}/{name}.srt",
+        "track": "C1"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "{name}-captions-preview.mp4",
+      "profile": "youtube"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "bashcut-batch/1",
+  "inputs": [
+    "."
+  ],
+  "projectsFolder": "bashcut-batch/projects",
+  "outputsFolder": "bashcut-batch/exports",
+  "onFailure": "skip",
+  "name": "every-platform",
+  "description": "One video, every platform: captions, one reframed sequence per aspect (16:9, 9:16, 1:1), captions in each profile's safe area, every profile exported",
+  "concurrency": 1,
+  "steps": [
+    {
+      "label": "transcribe",
+      "command": "sequence.transcribe",
+      "params": {
+        "language": "auto"
+      },
+      "timeoutSeconds": 3600
+    },
+    {
+      "label": "captions from the transcript",
+      "command": "transcript.createCaptions",
+      "params": {
+        "maxChars": 42,
+        "lines": 2
+      }
+    },
+    {
+      "label": "reframe per aspect and export",
+      "agent": {
+        "skill": "edit-workflow",
+        "brief": "Make one sequence per aspect from the main sequence of {name}: 16:9 for youtube, 9:16 for tiktok, reels and shorts, 1:1 for facebook-square. Reframe each so the subject stays in frame (the vision plugin does it per clip: python3 {plugins}/bashcut.vision/plugin.py subjects --project {project} --cli {cli} --reframe, run on the vertical and square sequences). Keep the captions inside each profile's safe area (bashcut.profiles.get). Export each with bashcut.profiles.apply {profile, path: {outputs}/{name}-<profile>.mp4, wait: true}. Save the project."
+      },
+      "timeoutSeconds": 3600
+    }
+  ],
+  "outputs": []
+}

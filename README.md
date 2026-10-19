@@ -21,6 +21,7 @@ registry.json                      every plugin, its version and where its manif
 models.json                        every model / asset a plugin downloads, with SHA-256 (bashcut-models/1)
 plugins/<name>/bashcut-plugin.json the plugin's manifest
 plugins/<name>/…                   its code, skill (for agents) and tests
+packs/batch/                       batch presets for bashcut-batch (vietsub, podcast shorts, every platform, captions, clean audio)
 tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)

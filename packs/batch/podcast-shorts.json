@@ -1,0 +1,31 @@
+{
+  "schema": "bashcut-batch/1",
+  "inputs": [
+    "."
+  ],
+  "projectsFolder": "bashcut-batch/projects",
+  "outputsFolder": "bashcut-batch/exports",
+  "onFailure": "skip",
+  "name": "podcast-shorts",
+  "description": "Podcast to shorts: transcribe, an agent picks the strongest quotes and makes vertical word-captioned shorts, exported for Shorts",
+  "concurrency": 1,
+  "steps": [
+    {
+      "label": "transcribe",
+      "command": "sequence.transcribe",
+      "params": {
+        "language": "auto"
+      },
+      "timeoutSeconds": 3600
+    },
+    {
+      "label": "pick quotes and make shorts",
+      "agent": {
+        "skill": "rough-cut",
+        "brief": "This is a long podcast recording ({name}). Pick the 3 strongest self-contained moments, 20 to 60 seconds each, each with a clear hook in its first 3 seconds. Make each its own vertical 1080x1920 sequence named short-1, short-2, short-3, keeping the speaker in frame. Add word captions to each (transcript.createCaptions, then bashcut.captions.wordStyle with style.preset pop). Export each with bashcut.profiles.apply {profile: shorts, path: {outputs}/{name}-short-N.mp4, wait: true}. Save the project."
+      },
+      "timeoutSeconds": 2700
+    }
+  ],
+  "outputs": []
+}

@@ -1,0 +1,82 @@
+{
+  "schema": "bashcut-batch/1",
+  "inputs": [
+    "."
+  ],
+  "projectsFolder": "bashcut-batch/projects",
+  "outputsFolder": "bashcut-batch/exports",
+  "onFailure": "skip",
+  "name": "vietsub-folder",
+  "description": "Vietsub a folder: transcribe, Vietnamese captions, cover burned-in subtitles, styled captions, TikTok + YouTube exports",
+  "concurrency": 2,
+  "steps": [
+    {
+      "label": "transcribe",
+      "command": "sequence.transcribe",
+      "params": {
+        "language": "auto"
+      },
+      "timeoutSeconds": 3600
+    },
+    {
+      "label": "captions from the transcript",
+      "command": "transcript.createCaptions",
+      "params": {
+        "maxChars": 42,
+        "lines": 2
+      }
+    },
+    {
+      "label": "translate to Vietnamese",
+      "plugin": {
+        "argv": [
+          "python3",
+          "{plugins}/bashcut.translate-captions/plugin.py",
+          "translate",
+          "--project",
+          "{project}",
+          "--cli",
+          "{cli}",
+          "--target",
+          "vi"
+        ]
+      },
+      "timeoutSeconds": 3600
+    },
+    {
+      "label": "cover burned-in subtitles",
+      "plugin": {
+        "argv": [
+          "python3",
+          "{plugins}/bashcut.translate-captions/plugin.py",
+          "cover",
+          "--project",
+          "{project}",
+          "--cli",
+          "{cli}"
+        ]
+      },
+      "timeoutSeconds": 1800
+    },
+    {
+      "label": "caption style",
+      "command": "captions.setStyle",
+      "params": {
+        "track": "C1",
+        "color": "#ffffff",
+        "background": true,
+        "backgroundColor": "#000000a0"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "{name}-tiktok.mp4",
+      "profile": "tiktok"
+    },
+    {
+      "name": "{name}-youtube.mp4",
+      "profile": "youtube"
+    }
+  ]
+}
