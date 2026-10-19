@@ -73,9 +73,19 @@ def music_candidates(query, count, min_seconds):
         rows.append({"url": hit["url"], "stem": f"music-{slug(hit.get('title') or query)}", "suffix": suffix,
                      "kind": "music", "title": hit.get("title"), "seconds": round(seconds) or None,
                      "tags": [t.get("name") for t in hit.get("tags", [])][:5],
-                     "license": hit.get("license"), "author": hit.get("creator"),
+                     "license": openverse_licence(hit), "author": hit.get("creator"),
                      "source": hit.get("foreign_landing_url")})
     return rows[:count * 2]  # spares for dead links
+
+
+def openverse_licence(hit):
+    """Openverse's licence code as people read it ("by", "4.0" -> "CC BY 4.0"; "cc0" -> "CC0"), as fetch_stock does."""
+    code = (hit.get("license") or "").lower()
+    if code == "cc0":
+        return "CC0"
+    if code == "pdm":
+        return "Public Domain Mark"
+    return " ".join(x for x in ("CC", code.upper(), hit.get("license_version")) if x) if code else None
 
 
 FREESOUND_LICENCES = ['"Creative Commons 0"', '"Attribution"']  # CC0 first; NonCommercial never
@@ -106,7 +116,7 @@ def freesound(word, max_seconds, count):
 
 def openverse_sfx(word, max_seconds, count):
     return [{"url": hit["url"], "stem": f"sfx-{slug(word)}", "suffix": "." + (hit.get("filetype") or "mp3"),
-             "kind": "sfx", "title": hit.get("title"), "from": "openverse", "license": hit.get("license"),
+             "kind": "sfx", "title": hit.get("title"), "from": "openverse", "license": openverse_licence(hit),
              "author": hit.get("creator"), "source": hit.get("foreign_landing_url")}
             for hit in openverse(word, music=False, size=max(20, count * 3))
             if (hit.get("duration") or 10_000_000) <= max_seconds * 1000]

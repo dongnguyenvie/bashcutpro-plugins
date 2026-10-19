@@ -63,6 +63,7 @@ def build_parser():
 
     p = sub.add_parser("models", help="the models this plugin uses and whether they are downloaded")
     p.add_argument("--download", action="store_true", help="download the missing ones (verified against models.json)")
+    p.add_argument("--model", choices=MODELS, help="with --download: only this model")
 
     p = sub.add_parser("setup", help="make the private Python environment with onnxruntime, numpy and Pillow")
     p.add_argument("--python", help="the Python to make it with (default: this one)")
@@ -145,7 +146,7 @@ def cmd_models(args):
     for model_id in MODELS:
         try:
             entry = found.model(model_id)
-            if args.download and found.missing(model_id):
+            if args.download and found.missing(model_id) and getattr(args, "model", None) in (None, model_id):
                 found.fetch(model_id)
         except ModelError as error:
             raise AppError(error.code, error.message)

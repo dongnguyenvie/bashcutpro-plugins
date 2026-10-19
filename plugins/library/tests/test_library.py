@@ -132,6 +132,12 @@ class SaveApplyTests(Base):
         code, result = self.run_cli("show", "--id", sticker["id"])
         self.assertEqual((code, result["error"]["code"]), (1, "not_found"))
 
+    def test_add_refuses_a_file_that_is_not_the_kind(self):
+        code, result = self.run_cli("add", "--kind", "lut", "--file", self.file("card.fcgt"), "--title", "Card")
+        self.assertEqual((code, result["error"]["code"]), (2, "bad_args"))
+        self.assertIn(".cube", result["error"]["message"])
+        self.assertEqual(self.ok("add", "--kind", "lut", "--file", self.file("warm.CUBE"), "--title", "Warm")["item"]["kind"], "lut")
+
 
 class SearchTests(Base):
     def test_favourites_then_recent_then_match(self):

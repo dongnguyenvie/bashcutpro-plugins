@@ -35,6 +35,9 @@ KINDS = {
     "template": "a project template (.fcproj) copied to start a new project",
     "brand-kit": "logo, colours, fonts, intro / outro, caption style and lower third, as one item",
 }
+# kinds whose `apply` needs one file of a given type: refused at `add`, not later at `apply`
+FILE_TYPES = {"look": (".cube", ".3dl"), "lut": (".cube", ".3dl"), "title": (".fcgt",), "text-style": (".fcgt",),
+              "template": (".fcproj",)}
 BRAND_FIELDS = ("logo", "colors", "fonts", "intro", "outro", "captionStyle", "lowerThird")
 
 
@@ -138,6 +141,10 @@ class Library:
         for path in list(paths) + ([preview] if preview else []):
             if not os.path.isfile(path):
                 raise LibraryError("bad_args", "no such file: %s" % path)
+        wanted = FILE_TYPES.get(kind)
+        if wanted and paths and not any(os.path.splitext(p)[1].lower() in wanted for p in paths):
+            raise LibraryError("bad_args", "a %s item needs a %s file; got %s (pick the kind that matches the file)"
+                               % (kind, " or ".join(wanted), ", ".join(os.path.basename(p) for p in paths)))
         item_id = self.new_id(title)
         folder = self.folder(item_id)
         os.makedirs(folder)
