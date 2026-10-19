@@ -1,0 +1,172 @@
+{
+  "schema": "bashcut-models/1",
+  "note": "Every model or asset a plugin downloads. Each file needs size, url and sha256 (a file without one is refused); Hugging Face links are pinned to a commit. Checked by tools/check_models.py.",
+  "models": [
+    {
+      "id": "vieneu-v3-turbo",
+      "title": "VieNeu-TTS v3 Turbo (ONNX, CPU)",
+      "kind": "tts",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "usedBy": [
+        "bashcut.vieneu-tts"
+      ],
+      "huggingface": {
+        "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+        "revision": "61b85e3d937fbbacb387714180e8182823512523"
+      },
+      "size": 546367380,
+      "files": [
+        {
+          "path": "config.json",
+          "size": 1553,
+          "sha256": "eee8e032cb936a60312f594a8156c086173a9c0255a545bd11a448f22a7c77ae",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/config.json",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/config.json"
+        },
+        {
+          "path": "denoiser.onnx",
+          "size": 42661414,
+          "sha256": "b7621953291cfe05e695a9c0ff4255aa2f93239fc17c26627e18b7b6b8f72f0b",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/denoiser.onnx",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/denoiser.onnx"
+        },
+        {
+          "path": "onnx_update/config.json",
+          "size": 2152,
+          "sha256": "17d89d414ee302a82db7b330bf57b4cdf8541569392119c81f552178cafcb79b",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/config.json",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/config.json"
+        },
+        {
+          "path": "onnx_update/tokenizer.json",
+          "size": 22320,
+          "sha256": "6cc6bcbe380b8c37bd9f2514e37c5dfa3e00e122c6e3125dae5c4afe48e39158",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/tokenizer.json",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/tokenizer.json"
+        },
+        {
+          "path": "onnx_update/vieneu_acoustic_cached.onnx",
+          "size": 7207223,
+          "sha256": "f631e3387c788c3d8b9a5ac5df94952af5bc4c4d1049ff8a751e76a246fff2d4",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_acoustic_cached.onnx",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_acoustic_cached.onnx"
+        },
+        {
+          "path": "onnx_update/vieneu_backbone_shared.data",
+          "size": 415319040,
+          "sha256": "c7c072193db33d0542457e2612c7272c44c4279d1cafaf0aa4c379964911db2f",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_backbone_shared.data",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_backbone_shared.data"
+        },
+        {
+          "path": "onnx_update/vieneu_decode_step.onnx",
+          "size": 306134,
+          "sha256": "bedc379cea61ea5d616312750d95ad3924e055856662d19187a889a5edc24ceb",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_decode_step.onnx",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_decode_step.onnx"
+        },
+        {
+          "path": "onnx_update/vieneu_prefill.onnx",
+          "size": 324499,
+          "sha256": "27f8b064f6b57b5448e95d095f1959588c005d614678045c2b97ecccf3b7a0f7",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_prefill.onnx",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_prefill.onnx"
+        },
+        {
+          "path": "onnx_update/vieneu_v3_heads.npz",
+          "size": 52219622,
+          "sha256": "fb22484baa424bbb775133a6e5f0d00d6299b2b256fbe3312a864b85b9aed01e",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_v3_heads.npz",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/onnx_update/vieneu_v3_heads.npz"
+        },
+        {
+          "path": "speaker_encoder.onnx",
+          "size": 28303423,
+          "sha256": "a6ac6a63997761ae2997373e2ee1c47040854b4b759ea41ec48e4e42df0f4d73",
+          "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/speaker_encoder.onnx",
+          "mirror": "https://hf-mirror.com/pnnbao-ump/VieNeu-TTS-v3-Turbo/resolve/61b85e3d937fbbacb387714180e8182823512523/speaker_encoder.onnx"
+        }
+      ]
+    },
+    {
+      "id": "moss-audio-tokenizer-nano-onnx",
+      "title": "MOSS Audio Tokenizer Nano (ONNX codec for VieNeu v3)",
+      "kind": "codec",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX",
+      "usedBy": [
+        "bashcut.vieneu-tts"
+      ],
+      "huggingface": {
+        "repo": "OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX",
+        "revision": "ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae"
+      },
+      "size": 90572161,
+      "files": [
+        {
+          "path": "codec_browser_onnx_meta.json",
+          "size": 17036,
+          "sha256": "3e291c883bb7d11ff2fe8e964e3e495519760358859f35c951254c7741592731",
+          "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/codec_browser_onnx_meta.json",
+          "mirror": "https://hf-mirror.com/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/codec_browser_onnx_meta.json"
+        },
+        {
+          "path": "moss_audio_tokenizer_decode_full.onnx",
+          "size": 681902,
+          "sha256": "0fbbafe3fd4afa2a019af5c5ced204af6e2d1db044fa40f021525d2aee95b4ac",
+          "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_decode_full.onnx",
+          "mirror": "https://hf-mirror.com/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_decode_full.onnx"
+        },
+        {
+          "path": "moss_audio_tokenizer_decode_shared.data",
+          "size": 44198912,
+          "sha256": "e69d52e0f4e84ca27850557ee54face46632d3a5a16c89bd246c7c408466dcad",
+          "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_decode_shared.data",
+          "mirror": "https://hf-mirror.com/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_decode_shared.data"
+        },
+        {
+          "path": "moss_audio_tokenizer_decode_step.onnx",
+          "size": 351400,
+          "sha256": "9527c86a29e1837edec1f74db57d5eeaadb3a715af3382703566460afed25855",
+          "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_decode_step.onnx",
+          "mirror": "https://hf-mirror.com/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_decode_step.onnx"
+        },
+        {
+          "path": "moss_audio_tokenizer_encode.data",
+          "size": 44507136,
+          "sha256": "aa751265b2bab2887eac224484546b194875aa7494b607115439b3dc6b228a2c",
+          "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_encode.data",
+          "mirror": "https://hf-mirror.com/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_encode.data"
+        },
+        {
+          "path": "moss_audio_tokenizer_encode.onnx",
+          "size": 815775,
+          "sha256": "eadea4a645abdcf98714c7aead122ee2ce7da6e080f9f80b977cd1ca8e19473a",
+          "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_encode.onnx",
+          "mirror": "https://hf-mirror.com/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX/resolve/ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae/moss_audio_tokenizer_encode.onnx"
+        }
+      ]
+    },
+    {
+      "id": "rawtherapee-haldclut",
+      "title": "RawTherapee film simulation HaldCLUTs",
+      "kind": "lut-pack",
+      "license": "CC-BY-SA-4.0",
+      "licenseUrl": "https://rawpedia.rawtherapee.com/Film_Simulation",
+      "usedBy": [
+        "bashcut.resources"
+      ],
+      "size": 421602289,
+      "files": [
+        {
+          "path": "HaldCLUT.zip",
+          "size": 421602289,
+          "sha256": "0ffca81f30c72d7bbb85adab0ed98bbdeb0e1034cd6f5986f9f993bb66999dc2",
+          "url": "https://rawtherapee.com/shared/HaldCLUT.zip",
+          "mirror": "https://web.archive.org/web/2024id_/https://rawtherapee.com/shared/HaldCLUT.zip"
+        }
+      ]
+    }
+  ]
+}

@@ -118,5 +118,6 @@
       ]
     }
   ],
+  "models": ["rawtherapee-haldclut"],
   "skills": ["skills/resources/SKILL.md"]
 }

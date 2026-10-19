@@ -19,7 +19,7 @@ py -3 plugin.py speak --bridge 127.0.0.1:9876 --lines lines.json --voice "Mai An
 |---|---|---|
 | `voices` | the 25 preset voices with region, style and gender | – |
 | `check` | whether the Python the plugin uses has `vieneu` (3.10+) | – |
-| `setup` | makes the private environment `<data dir>/bashcut-plugins/bashcut.vieneu-tts/venv` (with this Python if it is 3.10+, else `uv` and Python 3.12) and installs `vieneu` and `onnxruntime`; `--download-model` also fetches the model; `--dry-run` prints the steps | – |
+| `setup` | makes the private environment `<data dir>/bashcut-plugins/bashcut.vieneu-tts/venv` (with this Python if it is 3.10+, else `uv` and Python 3.12) and installs `vieneu` and `onnxruntime`; `--download-model` also downloads the model files listed in the repository's `models.json` (pinned revision, SHA-256 checked, resumable; cached in `<data dir>/bashcut-models/`) and makes them visible to VieNeu, which then runs offline; `--dry-run` prints the steps | – |
 | `synthesize` | voices `--text` (repeatable) or `--lines lines.json` into `<out>/<line id>/take-N.wav` (`--takes` 1–6), with each take's `seconds` and `syllablesPerSecond`; writes `takes.json`. Places nothing | – |
 | `place` | imports wav takes and places each at `--seconds` on `--track` (default A2, added when missing); reports clips it overwrote | `media_import`, `sequence_inspect`, `sequence.addTracks`, `timeline.place`, `file.save` |
 | `speak` | `synthesize` then `place`: each line at its own `seconds`, or back to back from `--at` with `--gap`; with several takes, the one closest to `--rate` syllables a second | the same |

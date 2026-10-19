@@ -15,9 +15,12 @@ commands. Why and how: [`bashcut/decisions.md`](https://github.com/dongnguyenvie
 
 ```
 registry.json                      every plugin, its version and where its manifest is
+models.json                        every model / asset a plugin downloads, with SHA-256 (bashcut-models/1)
 plugins/<name>/bashcut-plugin.json the plugin's manifest
 plugins/<name>/…                   its code, skill (for agents) and tests
 tools/check_registry.py            checks the registry and every manifest
+tools/check_models.py              checks models.json and the plugins that use it
+tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
 docs/                              design notes
 ```
 
@@ -25,6 +28,7 @@ Check before committing:
 
 ```sh
 python3 tools/check_registry.py
+python3 tools/check_models.py
 python3 -m unittest discover -s tests
 (cd plugins/translate-captions && python3 -m unittest discover -s tests)
 (cd plugins/vieneu-tts && python3 -m unittest discover -s tests)
@@ -100,6 +104,28 @@ without fetching it; `tools/check_registry.py` keeps them equal to the manifest.
 
 `source` says where to get the files: a folder of this repo at a git ref. A release can later pin `ref` to a tag
 (`translate-captions-v0.1.0`) and add `sha256` of a zip without changing the format's version.
+
+## Models and assets: `models.json`
+
+Every model or asset a plugin downloads (voice models, cutout models, LUT packs, fonts…) is listed once in
+`models.json` (`schema: "bashcut-models/1"`), and a plugin names the ids it needs in its manifest (`"models": [...]`).
+
+| Field | Meaning |
+|---|---|
+| `id` | lower case (`vieneu-v3-turbo`); the cache folder name |
+| `title`, `kind`, `usedBy` | what it is, for people and for checks |
+| `license`, `licenseUrl` | required; a model is listed only after its licence was checked |
+| `huggingface` | `{repo, revision}` for Hugging Face models: `revision` is a commit, and every link must be pinned to it |
+| `size` | total bytes |
+| `files` | `[{path, size, sha256, url, mirror?}]`: **`sha256` is required**, a file without one is refused before downloading |
+
+The downloader `bashcut_models.py` (standard library; canonical copy in `tools/`, an identical copy in each plugin
+that downloads, kept equal by `check_models.py`) caches files in `<data dir>/bashcut-models/<id>/` (`BASHCUT_MODELS_DIR`
+overrides), resumes an interrupted download with an HTTP Range request, verifies the SHA-256 before a file is moved into
+place, falls back to the mirror, and prints progress on stderr. `Models.hf_cache()` makes verified Hugging Face files
+visible to `huggingface_hub` so a library such as VieNeu runs offline on them. A plugin finds `models.json` through
+`BASHCUT_MODELS_MANIFEST`, the repository root above its folder, or `<data dir>/bashcut-plugins/models.json` (where a
+host installs it next to the plugins).
 
 ## Rules
 
