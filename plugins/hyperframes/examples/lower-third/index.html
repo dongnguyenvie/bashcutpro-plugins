@@ -1,0 +1,165 @@
+<!doctype html>
+<!-- A lower third for who is speaking: an accent bar grows, the name plate slides out of it, the role follows with an
+     optional @handle chip, one light sweep crosses the name, and the exit plays it back in reverse. Transparent,
+     1080×1920, 4 s. The brand's mascot, when the project has one, stands on the name plate at the bar's end. Fill it through its variables; the motion is tuned inside. -->
+<!-- Pitfalls:
+  - bottom under ~420 px puts the plates in the platform's caption and button band; 480–620 is the safe range.
+  - side right sits in the platform's button column in the lower half: use it only with bottom ≥ 700 or no buttons.
+  - At nameSize 96 one line holds ~14 characters; a longer name shrinks itself to one line down to 80 % of nameSize
+    (~20 characters) and wraps past that: shorten it rather than lower nameSize further.
+  - A role over ~26 characters wraps to two lines and the @handle chip drops to its own row under it; shorten the
+    role ("Head roaster") rather than let three rows stack.
+  - Without a role the name plate stands alone and the hold looks long: shorten the duration to ~3 s.
+  - The mascot (220 px) stands on the name plate above the bar: with bottom over ~1300 its head leaves the frame.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "name", "type": "string", "label": "Name", "default": "Hoàng Minh Châu"},
+  {"id": "role", "type": "string", "label": "Role (empty hides it)", "default": "Head roaster"},
+  {"id": "handle", "type": "string", "label": "@handle chip (empty hides it)", "default": "@minhchau.roasts"},
+  {"id": "side", "type": "string", "label": "Side: left or right", "default": "left"},
+  {"id": "bottom", "type": "number", "label": "Distance from the frame bottom (px)", "default": 520},
+  {"id": "nameSize", "type": "number", "label": "Name size (px)", "default": 96},
+  {"id": "glint", "type": "boolean", "label": "One light sweep across the name", "default": true},
+  {"id": "accent", "type": "color", "label": "Bar and role plate colour", "default": "#2F7BFF"},
+  {"id": "background", "type": "color", "label": "Name plate colour", "default": "#111318"},
+  {"id": "text", "type": "color", "label": "Name colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Name font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Role font (empty keeps the design font)", "default": ""},
+  {"id": "mascot", "type": "image", "label": "Mascot picture (bin/graphic copies the brand pose; empty hides it)", "default": ""},
+  {"id": "pose", "type": "string", "label": "Brand mascot pose (--set pose=thinking)", "default": "default"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #2F7BFF; --background: #111318; --text: #FFFFFF; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; }
+      #lt { position: absolute; left: 64px; display: flex; align-items: stretch; max-width: 952px;
+        filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.38)); }
+      #lt.right { left: auto; right: 64px; flex-direction: row-reverse; }
+      #bar { flex: none; width: 16px; border-radius: 8px; background: var(--accent); transform-origin: 50% 100%; position: relative; z-index: 2; }
+      #stack { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; overflow: hidden; padding: 0 24px 24px 0; margin-bottom: -24px; }
+      #lt.right #stack { align-items: flex-end; padding: 0 0 24px 24px; }
+      #namePlate { width: max-content; max-width: 912px; position: relative; overflow: hidden; padding: 14px 44px 18px 34px; border-radius: 0 22px 22px 0;
+        background: color-mix(in srgb, var(--background) 92%, transparent); }
+      #lt.right #namePlate { border-radius: 22px 0 0 22px; padding: 14px 34px 18px 44px; text-align: right; }
+      #name { font-family: var(--heading-font), Arial, sans-serif; font-weight: 800; line-height: 1.17; letter-spacing: -0.025em;
+        color: var(--text); padding-top: 0.06em; }
+      #glint { position: absolute; top: -20%; bottom: -20%; left: 0; width: 26%; pointer-events: none;
+        background: linear-gradient(100deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0) 100%); }
+      #roleRow { width: max-content; max-width: 912px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+      #lt.right #roleRow { flex-direction: row-reverse; }
+      #rolePlate { flex: none; max-width: 100%; padding: 8px 30px 12px 34px; border-radius: 0 16px 16px 0; background: var(--accent);
+        font-family: var(--body-font), Arial, sans-serif; font-size: 58px; font-weight: 650; line-height: 1.2;
+        color: var(--background); }
+      #lt.right #rolePlate { border-radius: 16px 0 0 16px; padding: 8px 34px 12px 30px; }
+      #handle { padding: 8px 28px 12px; border-radius: 999px; border: 3px solid var(--accent);
+        background: color-mix(in srgb, var(--background) 85%, transparent); font-family: var(--body-font), Arial, sans-serif;
+        font-size: 58px; font-weight: 700; line-height: 1.15; color: var(--text); white-space: nowrap; }
+      #mascot { position: absolute; left: 96px; width: 220px; height: 220px; object-fit: contain; object-position: 50% 100%;
+        transform-origin: 50% 100%; display: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.38)); }
+      #mascot.right { left: auto; right: 96px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4" data-width="1080" data-height="1920">
+      <div id="lt">
+        <div id="bar"></div>
+        <div id="stack">
+          <div id="namePlate"><div id="name"></div><div id="glint"></div></div>
+          <div id="roleRow"><div id="rolePlate"></div><div id="handle"></div></div>
+        </div>
+      </div>
+      <img id="mascot" alt="" />
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+
+      const right = String(v.side).trim().toLowerCase() === "right";
+      const lt = document.getElementById("lt");
+      if (right) lt.classList.add("right");
+      lt.style.bottom = `${v.bottom}px`;
+      const nameEl = document.getElementById("name");
+      nameEl.textContent = v.name;
+      // A name that would wrap shrinks to one line, down to 80 % of nameSize; past that it wraps (shorten it instead).
+      const nameSize = Math.max(48, Number(v.nameSize) || 96);
+      function fitName() {
+        for (let size = nameSize; size >= Math.round(nameSize * 0.8); size -= 2) {
+          nameEl.style.fontSize = `${size}px`;
+          if (nameEl.getBoundingClientRect().height < size * 1.17 * 1.5) break;
+        }
+      }
+      fitName();
+      const rolePlate = document.getElementById("rolePlate");
+      rolePlate.textContent = v.role;
+      const hasRole = Boolean(String(v.role ?? "").trim());
+      rolePlate.style.display = hasRole ? "block" : "none";
+      const handle = document.getElementById("handle");
+      handle.textContent = v.handle;
+      const hasHandle = Boolean(String(v.handle ?? "").trim());
+      handle.style.display = hasHandle ? "block" : "none";
+      document.getElementById("roleRow").style.display = hasRole || hasHandle ? "flex" : "none";
+      const glint = document.getElementById("glint");
+      glint.style.display = v.glint ? "block" : "none";
+      // The brand's mascot (a pose bin/graphic copied in) stands on the name plate's top edge at the bar's end, once the
+      // role row below has set where the plate sits.
+      const mascot = document.getElementById("mascot");
+      if (right) mascot.classList.add("right");
+      const namePlate = document.getElementById("namePlate");
+      function layout() {
+        fitName();
+        if (v.mascot) mascot.style.top = `${namePlate.getBoundingClientRect().top - 220 + 6}px`;
+      }
+      layout();
+      // A font that loads after this script changes the widths; fit again (no timing changes).
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+
+      // Plates slide out of the bar: #stack clips them at the bar's edge, so they start a plate-width behind it.
+      const out = right ? "105%" : "-105%";
+      // Every frame is a pure function of time: one paused timeline, no clocks or random.
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#bar", { scaleY: 0 }, { scaleY: 1, duration: 0.4, ease: "expo.out" }, 0);
+      tl.fromTo("#namePlate", { xPercent: parseFloat(out) }, { xPercent: 0, duration: 0.62, ease: "power4.out" }, 0.18);
+      tl.fromTo("#name", { opacity: 0, x: right ? 30 : -30 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 0.3);
+      if (hasRole) tl.fromTo(rolePlate, { xPercent: parseFloat(out) }, { xPercent: 0, duration: 0.55, ease: "power4.out" }, 0.42);
+      if (hasHandle) tl.fromTo(handle, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.42, ease: "back.out(2)" }, hasRole ? 0.68 : 0.46);
+      // One light sweep across the name, clipped by the plate's rounded corners, once the plate has settled.
+      if (v.glint) {
+        tl.fromTo(glint, { xPercent: right ? 420 : -140, skewX: -18, opacity: 1 }, { xPercent: right ? -140 : 420, skewX: -18, duration: 0.75, ease: "power2.inOut" }, 1.0);
+      }
+      if (v.mascot) {
+        mascot.src = v.mascot;
+        mascot.style.display = "block";
+        tl.fromTo(mascot, { scale: 0, y: 40, rotation: right ? 8 : -8 }, { scale: 1, y: 0, rotation: 0, duration: 0.4, ease: "back.out(2.2)" }, 0.55);
+        tl.to(mascot, { scale: 0, y: 30, duration: 0.25, ease: "power2.in" }, END - 0.7);
+      }
+      // Exit: the same moves played back into the bar.
+      if (hasHandle) tl.to(handle, { opacity: 0, scale: 0.8, duration: 0.18, ease: "power2.in" }, END - 0.6);
+      if (hasRole) tl.to(rolePlate, { xPercent: parseFloat(out), duration: 0.32, ease: "power3.in" }, END - 0.55);
+      tl.to("#namePlate", { xPercent: parseFloat(out), duration: 0.36, ease: "power3.in" }, END - 0.48);
+      tl.to("#bar", { scaleY: 0, opacity: 0, duration: 0.22, ease: "power2.in" }, END - 0.22);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,172 @@
+<!doctype html>
+<!-- The brand sign-off: the logo (or an accent monogram) scales in and settles while the wordmark letters assemble
+     from blur, then the tagline fades up, an accent rule grows, the handle line lands and one soft sheen crosses the
+     wordmark; it holds still to the end. Transparent (fullFrame paints the background), 1080×1920, 3.5 s. -->
+<!-- Pitfalls:
+  - A white sheen over flat white letters is invisible: the letters keep their top-lit gradient (74 % at the foot);
+    a text colour close to the background makes both the gradient and the sheen vanish.
+  - The sheen's background position must run past ±100 % (here -120 % → 220 %), or a glow stays on the last letters.
+  - Over ~16 characters (stacked) the wordmark shrinks below ~110 px and stops reading as a sign-off; shorten it instead.
+  - fadeOut eats 0.4 s of the hold: at the 3.5 s default the still drops to ~1 s; give it 3.9 s.
+-->
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "logo", "type": "image", "label": "Logo picture (bin/graphic copies the brand logo; empty shows an accent monogram of the first letter)", "default": ""},
+  {"id": "showMark", "type": "boolean", "label": "Show the logo or monogram", "default": true},
+  {"id": "wordmark", "type": "string", "label": "Wordmark", "default": "Lumen Studio"},
+  {"id": "tagline", "type": "string", "label": "Tagline (empty hides it)", "default": "Stories, cut with light"},
+  {"id": "handle", "type": "string", "label": "Handle or web address line (empty hides it)", "default": "@lumen.studio"},
+  {"id": "layout", "type": "string", "label": "Layout: stacked (logo above the wordmark) or inline (logo left of it)", "default": "stacked"},
+  {"id": "top", "type": "number", "label": "Lockup top (px)", "default": 560},
+  {"id": "size", "type": "number", "label": "Wordmark size (px; long wordmarks shrink to fit)", "default": 150},
+  {"id": "accent", "type": "color", "label": "Monogram and rule colour", "default": "#FF6B3D"},
+  {"id": "background", "type": "color", "label": "Background colour (painted when fullFrame is on)", "default": "#0E0F13"},
+  {"id": "fullFrame", "type": "boolean", "label": "Paint the background over the whole frame", "default": false},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "fadeOut", "type": "boolean", "label": "Fade out in the last 0.4 s (add 0.4 s to the duration to keep the hold)", "default": false},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; color: var(--text); }
+      #bg { position: absolute; inset: 0; display: none;
+        background: radial-gradient(ellipse 90% 60% at 50% 40%, color-mix(in srgb, var(--background) 88%, #fff), var(--background) 70%); }
+      #lockup { position: absolute; left: 60px; right: 60px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+      #head { display: flex; flex-direction: column; align-items: center; gap: 44px; }
+      #lockup.inline #head { flex-direction: row; gap: 40px; }
+      #mark { position: relative; width: 220px; height: 220px; flex: none; }
+      #mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+      #mono { width: 100%; height: 100%; border-radius: 30%; background: var(--accent); display: flex; align-items: center;
+        justify-content: center; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800; color: var(--background);
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35); line-height: 1; }
+      #word { position: relative; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800; line-height: 1.18;
+        letter-spacing: -0.035em; white-space: nowrap; filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.35)); }
+      /* Letters are lit from above (full colour on top, 74 % at the foot) so the sheen has somewhere to go. */
+      #word .ch { display: inline-block; white-space: pre; color: transparent; -webkit-background-clip: text; background-clip: text;
+        background-image: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 74%, var(--background)) 92%); }
+      #sheen { position: absolute; inset: 0; pointer-events: none; color: transparent; text-shadow: none;
+        background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--text) 40%, #fff) 50%, transparent 70%) no-repeat;
+        background-size: 45% 100%; -webkit-background-clip: text; background-clip: text;
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.55)); }
+      #rule { width: 180px; height: 8px; border-radius: 4px; background: var(--accent); margin-top: 40px; transform-origin: center; }
+      #tagline { font-size: 64px; font-weight: 500; line-height: 1.2; margin-top: 30px; letter-spacing: -0.01em;
+        color: color-mix(in srgb, var(--text) 88%, transparent); text-shadow: 0 3px 16px rgba(0, 0, 0, 0.35); }
+      #handle { font-size: 58px; font-weight: 600; line-height: 1.2; margin-top: 18px; color: var(--accent);
+        text-shadow: 0 3px 16px rgba(0, 0, 0, 0.3); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3.5" data-width="1080" data-height="1920">
+      <div id="bg"></div>
+      <div id="lockup">
+        <div id="head"><div id="mark"></div><div id="word"></div></div>
+        <div id="tagline"></div><div id="rule"></div><div id="handle"></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const $ = (id) => document.getElementById(id);
+      if (v.fullFrame) $("bg").style.display = "block";
+      const lockup = $("lockup");
+      const inline = String(v.layout).trim().toLowerCase() === "inline";
+      if (inline) lockup.classList.add("inline");
+      lockup.style.top = `${v.top}px`;
+
+      // Wordmark: one span per letter, the sheen a text-clipped copy on top. Too wide → the size shrinks to fit.
+      const word = $("word");
+      const letters = Array.from(String(v.wordmark));
+      let size = Math.max(60, Number(v.size) || 150);
+      word.style.fontSize = `${size}px`;
+      for (const c of letters) {
+        const span = document.createElement("span");
+        span.className = "ch";
+        span.textContent = c;
+        word.appendChild(span);
+      }
+      const sheen = document.createElement("span");
+      sheen.id = "sheen";
+      sheen.textContent = v.wordmark;
+      word.appendChild(sheen);
+
+      // The mark: the logo picture or an accent monogram of the wordmark's first letter.
+      const mark = $("mark");
+      const markSize = inline ? Math.round(size * 1.15) : Math.round(size * 1.45);
+      mark.style.width = mark.style.height = `${markSize}px`;
+      if (!v.showMark) mark.style.display = "none";
+      else if (v.logo) {
+        const img = document.createElement("img");
+        img.src = v.logo;
+        mark.appendChild(img);
+      } else {
+        const mono = document.createElement("div");
+        mono.id = "mono";
+        mono.textContent = (letters.find((c) => c.trim()) ?? "").toUpperCase();
+        mono.style.fontSize = `${Math.round(markSize * 0.56)}px`;
+        mark.appendChild(mono);
+      }
+      const room = 900 - (inline && v.showMark ? markSize + 40 : 0);
+      if (word.scrollWidth > room) {
+        size = Math.floor(size * room / word.scrollWidth);
+        word.style.fontSize = `${size}px`;
+      }
+      $("tagline").textContent = v.tagline;
+      $("handle").textContent = v.handle;
+      if (!v.tagline) $("tagline").style.display = "none";
+      if (!v.handle) $("handle").style.display = "none";
+      for (const id of ["tagline", "handle"]) {
+        const el = $(id);
+        if (el.scrollWidth > 960) el.style.fontSize = `${Math.floor(parseFloat(getComputedStyle(el).fontSize) * 960 / el.scrollWidth)}px`;
+      }
+
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      if (v.fullFrame) tl.fromTo("#bg", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power1.out" }, 0);
+      // The mark scales in from 0.6 and settles softly.
+      tl.fromTo(mark, { opacity: 0, scale: 0.6 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 0.05);
+      tl.to(mark, { scale: 1, duration: 0.8, ease: "back.out(1.5)" }, 0.05);
+      // Letters assemble from a slight offset and blur, each gap shorter than the last.
+      const chars = Array.from(word.querySelectorAll(".ch"));
+      let at = 0.3, gap = Math.min(0.09, 0.75 / Math.max(1, chars.length));
+      chars.forEach((ch, i) => {
+        const dx = 26 * (i % 2 ? 1 : 0.6), dy = 14 * (i % 3 === 0 ? -1 : 1);
+        tl.fromTo(ch, { opacity: 0, x: dx, y: dy, filter: "blur(12px)" },
+          { opacity: 1, x: 0, y: 0, filter: "blur(0px)", duration: 0.5, ease: "power3.out" }, at);
+        at += gap;
+        gap *= 0.9;
+      });
+      const wordDone = at + 0.45;
+      tl.fromTo("#tagline", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, wordDone - 0.15);
+      tl.fromTo("#rule", { scaleX: 0 }, { scaleX: 1, duration: 0.55, ease: "power3.inOut" }, wordDone);
+      tl.fromTo("#handle", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, wordDone + 0.15);
+      // One soft sheen across the wordmark, then everything holds.
+      tl.fromTo(sheen, { backgroundPosition: "-120% 0%" }, { backgroundPosition: "220% 0%", duration: 0.8, ease: "power2.inOut" }, wordDone + 0.1);
+      tl.set(sheen, { opacity: 0 }, wordDone + 0.95);
+      if (v.fadeOut) tl.to(lockup, { opacity: 0, duration: 0.4, ease: "power1.in" }, END - 0.4);
+      if (v.fadeOut && v.fullFrame) tl.to("#bg", { opacity: 0, duration: 0.4, ease: "power1.in" }, END - 0.4);
+      tl.set({}, {}, END);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

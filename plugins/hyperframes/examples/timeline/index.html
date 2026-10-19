@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- A vertical timeline (a day plan, a history, the steps of a process): the line grows down and each stop lights up
+     on its word (stops is a JSON array of {time, text, at}). Transparent, 1080×1920, 5.5 s. Raw material: change the
+     card, the markers and the timing for the video. -->
+<!-- Pitfalls:
+  - Each one-line stop adds ~153 px under a card top of 420: five stops end at ~1390 px, six at ~1540, in the
+    platform's bottom band. Keep to five, or split the day into two cards.
+  - A stop's text wraps after ~27 characters at 50 px and adds ~60 px; shorten it ("Sunrise, Langbiang").
+  - The line grows at one speed from the first at to the last, but the dots are evenly spaced: with uneven gaps (0.8,
+    1.0, 1.2, 3.6) dots light ahead of the line. Keep the gaps between at values roughly even.
+  - stops must be in at order (the line reads the first and last), and the last at must be under
+    data-duration − 0.8 (4.7 s at 5.5 s) so the line ends before the swing-out.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title", "default": "Day 1"},
+  {"id": "stops", "type": "string", "label": "Stops (JSON [{time, text, at}])", "default": "[{\"time\":\"07:00\",\"text\":\"Sunrise at the hill\",\"at\":0.8},{\"time\":\"10:30\",\"text\":\"Flower garden\",\"at\":1.6},{\"time\":\"13:00\",\"text\":\"Lunch by the lake\",\"at\":2.4},{\"time\":\"19:00\",\"text\":\"Night market\",\"at\":3.2}]"},
+  {"id": "accent", "type": "color", "label": "Line and dot colour", "default": "#7CC4FF"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Line track colour", "default": "#3A3D45"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; perspective: 1600px;
+        font-family: var(--body-font), Arial, sans-serif; }
+      #card { position: absolute; left: 90px; top: 420px; width: 900px; padding: 56px 60px 40px; border-radius: 36px;
+        background: color-mix(in srgb, var(--background) 86%, transparent); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        color: var(--text); }
+      #title { font-family: var(--heading-font), Arial, sans-serif; font-size: 62px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 28px; }
+      #list { position: relative; padding-left: 70px; }
+      #track, #fill { position: absolute; left: 22px; top: 24px; bottom: 40px; width: 8px; border-radius: 4px; }
+      #track { background: var(--secondary); }
+      #fill { transform-origin: 50% 0%; }
+      .stop { position: relative; padding: 18px 0 30px; }
+      .dot { position: absolute; left: -66px; top: 22px; width: 44px; height: 44px; border-radius: 50%;
+        border: 6px solid color-mix(in srgb, var(--text) 35%, transparent); background: var(--background); }
+      .time { font-size: 34px; font-weight: 700; letter-spacing: 0.04em; }
+      .text { font-size: 50px; font-weight: 700; margin-top: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5.5" data-width="1080" data-height="1920">
+      <div id="card"><div id="title"></div><div id="list"><div id="track"></div><div id="fill"></div></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const stops = JSON.parse(v.stops);
+      document.getElementById("title").textContent = v.title;
+      const list = document.getElementById("list");
+      const fill = document.getElementById("fill");
+      fill.style.background = v.accent;
+      const card = document.getElementById("card");
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(card, { opacity: 0, y: 80, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      const first = stops[0]?.at ?? 0.8;
+      const last = stops.at(-1)?.at ?? first;
+      tl.fromTo(fill, { scaleY: 0 }, { scaleY: 1, duration: Math.max(0.3, last - first + 0.3), ease: "none" }, Math.max(0.3, first - 0.3));
+      for (const stop of stops) {
+        const el = document.createElement("div");
+        el.className = "stop";
+        el.innerHTML = '<div class="dot"></div><div class="time"></div><div class="text"></div>';
+        el.querySelector(".time").textContent = stop.time;
+        el.querySelector(".time").style.color = v.accent;
+        el.querySelector(".text").textContent = stop.text;
+        list.appendChild(el);
+        // Each stop lands on its word: the dot fills, the text rises in.
+        tl.fromTo(el.querySelectorAll(".time, .text"), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.06, ease: "power2.out" }, stop.at - 0.15);
+        tl.fromTo(el.querySelector(".dot"), { scale: 0.6 }, { scale: 1, background: v.accent, borderColor: v.text, duration: 0.3, ease: "back.out(3)" }, stop.at - 0.1);
+      }
+      tl.to(card, { rotationY: -70, x: -260, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

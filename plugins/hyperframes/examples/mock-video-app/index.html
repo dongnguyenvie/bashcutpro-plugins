@@ -1,0 +1,255 @@
+<!doctype html>
+<!-- A made-up video app screen, no real brand: a list of videos (mode list) or one video's page with the player, title,
+     channel row and up-next list (mode watch). The screen rises in a phone, rows land one by one, then one row is
+     picked out on its word (highlight, highlightAt) and in watch mode the view count climbs. Videos is a JSON string
+     [{title, channel, views, age, duration, thumb}] where thumb is an optional picture file in this folder.
+     Transparent around the phone, 1080×1920, 4.5 s. Raw material: change the app, the rows and the timing. -->
+<!-- Pitfalls:
+  - It is a mock: never put a real platform's name, logo or colours in appName, or a real channel's name and face, to
+    pass it off as a real screenshot. For a real one, use a screen recording or a screenshot with focus-frame.
+  - A title wraps to two lines after ~34 characters in list mode and ~30 in watch mode, then is cut with an ellipsis:
+    the row grows, so five two-line rows in list mode run past the phone's bottom. Keep titles short or show four.
+  - Rows land 0.15 s apart from 0.6 s: with six rows the last lands at 1.35 s; highlightAt before that picks a row
+    that is not there yet.
+  - highlight counts from 1 in the list (in watch mode the up-next rows; 0 picks nothing); a number past the rows
+    picks nothing and shows no error.
+  - Views in watch mode count up from viewsFrom to the first video's views (a plain number such as 128000): a views
+    text like "128K views" cannot count and is shown as it is.
+  - With phone off the screen fills the frame edge to edge and the status bar sits under the platform's top band;
+    keep phone on for vertical shorts.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "mode", "type": "string", "label": "Screen: list (a feed of videos) or watch (one video page)", "default": "list"},
+  {"id": "appName", "type": "string", "label": "App name in the top bar (made up, not a real platform)", "default": "Clips"},
+  {"id": "search", "type": "string", "label": "Search text in the top bar (empty shows the app name only)", "default": "da lat 48h"},
+  {"id": "videos", "type": "string", "label": "Videos (JSON [{title, channel, views, age, duration, thumb}])", "default": "[{\"title\":\"48 hours in Da Lat on 3 million dong\",\"channel\":\"Mai on the road\",\"views\":128000,\"age\":\"2 days ago\",\"duration\":\"12:41\"},{\"title\":\"Night market food tour\",\"channel\":\"Street bites\",\"views\":56000,\"age\":\"1 week ago\",\"duration\":\"8:05\"},{\"title\":\"Pine forest camping, no crowds\",\"channel\":\"Outdoors VN\",\"views\":9100,\"age\":\"3 weeks ago\",\"duration\":\"15:20\"},{\"title\":\"Cheapest homestay with a view\",\"channel\":\"Budget trips\",\"views\":230000,\"age\":\"1 month ago\",\"duration\":\"6:58\"}]"},
+  {"id": "highlight", "type": "number", "label": "Row to pick out (1 = first; 0 = none)", "default": 1},
+  {"id": "highlightAt", "type": "number", "label": "Pick it out at (s)", "default": 1.8},
+  {"id": "viewsFrom", "type": "number", "label": "Watch mode: view count starts from", "default": 0},
+  {"id": "phone", "type": "boolean", "label": "Show the screen in a phone (off: full frame)", "default": true},
+  {"id": "locale", "type": "string", "label": "Number format locale", "default": "en-US"},
+  {"id": "viewsWord", "type": "string", "label": "Word after the view count", "default": "views"},
+  {"id": "accent", "type": "color", "label": "Highlight and button colour", "default": "#FF4D3D"},
+  {"id": "background", "type": "color", "label": "Screen colour", "default": "#FFFFFF"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#111318"},
+  {"id": "secondary", "type": "color", "label": "Secondary text colour", "default": "#575D6A"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --accent: #FF4D3D; --background: #FFFFFF;
+        --text: #111318; --secondary: #575D6A; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; }
+      #phone { position: absolute; left: 120px; top: 230px; width: 840px; height: 1460px; border-radius: 86px;
+        background: #0B0C0F; padding: 22px; box-shadow: 0 40px 90px rgba(0, 0, 0, 0.5); }
+      #phone.flat { left: 0; top: 0; width: 1080px; height: 1920px; border-radius: 0; padding: 0; box-shadow: none; }
+      #screen { position: relative; width: 100%; height: 100%; border-radius: 66px; overflow: hidden;
+        background: var(--background); color: var(--text); }
+      #phone.flat #screen { border-radius: 0; }
+      #status { height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 8px 56px 0;
+        font-size: 28px; font-weight: 700; }
+      #status .dots { letter-spacing: 4px; }
+      #bar { height: 96px; display: flex; align-items: center; gap: 20px; padding: 0 32px; }
+      #logo { width: 54px; height: 38px; border-radius: 12px; background: var(--accent); position: relative; flex: none; }
+      #logo::after { content: ""; position: absolute; left: 22px; top: 10px; border-left: 16px solid #fff;
+        border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+      #appName { font-family: var(--heading-font), Arial, sans-serif; font-size: 36px; font-weight: 800; letter-spacing: -0.02em; flex: none; }
+      #search { flex: 1; height: 62px; border-radius: 31px; padding: 0 26px; display: flex; align-items: center;
+        background: color-mix(in srgb, var(--text) 7%, transparent); font-size: 28px; color: var(--secondary);
+        white-space: nowrap; overflow: hidden; }
+      #list { padding: 10px 32px 0; display: flex; flex-direction: column; gap: 30px; }
+      .video { position: relative; border-radius: 28px; padding: 10px; margin: -10px; }
+      .thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background-size: cover;
+        background-position: center; }
+      .thumb .time { position: absolute; right: 14px; bottom: 14px; padding: 4px 10px; border-radius: 8px;
+        background: rgba(0, 0, 0, 0.78); color: #fff; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .meta { display: flex; gap: 18px; margin-top: 16px; }
+      .avatar { width: 58px; height: 58px; border-radius: 50%; flex: none; }
+      .title { font-size: 31px; font-weight: 700; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden; }
+      .sub { font-size: 25px; color: var(--secondary); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ring { position: absolute; inset: 0; border-radius: 28px; border: 6px solid var(--accent); opacity: 0; }
+      /* Watch mode: the player, the video's own block, then compact up-next rows. */
+      #player { position: relative; width: 100%; aspect-ratio: 16 / 9; background-size: cover; background-position: center; }
+      #progress { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: rgba(255, 255, 255, 0.35); }
+      #progressFill { width: 0; height: 100%; background: var(--accent); }
+      #watch { padding: 24px 32px 0; }
+      #watchTitle { font-family: var(--heading-font), Arial, sans-serif; font-size: 40px; font-weight: 800; line-height: 1.2;
+        letter-spacing: -0.015em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      #watchSub { font-size: 26px; color: var(--secondary); margin-top: 10px; font-variant-numeric: tabular-nums; }
+      #channel { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
+      #channelName { font-size: 30px; font-weight: 700; flex: 1; }
+      #follow { padding: 16px 30px; border-radius: 34px; background: var(--text); color: var(--background);
+        font-size: 27px; font-weight: 700; }
+      #actions { display: flex; gap: 16px; margin-top: 26px; }
+      .chip { padding: 14px 26px; border-radius: 30px; background: color-mix(in srgb, var(--text) 7%, transparent);
+        font-size: 26px; font-weight: 600; }
+      #upNext { display: flex; flex-direction: column; gap: 26px; padding: 34px 32px 0; }
+      .compact { position: relative; display: flex; gap: 22px; border-radius: 24px; padding: 8px; margin: -8px; }
+      .compact .thumb { width: 300px; flex: none; border-radius: 16px; }
+      .compact .title { font-size: 28px; }
+      .compact .sub { font-size: 23px; white-space: normal; }
+      .compact .ring { border-radius: 24px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4.5" data-width="1080" data-height="1920">
+      <div id="phone"><div id="screen">
+        <div id="status"><span>9:41</span><span class="dots">●●●</span></div>
+        <div id="bar"><div id="logo"></div><div id="appName"></div><div id="search"></div></div>
+        <div id="body" data-layout-allow-overflow></div>
+      </div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const $ = (id) => document.getElementById(id);
+      const el = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      };
+      const phone = $("phone");
+      if (!v.phone) phone.classList.add("flat");
+      $("appName").textContent = v.appName;
+      const searchText = String(v.search ?? "").trim();
+      if (searchText) $("search").textContent = `⌕  ${searchText}`;
+      else $("search").style.visibility = "hidden";
+      const videos = JSON.parse(v.videos);
+      const watch = String(v.mode).trim().toLowerCase() === "watch";
+      // Placeholder pictures: a gradient per row from a fixed palette (no randomness), or the row's own picture.
+      const palette = [["#F6A35C", "#C2416B"], ["#4FB7A6", "#2D5C8A"], ["#8DB255", "#3E6B3A"], ["#B58BE8", "#4E3C99"],
+        ["#F2CF5B", "#D9622B"], ["#6EC6E8", "#3456A8"]];
+      const picture = (node, video, index) => {
+        const [a, b] = palette[index % palette.length];
+        node.style.backgroundImage = video.thumb ? `url("${video.thumb}")` : `linear-gradient(135deg, ${a}, ${b})`;
+      };
+      const avatar = (index) => {
+        const node = el("div", "avatar");
+        const [a, b] = palette[(index + 3) % palette.length];
+        node.style.background = `linear-gradient(135deg, ${a}, ${b})`;
+        return node;
+      };
+      const number = (n) => (typeof n === "number" ? new Intl.NumberFormat(v.locale || "en-US", { notation: "compact" }).format(n) : String(n ?? ""));
+      const viewsText = (n) => (typeof n === "number" ? `${number(n)} ${v.viewsWord}` : String(n ?? ""));
+      const body = $("body");
+      const rows = [];
+      let viewsNode = null, progressFill = null;
+      if (!watch) {
+        const list = el("div");
+        list.id = "list";
+        videos.forEach((video, index) => {
+          const row = el("div", "video");
+          const thumb = el("div", "thumb");
+          picture(thumb, video, index);
+          if (video.duration) thumb.appendChild(el("span", "time", video.duration));
+          const meta = el("div", "meta");
+          const words = el("div");
+          words.appendChild(el("div", "title", video.title));
+          words.appendChild(el("div", "sub", [video.channel, viewsText(video.views), video.age].filter(Boolean).join(" · ")));
+          meta.append(avatar(index), words);
+          row.append(thumb, meta, el("div", "ring"));
+          list.appendChild(row);
+          rows.push(row);
+        });
+        body.appendChild(list);
+      } else {
+        const [main, ...next] = videos;
+        const player = el("div");
+        player.id = "player";
+        picture(player, main ?? {}, 0);
+        const progress = el("div");
+        progress.id = "progress";
+        progressFill = el("div");
+        progressFill.id = "progressFill";
+        progress.appendChild(progressFill);
+        player.appendChild(progress);
+        const block = el("div");
+        block.id = "watch";
+        const title = el("div", "", main?.title ?? "");
+        title.id = "watchTitle";
+        viewsNode = el("div", "", "");
+        viewsNode.id = "watchSub";
+        const channel = el("div");
+        channel.id = "channel";
+        const channelName = el("div", "", main?.channel ?? "");
+        channelName.id = "channelName";
+        const follow = el("div", "", "Follow");
+        follow.id = "follow";
+        channel.append(avatar(0), channelName, follow);
+        const actions = el("div");
+        actions.id = "actions";
+        for (const label of ["▲ Like", "Share", "Save"]) actions.appendChild(el("div", "chip", label));
+        block.append(title, viewsNode, channel, actions);
+        const upNext = el("div");
+        upNext.id = "upNext";
+        next.forEach((video, index) => {
+          const row = el("div", "compact");
+          const thumb = el("div", "thumb");
+          picture(thumb, video, index + 1);
+          if (video.duration) thumb.appendChild(el("span", "time", video.duration));
+          const words = el("div");
+          words.appendChild(el("div", "title", video.title));
+          words.appendChild(el("div", "sub", [video.channel, viewsText(video.views)].filter(Boolean).join(" · ")));
+          row.append(thumb, words, el("div", "ring"));
+          upNext.appendChild(row);
+          rows.push(row);
+        });
+        body.append(player, block, upNext);
+      }
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      // Every frame is a pure function of time: one paused timeline, no clocks or random.
+      tl.fromTo(phone, { opacity: 0, y: 140, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      if (watch) {
+        tl.fromTo(["#player", "#watch"], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.12, ease: "power2.out" }, 0.35);
+        tl.fromTo(progressFill, { width: "0%" }, { width: "38%", duration: END - 0.6, ease: "none" }, 0.4);
+        // The view count climbs to the video's views (a plain number), one tl.set per step.
+        const target = videos[0]?.views;
+        if (typeof target === "number") {
+          const from = Math.max(0, Number(v.viewsFrom) || 0);
+          const steps = 14;
+          for (let s = 0; s <= steps; s += 1) {
+            const n = Math.round(from + (target - from) * (s / steps));
+            tl.set(viewsNode, { textContent: [viewsText(n), videos[0].age].filter(Boolean).join(" · ") }, 0.5 + s * 0.06);
+          }
+        } else {
+          viewsNode.textContent = [viewsText(target), videos[0]?.age].filter(Boolean).join(" · ");
+        }
+      }
+      rows.forEach((row, index) => {
+        tl.fromTo(row, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, (watch ? 0.75 : 0.6) + index * 0.15);
+      });
+      const picked = rows[Math.round(Number(v.highlight)) - 1];
+      if (picked) {
+        tl.fromTo(picked, { scale: 1 }, { scale: 1.04, duration: 0.18, ease: "back.out(2)" }, v.highlightAt);
+        tl.fromTo(picked.querySelector(".ring"), { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 0.22, ease: "power2.out" }, v.highlightAt);
+        picked.style.background = "color-mix(in srgb, var(--accent) 0%, transparent)";
+        tl.to(picked, { backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)", duration: 0.2 }, v.highlightAt);
+      }
+      tl.to(phone, { opacity: 0, y: -60, duration: 0.3, ease: "power2.in" }, END - 0.3);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<!-- A calendar whose good months (or days) light up on their words: a 12-month grid, or one month's days with
+     mode "days" (items is a JSON array of {month or day, to (a span of days), at, note, soft}: at = seconds from the
+     start when that cell lights; soft lights it in the secondary colour; notes build a legend under the grid).
+     Transparent, 1080×1920, 5.5 s. Raw material: change the card, the cells and the timing for the video. -->
+<!-- Pitfalls:
+  - Custom labels over ~4 characters are cut off in the 104 px legend key, and from ~6 ("January") they widen their
+    column until the grid runs out of the 900 px card; use 3-letter labels ("Jan") or leave labels empty for T1–T12.
+  - months: six one-line notes end the card at ~1480 px, a seventh at ~1540, in the platform's bottom band. days: a
+    month that spans six week rows (August 2026) ends at ~1465 with two notes and ~1640 with four; keep it to two.
+  - A note wraps after ~34 characters (~32 in days mode) and each extra line adds ~48 px; the title wraps after ~26
+    characters at 60 px. Shorten the words before adding notes.
+  - Cells finish popping in at ~0.7 s, so an at earlier than that lights a cell that is still appearing; an at past
+    data-duration − 0.5 (5.0 s at 5.5 s) lights during the swing-out. A "to" span takes 0.05 s per day.
+-->
+<html lang="vi" data-composition-variables='[
+  {"id":"title","type":"string","label":"Title","default":"Đà Lạt đẹp nhất tháng nào?"},
+  {"id":"subtitle","type":"string","label":"Second line (empty hides it)","default":"Mùa hoa và mùa khô"},
+  {"id":"mode","type":"string","label":"months (a year) or days (one month)","default":"months"},
+  {"id":"month","type":"number","label":"Month for days mode (1–12)","default":12},
+  {"id":"year","type":"number","label":"Year for days mode","default":2026},
+  {"id":"labels","type":"string","label":"Cell labels, comma-separated (12 months, or 7 weekdays from Monday); empty: Vietnamese","default":""},
+  {"id":"items","type":"string","label":"Lit cells (JSON [{month|day, to, at, note, soft}])","default":"[{\"month\":11,\"at\":0.9,\"note\":\"Dã quỳ nở vàng các triền đồi\"},{\"month\":12,\"at\":1.5,\"note\":\"Mai anh đào, trời se lạnh\"},{\"month\":1,\"at\":2.1,\"note\":\"Mùa khô, nắng đẹp cả ngày\"},{\"month\":3,\"at\":2.7,\"soft\":true,\"note\":\"Vẫn đẹp, vắng khách hơn\"}]"},
+  {"id":"accent","type":"color","label":"Lit cell colour","default":"#FFC83D"},
+  {"id":"background","type":"color","label":"Card colour","default":"#101318"},
+  {"id":"text","type":"color","label":"Text colour","default":"#FFFFFF"},
+  {"id":"secondary","type":"color","label":"Soft lit cell colour","default":"#7CC4FF"},
+  {"id":"headingFont","type":"font","label":"Heading font (empty keeps the design font)","default":""},
+  {"id":"bodyFont","type":"font","label":"Body font (empty keeps the design font)","default":""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      #root { position: relative; width: 1080px; height: 1920px; perspective: 1600px;
+        font-family: var(--body-font), Arial, sans-serif; }
+      #card { position: absolute; left: 90px; top: 360px; width: 900px; padding: 56px 56px 48px; border-radius: 40px;
+        background: color-mix(in srgb, var(--background) 90%, transparent); color: var(--text);
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45); }
+      #title { font-family: var(--heading-font), Arial, sans-serif; font-size: 60px; font-weight: 800; line-height: 1.12;
+        letter-spacing: -0.02em; }
+      #subtitle { margin-top: 10px; font-size: 34px; font-weight: 600; color: color-mix(in srgb, var(--text) 62%, transparent); }
+      #rule { width: 84px; height: 8px; margin-top: 22px; border-radius: 4px; background: var(--accent); transform-origin: 0 50%; }
+      #grid { display: grid; gap: 16px; margin-top: 40px; }
+      #grid.months { grid-template-columns: repeat(4, 1fr); }
+      #grid.days { grid-template-columns: repeat(7, 1fr); gap: 12px; }
+      .cell { position: relative; display: flex; align-items: center; justify-content: center; border-radius: 22px;
+        background: color-mix(in srgb, var(--text) 7%, transparent); }
+      .months .cell { height: 132px; }
+      .days .cell { height: 92px; border-radius: 18px; }
+      .days .cell.blank { background: transparent; }
+      .head { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700;
+        letter-spacing: 0.04em; color: color-mix(in srgb, var(--text) 50%, transparent); }
+      .fill { position: absolute; inset: 0; border-radius: inherit; opacity: 0; }
+      .mark { position: absolute; top: 14px; right: 14px; width: 14px; height: 14px; border-radius: 50%; opacity: 0; }
+      .days .mark { top: 9px; right: 9px; width: 10px; height: 10px; }
+      .ring { position: absolute; inset: -4px; border-radius: 26px; border: 5px solid; opacity: 0; }
+      .label { position: relative; font-family: var(--heading-font), Arial, sans-serif; font-weight: 800;
+        font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--text) 55%, transparent); }
+      .months .label { font-size: 46px; letter-spacing: -0.02em; }
+      .days .label { font-size: 38px; }
+      #legend { margin-top: 34px; display: flex; flex-direction: column; gap: 14px; }
+      #legend:empty { display: none; }
+      #legend.days .key { width: 136px; }
+      .note { display: flex; align-items: baseline; gap: 18px; font-size: 38px; font-weight: 600; line-height: 1.25; }
+      .key { flex: none; width: 104px; padding: 4px 0; border-radius: 12px; text-align: center; font-size: 30px;
+        font-weight: 800; font-family: var(--heading-font), Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5.5" data-width="1080" data-height="1920">
+      <div id="card"><div id="title"></div><div id="subtitle"></div><div id="rule"></div><div id="grid"></div><div id="legend"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+
+      const days = v.mode === "days";
+      const items = JSON.parse(v.items).sort((a, b) => a.at - b.at);
+      const custom = String(v.labels || "").split(",").map((s) => s.trim()).filter(Boolean);
+      document.getElementById("title").textContent = v.title;
+      const subtitle = document.getElementById("subtitle");
+      subtitle.textContent = v.subtitle;
+      subtitle.style.display = v.subtitle ? "block" : "none";
+      const grid = document.getElementById("grid");
+      grid.className = days ? "days" : "months";
+      const cells = {};
+      const addCell = (key, text) => {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.innerHTML = '<div class="fill"></div><div class="ring"></div><div class="mark"></div><div class="label"></div>';
+        cell.querySelector(".label").textContent = text;
+        grid.appendChild(cell);
+        cells[key] = cell;
+      };
+      let names;
+      if (days) {
+        // Monday-first weekday of the 1st without Date (frames stay pure functions of time): Sakamoto's method.
+        const y = v.month < 3 ? v.year - 1 : v.year;
+        const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+        const sunday = (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + t[v.month - 1] + 1) % 7;
+        const leap = (v.year % 4 === 0 && v.year % 100 !== 0) || v.year % 400 === 0;
+        const length = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][v.month - 1];
+        const heads = custom.length === 7 ? custom : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+        for (const head of heads) {
+          const el = document.createElement("div");
+          el.className = "head";
+          el.textContent = head;
+          grid.appendChild(el);
+        }
+        for (let i = 0; i < (sunday + 6) % 7; i += 1) grid.appendChild(Object.assign(document.createElement("div"), { className: "cell blank" }));
+        for (let d = 1; d <= length; d += 1) addCell(d, String(d));
+      } else {
+        names = custom.length === 12 ? custom : Array.from({ length: 12 }, (_, i) => `T${i + 1}`);
+        names.forEach((name, i) => addCell(i + 1, name));
+      }
+
+      const card = document.getElementById("card");
+      const legend = document.getElementById("legend");
+      legend.className = days ? "days" : "months";
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(card, { opacity: 0, y: 80, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      tl.fromTo("#rule", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power3.out" }, 0.2);
+      tl.fromTo(grid.querySelectorAll(".cell:not(.blank)"), { opacity: 0, scale: 0.85 },
+        { opacity: 1, scale: 1, duration: 0.3, stagger: days ? 0.006 : 0.025, ease: "power2.out" }, 0.15);
+      for (const item of items) {
+        const colour = item.soft ? v.secondary : v.accent;
+        const first = days ? item.day : item.month;
+        const last = days && item.to ? item.to : first;
+        // Each cell lights on its word (a span of days runs across in 0.05 s steps): the fill pops in behind the
+        // label, the label turns to the card colour and a ring pulses out.
+        for (let n = first, step = 0; n <= last; n += 1, step += 1) {
+          const cell = cells[n];
+          if (!cell) continue;
+          const at = item.at + step * 0.05;
+          const fill = cell.querySelector(".fill");
+          const ring = cell.querySelector(".ring");
+          fill.style.background = colour;
+          ring.style.borderColor = colour;
+          tl.fromTo(fill, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.28, ease: "back.out(2.4)", immediateRender: false }, at - 0.12);
+          const mark = cell.querySelector(".mark");
+          mark.style.background = v.background;
+          tl.fromTo(mark, { opacity: 0, scale: 0 }, { opacity: 0.85, scale: 1, duration: 0.2, ease: "back.out(3)", immediateRender: false }, at + 0.05);
+          tl.to(cell.querySelector(".label"), { color: v.background, duration: 0.16, ease: "power1.out" }, at - 0.08);
+          tl.fromTo(cell, { scale: 1 }, { scale: 1.1, duration: 0.14, yoyo: true, repeat: 1, ease: "power2.out", immediateRender: false }, at - 0.04);
+          tl.fromTo(ring, { opacity: 0.9, scale: 0.9 }, { opacity: 0, scale: 1.3, duration: 0.5, ease: "power2.out", immediateRender: false }, at);
+        }
+        if (!item.note) continue;
+        const note = document.createElement("div");
+        note.className = "note";
+        note.innerHTML = '<span class="key"></span><span class="text"></span>';
+        const key = note.querySelector(".key");
+        key.textContent = days ? (last > first ? `${first}–${last}` : String(first)) : names[first - 1];
+        key.style.background = colour;
+        key.style.color = v.background;
+        note.querySelector(".text").textContent = item.note;
+        legend.appendChild(note);
+        tl.fromTo(note, { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, item.at - 0.05);
+      }
+      tl.to(card, { rotationY: -70, x: -260, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

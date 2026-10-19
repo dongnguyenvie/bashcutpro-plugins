@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- A system diagram that grows with the voice: nodes and edges land on their own `at` and light up, dots run on new edges; later blocks wait as dashed ghosts, `recap` lights the whole chain. Data is JSON {title, nodes:[{id,label,icon?,group?,at?}], edges:[{from,to,label?,at?}], recap?, ghosts?, bottomSafe?}; look flow or iso; labels 38 px+ on 1080 wide. Transparent, the project's canvas, 12 s. -->
+<!-- Pitfalls:
+  - One diagram for the whole story, never a new diagram per section, and never one long row: in graphic plan give
+    one row per section (or group of voice lines, ~5–10 s each) with the same `render.scene` id. The first row carries
+    composition, set and frame; plan renders each row as a slice of one scene (sets t0 and total, "@words" count from
+    the scene's start), so slices meet frame-exactly. Moving one node's word renders only the slices it shows in;
+    a new node, label or edge, or a change to a shared field (set, frame, the scene's length), renders every slice.
+    Give `at` as "@words" (the word that names the node).
+  - A node without `at` is there from the start; an edge without `at` is drawn when both ends are there. Give an
+    edge its own `at` only when the voice names the link itself.
+  - Up to 10 nodes keep labels at 38 px or more on 9:16; labels 1–3 words. More: split the story into two scenes.
+  - Pass the data with `--set data=@diagram.json` in place (there `at` takes seconds or "line:N"/"section:Label").
+  - Hook before the first block: `ghosts` (on by default) shows every later block faint and dashed from the start, so
+    a "6 blocks" hook has the six on screen; never copy the page to draw them.
+  - Recap: `recap` = the second (or "@words" in plan, from the scene's start) where every block lights up and every
+    edge runs dots, one after another, to the end. Not a node `at`, not a hand-made step.
+  - Captions: `bottomSafe` is the line nothing crosses (0–1 of the height, or px from the top); 0 = 0.62 on 9:16,
+    clear of a caption pill at ~69 %. Captions higher or lower: move the line, never rescale the page by hand;
+    `render.frame.scale` zooms the whole graphic about its centre and can push it back into the captions.
+  - A closing edge (last → first) is routed round the column with its label beside the line; nothing to patch.
+  - Background: the page stays transparent; for a full-frame grid set `render.frame` {"backdrop": "texture"} (the
+    brand background with a faint grid and accent glow). Never edit the page's CSS for it.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Diagram (JSON {title, nodes:[{id, label, icon?, group?, at?}], edges:[{from, to, label?, at?}]})", "default": "{\"title\": \"How an order flows\", \"nodes\": [{\"id\": \"app\", \"label\": \"Mobile app\", \"icon\": \"📱\", \"at\": 0.6}, {\"id\": \"api\", \"label\": \"API gateway\", \"at\": 2.2}, {\"id\": \"orders\", \"label\": \"Order service\", \"group\": \"core\", \"at\": 4.0}, {\"id\": \"pay\", \"label\": \"Payment\", \"group\": \"core\", \"at\": 5.8}, {\"id\": \"db\", \"label\": \"Database\", \"icon\": \"🗄️\", \"at\": 7.4}, {\"id\": \"mail\", \"label\": \"Email\", \"at\": 9.0}], \"edges\": [{\"from\": \"app\", \"to\": \"api\"}, {\"from\": \"api\", \"to\": \"orders\"}, {\"from\": \"orders\", \"to\": \"pay\"}, {\"from\": \"orders\", \"to\": \"db\"}, {\"from\": \"orders\", \"to\": \"mail\", \"label\": \"event\"}, {\"from\": \"pay\", \"to\": \"db\", \"at\": 10.4}]}"},
+  {"id": "look", "type": "string", "label": "flow (boxes and arrows) or iso (isometric blocks)", "default": "flow"},
+  {"id": "title", "type": "string", "label": "Title when data has none (empty: no title)", "default": ""},
+  {"id": "packets", "type": "boolean", "label": "Data dots run along new edges", "default": true},
+  {"id": "ghosts", "type": "boolean", "label": "Blocks that come in later show faint and dashed from the start", "default": true},
+  {"id": "recap", "type": "number", "label": "Scene second from which every block is lit and every edge runs dots (0: no recap)", "default": 0},
+  {"id": "bottomSafe", "type": "number", "label": "Nothing below this line: 0–1 of the height or px from the top (0: 0.62 on 9:16, clear of captions)", "default": 0},
+  {"id": "t0", "type": "number", "label": "Scene second this render starts at (a slice of a longer scene; graphic plan sets it)", "default": 0},
+  {"id": "total", "type": "number", "label": "Scene length in seconds (0: the length of this render; graphic plan sets it)", "default": 0},
+  {"id": "accent", "type": "color", "label": "Highlight colour (ring, dots, hot edges)", "default": "#FFB020"},
+  {"id": "background", "type": "color", "label": "Node plate colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text and edge colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Second group / block colour", "default": "#5AA9E6"},
+  {"id": "headingFont", "type": "font", "label": "Label font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Edge label font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="diagram.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* Brand look: diagram.js fills --accent, --background, --text, --secondary and the fonts from the variables. */
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --hand-font: "Chalkboard SE", "Marker Felt", "Comic Sans MS";
+        --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #585B63; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      .dg-label { font-family: var(--heading-font), Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="12" data-width="1080" data-height="1920" data-fit="canvas"></div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      const tl = gsap.timeline({ paused: true });
+      // Layout, growth, the scene slice (t0, total) and the exit (END - 0.5 of the scene) come from diagram.js.
+      const iso = String(v.look).trim().toLowerCase() === "iso";
+      BCDiagram.mount(tl, v, iso ? "iso" : "flow", document.getElementById("root"),
+        { fonts: iso ? { maxFont: 48, minFont: 34 } : { maxFont: 60, minFont: 38 } });
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

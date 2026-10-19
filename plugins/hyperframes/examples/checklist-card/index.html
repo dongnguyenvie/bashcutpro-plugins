@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- A checklist card over footage whose rows tick one by one (items is a JSON string array). Transparent,
+     1080×1920, 4 s. The brand's mascot, when the project has one, stands on the card's top-right corner. Raw material: change the card, the rows, the ticks and the timing for the video. -->
+<!-- Pitfalls:
+  - Ticks run on a fixed clock (first at 1.3 s, then every 0.45 s) that ignores the words and data-duration: at 4 s
+    only five items tick before the card fades at 3.6 s. With six or more, give the block a longer duration.
+  - Each row adds ~86 px under a card top of 520: nine rows end the card at ~1515 px, in the platform's bottom band;
+    keep to eight.
+  - An item wraps after ~26 characters at 52 px and the title after ~26 at 64 px; shorten the words, not the size.
+  - The mascot stands 200 px above the card (x 760–970, y ~320–540), clear of the title; nothing else goes there.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title", "default": "Packing list"},
+  {"id": "items", "type": "string", "label": "Items (JSON array)", "default": "[\"Passport\",\"Charger\",\"Rain jacket\"]"},
+  {"id": "accent", "type": "color", "label": "Tick colour", "default": "#FFD400"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""},
+  {"id": "mascot", "type": "image", "label": "Mascot picture (bin/graphic copies the brand pose; empty hides it)", "default": ""},
+  {"id": "pose", "type": "string", "label": "Brand mascot pose (--set pose=thinking)", "default": "default"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; }
+      #card { position: absolute; left: 90px; top: 520px; width: 900px; padding: 56px 64px; border-radius: 36px;
+        background: color-mix(in srgb, var(--background) 82%, transparent); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        color: var(--text); }
+      #title { font-family: var(--heading-font), Arial, sans-serif; font-size: 64px; font-weight: 800; margin-bottom: 36px; letter-spacing: -0.02em; }
+      #mascot { position: absolute; right: 20px; bottom: 100%; margin-bottom: -20px; width: 220px; height: 220px;
+        object-fit: contain; object-position: 50% 100%; transform-origin: 50% 100%; display: none;
+        filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35)); }
+      .row { display: flex; align-items: center; gap: 28px; font-size: 52px; font-weight: 600; margin: 22px 0; }
+      .box { width: 64px; height: 64px; border-radius: 16px; border: 6px solid; position: relative; flex: none; }
+      .tick { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        font-size: 48px; color: var(--background); border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4" data-width="1080" data-height="1920">
+      <div id="card"><img id="mascot" alt="" /><div id="title"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      document.getElementById("title").textContent = v.title;
+      const card = document.getElementById("card");
+      for (const text of JSON.parse(v.items)) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = '<div class="box"><div class="tick">✓</div></div><span></span>';
+        row.querySelector("span").textContent = text;
+        row.querySelector(".box").style.borderColor = v.accent;
+        row.querySelector(".tick").style.background = v.accent;
+        card.appendChild(row);
+      }
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(card, { opacity: 0, y: 80, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      tl.fromTo(".row", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.25, ease: "power2.out" }, 0.35);
+      // The brand's mascot (a pose bin/graphic copied in) hops onto the card's corner; it leaves with the card.
+      const mascot = document.getElementById("mascot");
+      if (v.mascot) {
+        mascot.src = v.mascot;
+        mascot.style.display = "block";
+        tl.fromTo(mascot, { scale: 0, y: 40, rotation: 8 }, { scale: 1, y: 0, rotation: 0, duration: 0.4, ease: "back.out(2.2)" }, 0.4);
+      }
+      tl.fromTo(".tick", { scale: 0 }, { scale: 1, duration: 0.25, stagger: 0.45, ease: "back.out(3)" }, 1.3);
+      tl.to(card, { opacity: 0, y: -40, duration: 0.4, ease: "power2.in" }, END - 0.4);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- A cost table, a receipt or a price list whose rows slide in on their words while the total counts up to the sum
+     (rows is a JSON array of {item, amount, at}). Transparent, 1080×1920, 5 s. Raw material: change the card, the
+     currency, the rows and the timing for the video. -->
+<!-- Pitfalls:
+  - Each row adds ~97 px under a card top of 480: seven rows already reach ~1500 px, eight end at ~1650 in the
+    platform's bottom band. Keep it to six rows, or merge small items into "Other".
+  - An item wraps after ~22 characters beside a 600.000đ amount and its row grows by ~53 px; shorten it
+    ("Bus, return").
+  - Amounts keep their decimals (decimals -1 shows as many as the rows have, up to 2, the same on every row and the
+    total: 129.99 + 84.5 = 214.49 shows 129.99 / 84.50 / 214.49); decimals 0 rounds them. Prices in đồng have none.
+  - The currency goes after the amount with no space by default (600.000đ). For $129.99 set currencyBefore true; for
+    129,99 € set currencySpace true and locale de-DE. currencyCode (USD, EUR, VND…) lets the locale place the symbol
+    and the spacing itself (en-US + USD = $129.99, vi-VN + VND = 129.990 ₫) and overrides currency, currencyBefore
+    and currencySpace.
+  - Rows slide in 0.3 s before their at and the total counts for 0.3 s after it, then pops at last at + 0.35: keep
+    the last at under data-duration − 1.2 (3.8 s at 5 s) or the pop lands in the swing-out.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "title", "type": "string", "label": "Title", "default": "48 hours, total cost"},
+  {"id": "rows", "type": "string", "label": "Rows (JSON [{item, amount, at}])", "default": "[{\"item\":\"Bus there and back\",\"amount\":600000,\"at\":0.8},{\"item\":\"Two nights homestay\",\"amount\":900000,\"at\":1.4},{\"item\":\"Food and coffee\",\"amount\":1100000,\"at\":2.0},{\"item\":\"Tickets\",\"amount\":400000,\"at\":2.6}]"},
+  {"id": "totalLabel", "type": "string", "label": "Total label", "default": "Total"},
+  {"id": "currency", "type": "string", "label": "Currency symbol or word", "default": "đ"},
+  {"id": "currencyBefore", "type": "boolean", "label": "Currency before the amount ($129.99)", "default": false},
+  {"id": "currencySpace", "type": "boolean", "label": "Space between amount and currency (129,99 €)", "default": false},
+  {"id": "currencyCode", "type": "string", "label": "ISO currency code (USD, EUR, VND…): the locale places symbol and space; empty uses the three above", "default": ""},
+  {"id": "decimals", "type": "number", "label": "Decimals (-1: as many as the amounts have, up to 2)", "default": -1},
+  {"id": "locale", "type": "string", "label": "Number format locale", "default": "vi-VN"},
+  {"id": "accent", "type": "color", "label": "Total colour", "default": "#3BF26A"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#FBF7EE"},
+  {"id": "text", "type": "color", "label": "Text colour (the total plate takes it, with the card colour as its text)", "default": "#1B1B1B"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; perspective: 1600px;
+        font-family: var(--body-font), Arial, sans-serif; }
+      #card { position: absolute; left: 90px; top: 480px; width: 900px; padding: 56px 60px 48px; border-radius: 36px;
+        background: var(--background); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); color: var(--text); }
+      #title { font-family: var(--heading-font), Arial, sans-serif; font-size: 56px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 30px; }
+      .row { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; padding: 20px 0;
+        border-bottom: 3px dashed color-mix(in srgb, var(--text) 20%, transparent); font-size: 44px; }
+      .row .amount { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 28px;
+        padding: 22px 28px; border-radius: 22px; background: var(--text); color: var(--background); }
+      #totalLabel { font-size: 44px; font-weight: 700; }
+      #totalValue { font-family: var(--heading-font), Arial, sans-serif; font-size: 64px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1080" data-height="1920">
+      <div id="card">
+        <div id="title"></div><div id="rows"></div>
+        <div id="total"><span id="totalLabel"></span><span id="totalValue"></span></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const rows = JSON.parse(v.rows);
+      // Amounts keep their decimals, every number with the same count so the total does not jump while it counts.
+      const places = (n) => (String(n).split(".")[1] ?? "").length;
+      const decimals = Number(v.decimals) >= 0 ? Math.min(4, Math.round(Number(v.decimals)))
+        : Math.min(2, Math.max(0, ...rows.map((row) => places(row.amount))));
+      const code = String(v.currencyCode ?? "").trim().toUpperCase();
+      let format;
+      try {
+        format = new Intl.NumberFormat(v.locale || undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+          ...(code ? { style: "currency", currency: code } : {}) });
+      } catch {
+        format = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      }
+      const money = (n) => {
+        const number = format.format(n);
+        if (code) return number;
+        const symbol = String(v.currency ?? ""), gap = v.currencySpace ? "\u00A0" : "";
+        if (!symbol) return number;
+        return v.currencyBefore ? `${symbol}${gap}${number}` : `${number}${gap}${symbol}`;
+      };
+      document.getElementById("title").textContent = v.title;
+      document.getElementById("totalLabel").textContent = v.totalLabel;
+      const totalValue = document.getElementById("totalValue");
+      totalValue.style.color = v.accent;
+      totalValue.textContent = money(0);
+      const list = document.getElementById("rows");
+      const card = document.getElementById("card");
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(card, { opacity: 0, y: 80, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      let sum = 0;
+      for (const row of rows) {
+        const el = document.createElement("div");
+        el.className = "row";
+        el.innerHTML = '<span class="item"></span><span class="amount"></span>';
+        el.querySelector(".item").textContent = row.item;
+        el.querySelector(".amount").textContent = money(row.amount);
+        list.appendChild(el);
+        const start = Math.max(0.3, row.at - 0.3);
+        tl.fromTo(el, { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, start);
+        // The total climbs from the previous sum to the new one as the row lands (one tl.set per frame).
+        const before = sum;
+        sum += row.amount;
+        const steps = 9;
+        for (let s = 1; s <= steps; s += 1) {
+          tl.set(totalValue, { textContent: money(before + (sum - before) * (s / steps)) }, row.at + (s / steps) * 0.3);
+        }
+      }
+      tl.fromTo("#total", { scale: 1 }, { scale: 1.05, duration: 0.14, yoyo: true, repeat: 1, ease: "power2.out" }, (rows.at(-1)?.at ?? 1) + 0.35);
+      tl.to(card, { rotationY: -70, x: -260, opacity: 0, duration: 0.45, ease: "power2.in", transformOrigin: "0% 50%" }, END - 0.5);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

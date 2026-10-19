@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- A flow diagram from JSON data, laid out for the canvas. Boxes in layers left→right on 16:9 or top→down on 9:16 (data.direction "lr"|"tb" forces one), edges drawn on, the active node lit up step by step with packets running along its edges (data is JSON {title, nodes:[{id,label,icon?,group?}], edges:[{from,to,label?}], steps:[{at,focus:[ids],reveal:[ids],note?}]}). Transparent, the project's canvas, 8 s. The layout is computed: never give coordinates. -->
+<!-- Pitfalls:
+  - steps[].at are seconds from the graphic's start. Do not compute them: `bin/graphic place … --steps-from voice`
+    gives step i the start of the i-th voice line from --at-frame on (placing the graphic just before the first one and
+    ending it after the last when --at-frame/--duration are left out); `"at": "line:3"` or `"section:Label"` picks one.
+    A step without a number is spread evenly.
+  - Pass the data with `--set data=@diagram.json` (a file; ids are short strings, labels the words on screen).
+  - Up to 12 nodes stay readable; more than 4 nodes in one layer shrink the labels (min ~22 px): split the diagram or
+    chain them. A cycle is drawn as a back edge (curved).
+  - icon is an emoji or an image file copied into the composition folder; group tints the box border (first group =
+    accent, second = secondary).
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "data", "type": "string", "label": "Diagram (JSON {title, nodes, edges, steps})", "default": "{\"title\": \"How an order flows\", \"nodes\": [{\"id\": \"app\", \"label\": \"Mobile app\", \"icon\": \"📱\"}, {\"id\": \"api\", \"label\": \"API gateway\"}, {\"id\": \"auth\", \"label\": \"Auth\", \"group\": \"core\"}, {\"id\": \"orders\", \"label\": \"Order service\", \"group\": \"core\"}, {\"id\": \"db\", \"label\": \"Database\", \"icon\": \"🗄️\"}, {\"id\": \"mail\", \"label\": \"Email\"}], \"edges\": [{\"from\": \"app\", \"to\": \"api\", \"label\": \"HTTPS\"}, {\"from\": \"api\", \"to\": \"auth\"}, {\"from\": \"api\", \"to\": \"orders\"}, {\"from\": \"orders\", \"to\": \"db\"}, {\"from\": \"orders\", \"to\": \"mail\", \"label\": \"event\"}], \"steps\": [{\"at\": 1.8, \"focus\": [\"app\", \"api\"]}, {\"at\": 3.6, \"focus\": [\"orders\"], \"reveal\": [\"db\", \"mail\"]}, {\"at\": 5.6, \"focus\": [\"db\"]}]}"},
+  {"id": "title", "type": "string", "label": "Title when data has none (empty: no title)", "default": ""},
+  {"id": "t0", "type": "number", "label": "Scene second this render starts at (a slice of a longer scene; graphic plan sets it)", "default": 0},
+  {"id": "total", "type": "number", "label": "Scene length in seconds (0: the length of this render; graphic plan sets it)", "default": 0},
+  {"id": "packets", "type": "boolean", "label": "Packets run along focused edges", "default": true},
+  {"id": "sketch", "type": "boolean", "label": "Hand-drawn strokes and font", "default": false},
+  {"id": "accent", "type": "color", "label": "Focus colour (ring, packets, hot edges)", "default": "#FFB020"},
+  {"id": "background", "type": "color", "label": "Node plate colour", "default": "#0E1016"},
+  {"id": "text", "type": "color", "label": "Text and edge colour", "default": "#FFFFFF"},
+  {"id": "secondary", "type": "color", "label": "Second group / block colour", "default": "#5AA9E6"},
+  {"id": "headingFont", "type": "font", "label": "Label font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Edge label font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="gsap.min.js"></script>
+    <script src="diagram.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* Brand look: diagram.js fills --accent, --background, --text, --secondary and the fonts from the variables. */
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --hand-font: "Chalkboard SE", "Marker Felt", "Comic Sans MS";
+        --accent: #FFB020; --background: #0E1016; --text: #FFFFFF; --secondary: #585B63; }
+      html, body { background: transparent; overflow: hidden; }
+      #root { position: relative; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      .dg-label { font-family: var(--heading-font), Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1080" data-height="1920" data-fit="canvas"></div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      const tl = gsap.timeline({ paused: true });
+      // Layout, steps and the exit (at END - 0.5 of the root's data-duration) come from diagram.js.
+      BCDiagram.mount(tl, v, "flow", document.getElementById("root"));
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

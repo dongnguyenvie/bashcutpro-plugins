@@ -1,0 +1,196 @@
+<!doctype html>
+<!-- A note or diary page that types itself line by line with a blinking caret, a marker swiping behind the *marked*
+     words and past entries popping into its side list (lines is a JSON array of strings or {text, at}). Transparent,
+     1080×1920, 5.6 s. -->
+<!-- Pitfalls:
+  - typing time = characters ÷ charsPerSecond + 0.32 s per line: ~55 characters at 22 cps finish at ~4.2 s, leaving
+    the ≥1 s hold in 5.6 s; longer text needs a longer data-duration or a higher speed (15–30 reads as typing, 45+ as a blur).
+  - with a side list the body column is ~640 px, so 96 px lines wrap at ~13 characters; pass sideItems [] for ~18.
+    Keep fontSize ≥ 96 (5 % of the height): shorten the lines rather than shrink the type.
+  - side entries longer than ~11 characters are cut with an ellipsis; they are decoration, keep them short.
+  - one *marked* phrase per line; asterisks must pair or the stars print as text.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "docTitle", "type": "string", "label": "Title bar text", "default": "Trip notes · Day 3"},
+  {"id": "lines", "type": "string", "label": "Lines (JSON array of strings or {text, at}; *words* get the marker; at = seconds typing starts)", "default": "[\"Up at 5:30 for fog.\",\"Coffee by the *lake*.\",\"Best morning yet.\"]"},
+  {"id": "sideItems", "type": "string", "label": "Past entries in the side list, newest first (JSON array; [] hides the list)", "default": "[\"Day 2 · Market\",\"Day 1 · Arrival\",\"Packing list\"]"},
+  {"id": "charsPerSecond", "type": "number", "label": "Typing speed (characters per second)", "default": 22},
+  {"id": "fontSize", "type": "number", "label": "Body text size (px)", "default": 96},
+  {"id": "top", "type": "number", "label": "Window top (px)", "default": 300},
+  {"id": "width", "type": "number", "label": "Window width (px)", "default": 960},
+  {"id": "accent", "type": "color", "label": "Marker and caret colour", "default": "#FFD23F"},
+  {"id": "background", "type": "color", "label": "Page colour", "default": "#FBF7EE"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#1D1D1F"},
+  {"id": "headingFont", "type": "font", "label": "Title bar font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; --size: 96px; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; }
+      #doc { position: absolute; border-radius: 36px; background: var(--background); color: var(--text);
+        box-shadow: 0 34px 80px rgba(0, 0, 0, 0.5); overflow: hidden; --blink: 1; }
+      #bar { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 36px;
+        border-bottom: 2px solid color-mix(in srgb, var(--text) 10%, transparent);
+        background: color-mix(in srgb, var(--text) 4%, var(--background)); }
+      .dot { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+      #docTitle { margin-left: 18px; font-family: var(--heading-font), Arial, sans-serif; font-size: 42px; font-weight: 700;
+        line-height: 1.3; color: color-mix(in srgb, var(--text) 62%, transparent); white-space: nowrap; overflow: hidden;
+        text-overflow: ellipsis; }
+      #main { display: flex; }
+      #side { flex: none; width: 250px; padding: 26px 12px 26px 16px;
+        border-right: 2px solid color-mix(in srgb, var(--text) 10%, transparent);
+        background: color-mix(in srgb, var(--text) 3%, var(--background)); }
+      .entry { font-size: 30px; font-weight: 600; line-height: 1.3; padding: 12px 10px; border-radius: 18px;
+        margin-bottom: 10px; transform-origin: 0% 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: color-mix(in srgb, var(--text) 55%, transparent); }
+      .entry.now { background: color-mix(in srgb, var(--accent) 35%, var(--background)); color: var(--text); }
+      #body { flex: 1; min-width: 0; padding: 36px 36px 48px; font-size: var(--size); font-weight: 600; line-height: 1.28;
+        letter-spacing: -0.012em; }
+      .line { margin-bottom: 0.32em; padding-top: 0.04em; }
+      .line:last-child { margin-bottom: 0; }
+      .ch, .start { position: relative; visibility: hidden; --c: 0; }
+      .start { visibility: visible; display: inline-block; width: 0; height: 1em; }
+      .ch::after, .start::after { content: ""; position: absolute; top: 0.12em; width: 0.085em; height: 1.08em;
+        border-radius: 3px; background: var(--accent); filter: brightness(0.8) saturate(1.3);
+        opacity: calc(var(--c) * var(--blink)); visibility: visible; }
+      .ch::after { left: calc(100% + 0.03em); }
+      .start::after { left: 0; }
+      .mark { background-image: linear-gradient(var(--accent), var(--accent)); background-repeat: no-repeat;
+        background-position: 0 88%; background-size: 0% 62%; -webkit-box-decoration-break: clone;
+        box-decoration-break: clone; padding: 0 0.08em; margin: 0 -0.08em; border-radius: 0.12em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5.6" data-width="1080" data-height="1920">
+      <div id="doc">
+        <div id="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span id="docTitle"></span></div>
+        <div id="main"><div id="side"></div><div id="body"></div></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const parse = (text) => { try { const list = JSON.parse(text); return Array.isArray(list) ? list : []; } catch (error) { return []; } };
+      const lines = parse(v.lines).map((line) => (typeof line === "string" ? { text: line } : { text: String(line?.text ?? ""), at: line?.at }));
+      const entries = parse(v.sideItems).map(String);
+      look.setProperty("--size", `${Math.max(48, Number(v.fontSize) || 96)}px`);
+      const width = Math.min(1000, Math.max(600, Number(v.width) || 960));
+      const doc = document.getElementById("doc");
+      doc.style.width = `${width}px`;
+      doc.style.left = `${Math.round((1080 - width) / 2)}px`;
+      doc.style.top = `${v.top}px`;
+      document.getElementById("docTitle").textContent = v.docTitle;
+      const dots = document.querySelectorAll(".dot");
+      ["#FF5F57", "#FEBC2E", "#28C840"].forEach((c, i) => { dots[i].style.background = c; });
+      // The side list: the page being typed sits on top (highlighted), the past entries below it.
+      const side = document.getElementById("side");
+      if (!entries.length) side.remove();
+      const rows = entries.length ? [v.docTitle.split("·")[0].trim() || "Today", ...entries] : [];
+      const entryEls = rows.map((text, i) => {
+        const el = document.createElement("div");
+        el.className = i === 0 ? "entry now" : "entry";
+        el.textContent = text;
+        side.appendChild(el);
+        return el;
+      });
+      // Each line is laid out in full first (characters hidden), so typing never reflows the page.
+      const body = document.getElementById("body");
+      const built = lines.map((line) => {
+        const el = document.createElement("div");
+        el.className = "line";
+        const start = document.createElement("span");
+        start.className = "start";
+        el.appendChild(start);
+        const chars = [];
+        const marks = [];
+        let host = el;
+        for (const piece of line.text.split(/(\*[^*]+\*)/)) {
+          if (!piece) continue;
+          const marked = /^\*[^*]+\*$/.test(piece);
+          host = el;
+          if (marked) { host = document.createElement("span"); host.className = "mark"; el.appendChild(host); marks.push(host); }
+          for (const ch of Array.from(marked ? piece.slice(1, -1) : piece)) {
+            const span = document.createElement("span");
+            span.className = "ch";
+            span.textContent = ch;
+            host.appendChild(span);
+            chars.push(span);
+          }
+        }
+        body.appendChild(el);
+        return { start, chars, marks, at: line.at };
+      });
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(doc, { opacity: 0, y: 70, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" }, 0);
+      // Side entries pop in one by one, each a step smaller and fainter than the one above, the gaps shrinking.
+      let pop = 0.3;
+      entryEls.forEach((el, i) => {
+        const scale = Math.max(0.8, 1 - 0.05 * i);
+        tl.fromTo(el, { opacity: 0, scale: scale * 0.6, x: -20 },
+          { opacity: Math.max(0.55, 1 - 0.14 * i), scale, x: 0, duration: 0.3, ease: "back.out(2.2)" }, pop);
+        pop += Math.max(0.07, 0.16 - 0.035 * i);
+      });
+      // Typing: a human rhythm, deterministic — each key's gap varies around 1/charsPerSecond by a fixed per-index
+      // pattern, with a little extra after spaces and punctuation.
+      const step = 1 / Math.max(4, Number(v.charsPerSecond) || 22);
+      const jitter = (n) => 0.75 + 0.5 * (((Math.sin(n * 12.9898) * 43758.5453) % 1 + 1) % 1);
+      let t = Math.max(0.7, pop + 0.15);
+      let caretOn = null;
+      const busy = [];
+      const caretTo = (el, time) => {
+        if (caretOn) tl.set(caretOn, { "--c": 0 }, time);
+        tl.set(el, { "--c": 1 }, time);
+        caretOn = el;
+      };
+      let key = 0;
+      built.forEach((line, i) => {
+        const given = Number(line.at);
+        if (line.at !== undefined && line.at !== null && line.at !== "" && Number.isFinite(given)) t = Math.max(t, given);
+        else if (i > 0) t += 0.32;
+        const begin = t;
+        caretTo(line.start, t - 0.12);
+        line.chars.forEach((span) => {
+          t += step * jitter(key += 1) * (/[\s,.;:!?]/.test(span.previousSibling?.textContent ?? "") ? 1.2 : 1);
+          tl.set(span, { visibility: "visible" }, t);
+          caretTo(span, t);
+        });
+        busy.push([begin - 0.12, t + 0.25]);
+        // The marker swipes behind the marked words once their line is typed.
+        line.marks.forEach((mark, m) => {
+          tl.fromTo(mark, { backgroundSize: "0% 62%" }, { backgroundSize: "100% 62%", duration: 0.32, ease: "power2.inOut" }, t + 0.1 + m * 0.12);
+        });
+      });
+      // The caret blinks (0.5 s on, 0.5 s off) only while nothing is being typed, like a real one.
+      for (let k = 0; k * 0.5 < END; k += 1) {
+        const time = k * 0.5;
+        const typing = busy.some(([a, b]) => time >= a && time <= b);
+        tl.set(doc, { "--blink": typing || k % 2 === 0 ? 1 : 0 }, time);
+      }
+      busy.forEach(([a]) => tl.set(doc, { "--blink": 1 }, a));
+      tl.to(doc, { opacity: 0, y: -40, scale: 0.98, duration: 0.4, ease: "power2.in" }, END - 0.4);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

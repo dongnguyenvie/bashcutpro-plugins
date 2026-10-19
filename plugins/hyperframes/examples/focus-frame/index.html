@@ -1,0 +1,196 @@
+<!doctype html>
+<!-- "Look here" for tutorials and screen recordings: four corner brackets snap around a region, a scan line sweeps it
+     once and a numbered label chip connects to it from the side with room, the rest of the frame dimmed. Transparent,
+     1080×1920, 3 s. -->
+<!-- Pitfalls:
+  - x, y, w, h are canvas pixels (1080×1920) of the region in the frame below, not of the source recording; measure
+    them on a frame of the edit.
+  - side auto tries right, left, below (above the bottom fifth), then above; a forced side without ~300 px of room falls
+    back to auto, so a wide region in mid-frame always gets the chip below.
+  - dimOutside above ~0.5 hides the context the viewer needs; 0.3–0.45 reads as focus, 0 for busy screens.
+  - labels past ~20 characters wrap to two lines beside a region; keep them to the action ("Tap Export").
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "x", "type": "number", "label": "Region left (px on the 1080×1920 canvas)", "default": 120},
+  {"id": "y", "type": "number", "label": "Region top (px)", "default": 520},
+  {"id": "w", "type": "number", "label": "Region width (px)", "default": 560},
+  {"id": "h", "type": "number", "label": "Region height (px)", "default": 300},
+  {"id": "label", "type": "string", "label": "Label (empty hides the chip)", "default": "Tap Export"},
+  {"id": "step", "type": "string", "label": "Step badge (empty hides it)", "default": "1"},
+  {"id": "side", "type": "string", "label": "Chip side: auto, left, right, above or below", "default": "auto"},
+  {"id": "dimOutside", "type": "number", "label": "Dim outside the region (0 to 0.6)", "default": 0.45},
+  {"id": "radius", "type": "number", "label": "Region corner radius (px)", "default": 28},
+  {"id": "scan", "type": "boolean", "label": "Scan line sweeps the region once", "default": true},
+  {"id": "accent", "type": "color", "label": "Bracket, scan and badge colour", "default": "#3DE3FF"},
+  {"id": "background", "type": "color", "label": "Chip colour", "default": "#111318"},
+  {"id": "text", "type": "color", "label": "Chip text colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Badge font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Label font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: var(--body-font), Arial, sans-serif; }
+      #dim { position: absolute; }
+      #clip { position: absolute; overflow: hidden; }
+      #scan { position: absolute; left: 0; right: 0; height: 140px; top: 0;
+        background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 30%, transparent));
+        border-bottom: 5px solid var(--accent); }
+      .corner { position: absolute; border: 0 solid var(--accent); filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)); }
+      #wire { position: absolute; background: var(--accent); border-radius: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+      #knob { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--accent);
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent); }
+      #chip { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 22px; max-width: 960px;
+        padding: 18px 34px 18px 18px; border-radius: 40px; color: var(--text);
+        background: color-mix(in srgb, var(--background) 92%, transparent);
+        border: 2px solid color-mix(in srgb, var(--text) 14%, transparent); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5); }
+      #chip.plain { padding-left: 34px; }
+      #badge { flex: none; width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-family: var(--heading-font), Arial, sans-serif; font-size: 50px; font-weight: 900;
+        background: var(--accent); color: var(--background); }
+      #label { font-size: 60px; font-weight: 700; line-height: 1.24; padding-top: 0.04em; letter-spacing: -0.01em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3" data-width="1080" data-height="1920">
+      <div id="dim"></div>
+      <div id="clip"><div id="scan"></div></div>
+      <div class="corner" id="c0"></div><div class="corner" id="c1"></div>
+      <div class="corner" id="c2"></div><div class="corner" id="c3"></div>
+      <div id="wire"></div><div id="knob"></div>
+      <div id="chip"><div id="badge"></div><div id="label"></div></div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+      const W = 1080, H = 1920, EDGE = 60, SAFE_BOTTOM = 1536;
+      const box = { x: clamp(Number(v.x) || 0, 0, W - 40), y: clamp(Number(v.y) || 0, 0, H - 40) };
+      box.w = clamp(Number(v.w) || 400, 40, W - box.x);
+      box.h = clamp(Number(v.h) || 300, 40, H - box.y);
+      const radius = clamp(Number(v.radius) || 0, 0, Math.min(box.w, box.h) / 2);
+      const place = (el, x, y, w, h) => Object.assign(el.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+      // The dim is one huge shadow around a hole the shape of the region.
+      const dim = document.getElementById("dim");
+      place(dim, box.x, box.y, box.w, box.h);
+      dim.style.borderRadius = `${radius}px`;
+      dim.style.boxShadow = `0 0 0 4000px rgba(0, 0, 0, ${clamp(Number(v.dimOutside) || 0, 0, 0.6)})`;
+      const clip = document.getElementById("clip");
+      place(clip, box.x, box.y, box.w, box.h);
+      clip.style.borderRadius = `${radius}px`;
+      // Corner brackets sit 8 px outside the region, their arms a fifth of its short side.
+      const GAP = 8, T = 10;
+      const arm = clamp(Math.min(box.w, box.h) * 0.22, 44, 120);
+      const corners = [0, 1, 2, 3].map((i) => {
+        const el = document.getElementById(`c${i}`);
+        const right = i === 1 || i === 2, bottom = i >= 2;
+        place(el, right ? box.x + box.w + GAP - arm : box.x - GAP, bottom ? box.y + box.h + GAP - arm : box.y - GAP, arm, arm);
+        el.style[bottom ? "borderBottomWidth" : "borderTopWidth"] = `${T}px`;
+        el.style[right ? "borderRightWidth" : "borderLeftWidth"] = `${T}px`;
+        el.style[`border${bottom ? "Bottom" : "Top"}${right ? "Right" : "Left"}Radius`] = `${radius + GAP}px`;
+        return { el, dx: right ? 1 : -1, dy: bottom ? 1 : -1 };
+      });
+      // The chip goes on the side with room: right, left, below (above the bottom fifth), then above.
+      const chip = document.getElementById("chip");
+      const badge = document.getElementById("badge");
+      document.getElementById("label").textContent = v.label;
+      badge.textContent = v.step;
+      if (!v.step) { badge.remove(); chip.classList.add("plain"); }
+      const hasChip = Boolean(v.label || v.step);
+      if (!v.label) chip.style.padding = "18px";
+      const wire = document.getElementById("wire"), knob = document.getElementById("knob");
+      const LEAD = 96;
+      let side = String(v.side || "auto").toLowerCase();
+      if (hasChip) {
+        let cw = chip.offsetWidth, ch = chip.offsetHeight;
+        const room = {
+          right: W - EDGE - (box.x + box.w + GAP) - LEAD,
+          left: box.x - GAP - EDGE - LEAD,
+          below: SAFE_BOTTOM - (box.y + box.h + GAP) - LEAD,
+          above: box.y - GAP - EDGE - LEAD,
+        };
+        // A side that cannot hold the chip (even wrapped to 300 px) falls back to auto.
+        const fits = (s) => (s === "left" || s === "right" ? room[s] >= Math.min(cw, 300) : room[s] >= ch);
+        if (!(side in room) || !fits(side)) {
+          side = ["right", "left"].find((s) => room[s] >= cw)
+            ?? ["below", "above"].find((s) => room[s] >= ch)
+            ?? ["right", "left"].find((s) => room[s] >= 300)
+            ?? (room.below >= room.above ? "below" : "above");
+        }
+        if (side === "left" || side === "right") {
+          // Narrow room: let the label wrap to fit beside the region.
+          chip.style.maxWidth = `${Math.min(960, Math.max(300, room[side]))}px`;
+          cw = chip.offsetWidth; ch = chip.offsetHeight;
+          const wy = clamp(box.y + box.h / 2, box.y + arm, box.y + box.h - arm);
+          const cy = clamp(wy - ch / 2, EDGE, H - EDGE - ch);
+          const x0 = side === "right" ? box.x + box.w + GAP : box.x - GAP - LEAD;
+          place(wire, x0, wy - 3, LEAD, 6);
+          wire.style.transformOrigin = side === "right" ? "0% 50%" : "100% 50%";
+          knob.style.left = `${side === "right" ? x0 : x0 + LEAD}px`;
+          knob.style.top = `${wy}px`;
+          chip.style.left = `${clamp(side === "right" ? x0 + LEAD : x0 - cw, 0, W - cw)}px`;
+          chip.style.top = `${clamp(cy, wy - ch + 30, wy - 30)}px`;
+        } else {
+          const cx = clamp(box.x + box.w / 2 - cw / 2, EDGE, W - EDGE - cw);
+          const wx = clamp(clamp(box.x + box.w / 2, cx + 40, cx + cw - 40), box.x + arm, box.x + box.w - arm);
+          const y0 = side === "below" ? box.y + box.h + GAP : box.y - GAP - LEAD;
+          place(wire, wx - 3, y0, 6, LEAD);
+          wire.style.transformOrigin = side === "below" ? "50% 0%" : "50% 100%";
+          knob.style.left = `${wx}px`;
+          knob.style.top = `${side === "below" ? y0 : y0 + LEAD}px`;
+          chip.style.left = `${cx}px`;
+          chip.style.top = `${side === "below" ? y0 + LEAD : y0 - ch}px`;
+        }
+      } else {
+        for (const el of [chip, wire, knob]) el.remove();
+      }
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(dim, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0.05);
+      // The hero: brackets thrown in from outside, each a little sooner after the last, snapping onto the corners.
+      [0, 0.09, 0.15, 0.19].forEach((at, i) => {
+        const { el, dx, dy } = corners[[0, 2, 1, 3][i]];
+        tl.fromTo(el, { opacity: 0, x: dx * 70, y: dy * 70, scale: 1.25 },
+          { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.3, ease: "back.out(2.6)" }, 0.05 + at);
+      });
+      if (v.scan) {
+        tl.fromTo("#scan", { y: -150, opacity: 1 }, { y: box.h + 10, duration: 0.75, ease: "power1.inOut" }, 0.5);
+      } else {
+        clip.remove();
+      }
+      if (hasChip) {
+        const t0 = v.scan ? 0.95 : 0.6;
+        tl.fromTo(knob, { scale: 0 }, { scale: 1, duration: 0.2, ease: "back.out(3)" }, t0);
+        const along = side === "left" || side === "right" ? "scaleX" : "scaleY";
+        tl.fromTo(wire, { [along]: 0 }, { [along]: 1, duration: 0.2, ease: "power2.out" }, t0 + 0.05);
+        const from = { right: { x: -30 }, left: { x: 30 }, below: { y: -30 }, above: { y: 30 } }[side];
+        tl.fromTo(chip, { opacity: 0, scale: 0.86, ...from }, { opacity: 1, scale: 1, x: 0, y: 0, duration: 0.32, ease: "back.out(2)" }, t0 + 0.18);
+        if (v.step) tl.fromTo(badge, { rotation: -90 }, { rotation: 0, duration: 0.4, ease: "back.out(2)" }, t0 + 0.2);
+      }
+      tl.to(["#dim", ".corner", "#wire", "#knob", "#chip"], { opacity: 0, duration: 0.35, ease: "power2.in" }, END - 0.35);
+      corners.forEach(({ el, dx, dy }) => tl.to(el, { x: dx * 30, y: dy * 30, duration: 0.35, ease: "power2.in" }, END - 0.35));
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

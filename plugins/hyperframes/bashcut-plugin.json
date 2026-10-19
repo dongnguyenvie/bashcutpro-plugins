@@ -1,0 +1,184 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.hyperframes",
+  "name": "HyperFrames Graphics",
+  "version": "0.1.0",
+  "summary": "Animated graphics written as HTML/CSS + GSAP (counters, charts, cards, diagrams, maps, kinetic type), rendered with HyperFrames in headless Chrome to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/hyperframes",
+  "category": "graphics",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": ["npm:hyperframes@0.8.140", "npm:gsap@3.14.2", "npm:katex@0.16.47", "npm:lottie-web@5.13.0"],
+    "note": "The plugin is Python 3.9+ standard library. Rendering needs Node.js 22.19+ (found on this computer, never installed by the plugin), the npm packages above (`setup` runs `npm ci` from the pinned lock file, about 135 MB) and Chrome headless shell (`setup`, about 210 MB). FFmpeg is needed only for --format mov."
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["media_import", "command_run", "sequence_inspect"],
+    "commands": ["file.importImageSequence", "file.import", "sequence.addTracks", "timeline.place", "media.replaceFootage", "file.save"],
+    "effects": []
+  },
+  "settings": [
+    {
+      "id": "node",
+      "title": "Node.js",
+      "type": "path",
+      "default": "",
+      "env": ["BASHCUT_HYPERFRAMES_NODE"],
+      "flag": "--node",
+      "optional": true,
+      "help": "A Node.js 22.19 or newer; empty = found on this computer (PATH, Homebrew, nvm, Volta, Program Files)."
+    },
+    {
+      "id": "chrome",
+      "title": "Chrome headless shell",
+      "type": "path",
+      "default": "",
+      "env": ["BASHCUT_HYPERFRAMES_CHROME", "HYPERFRAMES_BROWSER_PATH"],
+      "flag": "--chrome",
+      "optional": true,
+      "help": "The browser HyperFrames renders with; empty = the one `setup` installed."
+    },
+    {
+      "id": "ffmpeg",
+      "title": "FFmpeg",
+      "type": "path",
+      "default": "",
+      "env": ["BASHCUT_HYPERFRAMES_FFMPEG"],
+      "flag": "--ffmpeg",
+      "optional": true,
+      "help": "Only for --format mov (ProRes 4444 with alpha); empty = PATH."
+    },
+    {
+      "id": "format",
+      "title": "Output",
+      "type": "enum",
+      "choices": ["png", "mov"],
+      "default": "png",
+      "env": ["BASHCUT_HYPERFRAMES_FORMAT"],
+      "flag": "--format",
+      "help": "png: an RGBA PNG sequence imported with file.importImageSequence (no FFmpeg); mov: one ProRes 4444 movie with alpha."
+    }
+  ],
+  "actions": [
+    {
+      "id": "check",
+      "title": "Check the HyperFrames install",
+      "args": ["check"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "setup",
+      "title": "Install HyperFrames and Chrome…",
+      "args": ["setup"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "examples",
+      "title": "List the example graphics",
+      "args": ["examples"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "hf",
+      "title": "HyperFrames CLI (catalog, add, lint, snapshot, docs)",
+      "args": ["hf"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "osm-map",
+      "title": "OpenStreetMap tiles and a route",
+      "args": ["osm-map"],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "render",
+      "title": "Render a graphic",
+      "args": ["render"],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {"id": "set", "flag": "--set", "type": "string", "optional": true},
+        {"id": "variables", "flag": "--variables", "type": "string", "optional": true},
+        {"id": "brand", "flag": "--brand", "type": "path", "optional": true},
+        {"id": "fps", "flag": "--fps", "type": "integer", "minimum": 1, "maximum": 120, "default": 30},
+        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "draft", "flag": "--draft", "type": "bool", "default": false},
+        {"id": "name", "flag": "--name", "type": "string", "optional": true},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true},
+        {"id": "strict", "flag": "--strict", "type": "bool", "default": false},
+        {"id": "snapshot", "flag": "--snapshot", "type": "string", "optional": true}
+      ]
+    },
+    {
+      "id": "place",
+      "title": "Graphic over the picture…",
+      "args": ["place"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "seconds", "flag": "--seconds", "type": "number", "optional": true},
+        {"id": "frame", "flag": "--frame", "type": "integer", "optional": true},
+        {"id": "track", "flag": "--track", "type": "string", "default": "V2"},
+        {"id": "set", "flag": "--set", "type": "string", "optional": true},
+        {"id": "variables", "flag": "--variables", "type": "string", "optional": true},
+        {"id": "brand", "flag": "--brand", "type": "path", "optional": true},
+        {"id": "fps", "flag": "--fps", "type": "integer", "optional": true},
+        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "draft", "flag": "--draft", "type": "bool", "default": false},
+        {"id": "out", "flag": "--out", "type": "path", "optional": true},
+        {"id": "strict", "flag": "--strict", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "rerender",
+      "title": "Change a placed graphic",
+      "args": ["rerender"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "set", "flag": "--set", "type": "string", "optional": true},
+        {"id": "unset", "flag": "--unset", "type": "string", "optional": true},
+        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "final", "flag": "--final", "type": "bool", "default": false}
+      ]
+    },
+    {
+      "id": "finalise",
+      "title": "Render drafts at full quality",
+      "args": ["finalise"],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+      ]
+    }
+  ],
+  "skills": ["skills/hyperframes/SKILL.md"]
+}

@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- A number that matters, counted up on a dark glass card with a line that draws as it climbs. Transparent,
+     1080×1920, 3.5 s. The brand's mascot, when the project has one, peeks over the card's top-right corner. Raw material: change the card, the chart, the easing and the timing for the video. -->
+<!-- Pitfalls:
+  - countSeconds under ~0.8 s blurs the digits into noise; 1.2–2 s reads, longer than the sentence drags.
+  - Numbers past seven digits overflow the 860 px card at 84 px; shorten them (1.2M) instead of shrinking the type.
+  - A trend pill that repeats the number adds nothing; leave it empty to hide it.
+  - Over bright footage the glass card needs the dark background colour; a light card loses the white value.
+  - Decimals follow from and to (11.2 counts with one decimal) unless decimals is set; locale vi-VN writes 11,2 and
+    528,5; unit goes after the number as written (" ha", " km", "%").
+  - The mascot stands 210 px above the card's top edge (x 750–960): keep top over ~260 so it stays in frame, and
+    keep other graphics out of that corner.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "label", "type": "string", "label": "Label", "default": "Average Views"},
+  {"id": "from", "type": "number", "label": "Count from", "default": 82366},
+  {"id": "to", "type": "number", "label": "Count to", "default": 100000},
+  {"id": "countSeconds", "type": "number", "label": "Count length (s)", "default": 1.4},
+  {"id": "at", "type": "number", "label": "Count lands at (s, the word it lands on; 0: 0.3 s + count length)", "default": 0},
+  {"id": "decimals", "type": "number", "label": "Decimals (-1: as many as from and to have, up to 2)", "default": -1},
+  {"id": "locale", "type": "string", "label": "Number format locale (vi-VN: 11,2)", "default": "en-US"},
+  {"id": "unit", "type": "string", "label": "Unit after the number, as written (\" km\", \"%\")", "default": ""},
+  {"id": "top", "type": "number", "label": "Card top (px)", "default": 1180},
+  {"id": "accent", "type": "color", "label": "Line colour", "default": "#3BF26A"},
+  {"id": "trend", "type": "string", "label": "Trend pill, a sourced change (\"▲ 21%\"; empty hides it)", "default": ""},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#16181E"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#FFFFFF"},
+  {"id": "headingFont", "type": "font", "label": "Heading font (empty keeps the design font)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Body font (empty keeps the design font)", "default": ""},
+  {"id": "mascot", "type": "image", "label": "Mascot picture (bin/graphic copies the brand pose; empty hides it)", "default": ""},
+  {"id": "pose", "type": "string", "label": "Brand mascot pose (--set pose=thinking)", "default": "default"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: "Helvetica Neue"; --body-font: "Helvetica Neue"; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; font-family: var(--body-font), Arial, sans-serif; }
+      #card { position: absolute; left: 110px; width: 860px; height: 400px; padding: 40px 48px; border-radius: 34px;
+        background: color-mix(in srgb, var(--background) 86%, transparent);
+        border: 2px solid color-mix(in srgb, var(--text) 12%, transparent); color: var(--text);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5); }
+      #label { font-size: 34px; font-weight: 500; color: color-mix(in srgb, var(--text) 75%, transparent); }
+      #value { font-family: var(--heading-font), Arial, sans-serif; font-size: 84px; font-weight: 800; letter-spacing: -0.03em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+      #trend { position: absolute; top: 44px; right: 48px; padding: 6px 18px; border-radius: 999px; font-size: 30px;
+        font-weight: 700; color: var(--background); }
+      svg { position: absolute; left: 48px; bottom: 36px; width: 764px; height: 150px; overflow: visible; }
+      #mascot { position: absolute; right: 10px; bottom: 100%; margin-bottom: -20px; width: 230px; height: 230px;
+        object-fit: contain; object-position: 50% 100%; transform-origin: 50% 100%; display: none;
+        filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35)); }
+      #line { fill: none; stroke-width: 9; stroke-linecap: round; filter: drop-shadow(0 0 10px currentColor); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3.5" data-width="1080" data-height="1920">
+      <div id="card">
+        <img id="mascot" alt="" />
+        <div id="label"></div><div id="value"></div><div id="trend"></div>
+        <svg viewBox="0 0 764 150"><path id="line" d="M0 120 C 90 120, 110 40, 190 60 S 300 140, 380 90 S 520 10, 600 50 S 700 40, 764 20" /></svg>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+      const card = document.getElementById("card");
+      card.style.top = `${v.top}px`;
+      document.getElementById("label").textContent = v.label;
+      const trend = document.getElementById("trend");
+      trend.textContent = v.trend;
+      trend.style.background = v.accent;
+      trend.style.display = v.trend ? "block" : "none";
+      const value = document.getElementById("value");
+      const places = (n) => (String(n).split(".")[1] ?? "").length;
+      const decimals = Number(v.decimals) >= 0 ? Math.min(4, Math.round(Number(v.decimals))) : Math.min(2, Math.max(places(v.from), places(v.to)));
+      let numbers;
+      try {
+        numbers = new Intl.NumberFormat(v.locale || "en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      } catch {
+        numbers = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      }
+      const format = (n) => `${numbers.format(n)}${v.unit ?? ""}`;
+      // The count lands on its word (at), but never starts before 0.3 s.
+      const START = Number(v.at) > 0 ? Math.max(0.3, Number(v.at) - v.countSeconds) : 0.3;
+      value.textContent = format(v.from);
+      const line = document.getElementById("line");
+      line.style.stroke = v.accent;
+      line.style.color = v.accent;
+      const length = line.getTotalLength();
+      line.style.strokeDasharray = `${length}`;
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(card, { opacity: 0, y: 60, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" }, 0);
+      // The brand's mascot (a pose bin/graphic copied in) hops up onto the card's corner; it leaves with the card.
+      const mascot = document.getElementById("mascot");
+      if (v.mascot) {
+        mascot.src = v.mascot;
+        mascot.style.display = "block";
+        tl.fromTo(mascot, { scale: 0, y: 40, rotation: 8 }, { scale: 1, y: 0, rotation: 0, duration: 0.4, ease: "back.out(2.2)" }, 0.3);
+      }
+      tl.fromTo(line, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: v.countSeconds, ease: "power2.out" }, START);
+      // Text cannot be tweened: one tl.set per frame keeps every frame a pure function of time.
+      const steps = Math.round(v.countSeconds * 30);
+      for (let i = 0; i <= steps; i += 1) {
+        const t = 1 - Math.pow(1 - i / steps, 3);
+        tl.set(value, { textContent: format(v.from + (v.to - v.from) * t) }, START + (i / steps) * v.countSeconds);
+      }
+      tl.fromTo(value, { scale: 1 }, { scale: 1.08, duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out", transformOrigin: "left center" }, START + v.countSeconds);
+      tl.to(card, { opacity: 0, y: -30, duration: 0.3, ease: "power2.in" }, END - 0.3);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

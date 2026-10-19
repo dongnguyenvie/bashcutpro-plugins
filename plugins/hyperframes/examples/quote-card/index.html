@@ -1,0 +1,156 @@
+<!doctype html>
+<!-- A news or opinion quote on a rounded card: a large quote mark pops in, the quote reveals line by line (or word by
+     word), then the attribution (name, role, date) slides in under a thin accent rule. Transparent, 1080×1920, 4.5 s.
+     Fill it through its variables; the motion is tuned inside. -->
+<!-- Pitfalls:
+  - Quotes over ~25 words at size 64 grow the card past y 1500 into the platform's bottom band: shorten, or size 58.
+  - revealBy word suits a short punchy line (≤ 12 words); a long quote word by word takes over 2 s to land.
+  - size under ~58 px is unreadable on a phone over footage; above ~76 px only 3–4 words fit a line in width 860.
+  - Keep left + width ≤ 950 so the card stays out of the right-hand platform buttons in the lower half.
+-->
+<html lang="en" data-composition-variables='[
+  {"id": "quote", "type": "string", "label": "Quote (no quote marks)", "default": "Cities don’t need more roads. They need more reasons to walk."},
+  {"id": "name", "type": "string", "label": "Who said it", "default": "Linh Trần"},
+  {"id": "role", "type": "string", "label": "Role or outlet (empty hides it)", "default": "Urban planner"},
+  {"id": "date", "type": "string", "label": "Date (empty hides it)", "default": "March 2026"},
+  {"id": "revealBy", "type": "string", "label": "Quote reveal: line or word", "default": "line"},
+  {"id": "size", "type": "number", "label": "Quote text size (px)", "default": 74},
+  {"id": "top", "type": "number", "label": "Card top (px)", "default": 470},
+  {"id": "left", "type": "number", "label": "Card left (px)", "default": 72},
+  {"id": "width", "type": "number", "label": "Card width (px)", "default": 868},
+  {"id": "radius", "type": "number", "label": "Card corner radius (px)", "default": 36},
+  {"id": "accent", "type": "color", "label": "Quote mark and rule colour", "default": "#E8452C"},
+  {"id": "background", "type": "color", "label": "Card colour", "default": "#FBF8F2"},
+  {"id": "text", "type": "color", "label": "Text colour", "default": "#16181D"},
+  {"id": "headingFont", "type": "font", "label": "Quote font (empty keeps the design serif)", "default": ""},
+  {"id": "bodyFont", "type": "font", "label": "Attribution font (empty keeps the design font)", "default": ""}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --heading-font: Georgia; --body-font: "Helvetica Neue"; --accent: #E8452C; --background: #FBF8F2; --text: #16181D; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1920px; }
+      #card { position: absolute; padding: 112px 68px 64px; background: var(--background); color: var(--text);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.32), 0 3px 10px rgba(0, 0, 0, 0.14); }
+      #mark { position: absolute; left: 52px; top: -58px; width: 150px; height: 150px; border-radius: 50%;
+        background: var(--accent); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); }
+      #mark span { position: absolute; left: 0; right: 0; top: 18px; text-align: center; font-family: Georgia, "Times New Roman", serif;
+        font-weight: 700; font-size: 200px; line-height: 1; color: var(--background); }
+      #quote { position: relative; font-family: var(--heading-font), Georgia, serif; line-height: 1.3; letter-spacing: -0.01em;
+        padding-top: 0.06em; }
+      .word { display: inline-block; }
+      .part { white-space: nowrap; }
+      #by { display: flex; align-items: flex-start; gap: 26px; margin-top: 48px; }
+      #rule { flex: none; width: 64px; height: 6px; margin-top: 34px; border-radius: 3px; background: var(--accent); transform-origin: left center; }
+      #name { font-family: var(--body-font), Arial, sans-serif; font-size: 60px; font-weight: 700; line-height: 1.2;
+        letter-spacing: -0.01em; }
+      #meta { font-family: var(--body-font), Arial, sans-serif; font-size: 50px; font-weight: 500; line-height: 1.25;
+        color: color-mix(in srgb, var(--text) 62%, transparent); margin-top: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4.5" data-width="1080" data-height="1920">
+      <div id="card">
+        <div id="mark"><span>“</span></div>
+        <div id="quote"></div>
+        <div id="by"><div id="rule"></div><div id="who"><div id="name"></div><div id="meta"></div></div></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      // Brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand). A
+      // font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in this folder.
+      const look = document.documentElement.style;
+      for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
+      const faces = document.createElement("style");
+      for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
+        const name = String(v[key] ?? "").trim();
+        if (!name) continue;
+        const file = /\.(ttf|otf|woff2?)$/i.test(name);
+        if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
+        look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
+      }
+      document.head.appendChild(faces);
+
+      const card = document.getElementById("card");
+      card.style.top = `${v.top}px`;
+      card.style.left = `${v.left}px`;
+      card.style.width = `${Math.min(Number(v.width) || 868, 1080 - Number(v.left) - 40)}px`;
+      card.style.borderRadius = `${Math.max(0, Number(v.radius) || 0)}px`;
+      const quote = document.getElementById("quote");
+      quote.style.fontSize = `${Math.max(36, Number(v.size) || 74)}px`;
+      const byWord = String(v.revealBy).trim().toLowerCase() === "word";
+      const words = String(v.quote ?? "").trim().split(/\s+/).filter(Boolean).map((text, index) => {
+        if (index > 0) quote.appendChild(document.createTextNode(" "));
+        const span = document.createElement("span");
+        span.className = "word";
+        span.textContent = text;
+        quote.appendChild(span);
+        return span;
+      });
+      document.getElementById("name").textContent = v.name;
+      const meta = document.getElementById("meta");
+      // Role and date each stay whole; the line breaks between them, never inside "March 2026".
+      [v.role, v.date].map((part) => String(part ?? "").trim()).filter(Boolean).forEach((part, index) => {
+        const span = document.createElement("span");
+        span.className = "part";
+        span.dataset.text = part;
+        span.textContent = index > 0 ? `· ${part}` : part;
+        if (index > 0) meta.appendChild(document.createTextNode(" "));
+        meta.appendChild(span);
+      });
+      meta.style.display = meta.textContent ? "block" : "none";
+
+      // Every frame is a pure function of time: one paused timeline, no clocks or random.
+      // The exit lands on the composition's end, so a render stretched to a span (bin/graphic plan sets
+      // data-duration) holds until then.
+      const END = Number(document.querySelector('[data-composition-id="main"]').dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+
+      // Line by line: words that share a line (same offsetTop) land together; the gaps shrink as it goes. Word by
+      // word: an accelerating stagger. Built now and again once fonts settle (a late font rewraps the lines).
+      function build() {
+        const time = tl.time();
+        tl.clear();
+        // When the date wraps under the role, it drops its "·".
+        const parts = [...meta.querySelectorAll(".part")];
+        parts.forEach((span, index) => { span.textContent = index > 0 ? `· ${span.dataset.text}` : span.dataset.text; });
+        parts.forEach((span, index) => {
+          if (index > 0 && span.offsetTop > parts[index - 1].offsetTop + 4) span.textContent = span.dataset.text;
+        });
+        tl.fromTo(card, { opacity: 0, y: 70, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }, 0);
+        tl.fromTo("#mark", { scale: 0.2, rotation: -24, opacity: 0 },
+          { scale: 1, rotation: 0, opacity: 1, duration: 0.55, ease: "back.out(1.9)" }, 0.18);
+        let at = 0.45;
+        let line = 0;
+        let lastTop = words.length ? words[0].offsetTop : 0;
+        words.forEach((span, index) => {
+          if (byWord) {
+            if (index > 0) at += 0.075 * Math.max(0.6, 1 - 0.03 * index);
+          } else if (Math.abs(span.offsetTop - lastTop) > 4) {
+            at += 0.24 * Math.max(0.6, 1 - 0.1 * line);
+            line += 1;
+            lastTop = span.offsetTop;
+          }
+          tl.fromTo(span, { opacity: 0, y: 34, filter: "blur(6px)" },
+            { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5, ease: "power3.out" }, at + (byWord ? 0 : index * 0.012));
+        });
+        const landed = at + 0.4;
+        tl.fromTo("#rule", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "expo.out" }, landed);
+        tl.fromTo("#name", { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, landed + 0.1);
+        tl.fromTo(meta, { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, landed + 0.22);
+        tl.to(card, { opacity: 0, y: -36, scale: 0.98, duration: 0.4, ease: "power2.in" }, END - 0.4);
+        tl.seek(time, false);
+      }
+      build();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
