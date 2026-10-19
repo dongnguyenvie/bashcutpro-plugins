@@ -235,13 +235,23 @@ def existing_covers(app, clip_id):
     return sorted({m["effect"] for m in listing.get("masks", []) if m.get("clip") == clip_id and m.get("name") == COVER_MASK_NAME})
 
 
-def clip_effect_count(app, clip_id):
+def clip_effects(app, clip_id):
+    """The clip's effect ids in the order `effect` indexes count them (applied effects come before the
+    intrinsic motion, opacity and time_remap)."""
     sequence = app.tool("sequence_inspect") or {}
     for track in sequence.get("video") or []:
         for item in track.get("items") or []:
             if item.get("clip") == clip_id:
-                return len(item.get("effects") or [])
+                return [e.get("effect") for e in item.get("effects") or []]
     raise ValueError("clip %s is not in the active sequence" % clip_id)
+
+
+def new_effect_index(before, after):
+    """Where one effect was inserted into a list: the first place the lists differ."""
+    for i, effect in enumerate(after):
+        if i >= len(before) or before[i] != effect:
+            return i
+    raise ValueError("the effect was not added")
 
 
 def apply_cover(app, clip_id, box, width, height, look="blur"):
@@ -249,10 +259,16 @@ def apply_cover(app, clip_id, box, width, height, look="blur"):
     for index in reversed(existing_covers(app, clip_id)):
         app.run("effects.remove", {"clip": clip_id, "index": index})
     effect, params, mask, feather = cover_params(box, width, height, look)
+    before = clip_effects(app, clip_id)
     app.run("effects.apply", {"clips": [clip_id], "effect": effect})
-    index = clip_effect_count(app, clip_id) - 1
+    index = new_effect_index(before, clip_effects(app, clip_id))
     steps = [("effects.setParam", {"clip": clip_id, "effect": index, "param": k, "value": v}) for k, v in params.items()]
     steps.append(("masks.add", dict(mask, clip=clip_id, effect=index)))
     steps.append(("masks.set", {"clip": clip_id, "effect": index, "mask": 0, "name": COVER_MASK_NAME, "feather": feather}))
-    app.batch(steps)
+    try:
+        app.batch(steps)
+    except Exception:
+        # never leave an unmasked blur over the whole picture
+        app.run("effects.remove", {"clip": clip_id, "index": index})
+        raise
     return {"clip": clip_id, "effect": effect, "effectIndex": index, "params": params, "mask": mask, "feather": feather}

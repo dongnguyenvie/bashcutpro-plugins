@@ -101,7 +101,9 @@ class CoverCommandTests(unittest.TestCase):
         self.dir = tempfile.mkdtemp()
         self.project = os.path.join(self.dir, "state.json")
         clip = {"clip": 7, "item": 3, "name": "drama.mp4", "start": 0, "duration": 4 * TPS, "sourceIn": 0, "sourceOut": 4 * TPS,
-                "enabled": True, "effects": [{"effect": "lumetri", "enabled": True, "masks": [], "params": {}}]}
+                "enabled": True, "effects": [{"effect": "lumetri", "enabled": True, "masks": [], "params": {}},
+                            {"effect": "motion", "enabled": True, "masks": [], "params": {}},
+                            {"effect": "opacity", "enabled": True, "masks": [], "params": {}}]}
         with open(self.project, "w") as f:
             json.dump({"captions": {"tracks": []}, "frames": {"3": SPEC},
                        "sequence": {"video": [{"name": "V1", "items": [clip]}], "audio": []}}, f)
@@ -121,7 +123,7 @@ class CoverCommandTests(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(out["data"]["covered"], 1)
         effects = self.clip()["effects"]
-        self.assertEqual([e["effect"] for e in effects], ["lumetri", "gaussian_blur"])
+        self.assertEqual([e["effect"] for e in effects], ["lumetri", "gaussian_blur", "motion", "opacity"])
         blur = effects[1]
         self.assertTrue(blur["params"]["repeat_edge"])
         self.assertEqual(blur["masks"][0]["name"], COVER_MASK_NAME)
@@ -131,14 +133,14 @@ class CoverCommandTests(unittest.TestCase):
         code, out = self.run_cli("--box", "0,0.7,1,0.3")
         self.assertEqual(code, 0, out)
         effects = self.clip()["effects"]
-        self.assertEqual([e["effect"] for e in effects], ["lumetri", "gaussian_blur"])
+        self.assertEqual([e["effect"] for e in effects], ["lumetri", "gaussian_blur", "motion", "opacity"])
         self.assertEqual(effects[1]["masks"][0]["size"], [320.0, 54.0])
 
     def test_detect_only_changes_nothing(self):
         code, out = self.run_cli("--mode", "detect")
         self.assertEqual(code, 0, out)
         self.assertIsNotNone(out["data"]["clips"][0]["subtitles"])
-        self.assertEqual(len(self.clip()["effects"]), 1)
+        self.assertEqual(len(self.clip()["effects"]), 3)
         self.assertIn("nothing changed", out["message"])
 
 

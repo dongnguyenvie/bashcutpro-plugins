@@ -65,3 +65,11 @@ removal; blur or mosaic on the clip itself instead of an opaque band or a zoom; 
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+Live run (2026-10-20, `filmcraft-cli` 0.9.0 built from BashCutPro `6124611c`, macOS arm64, headless `--project`): an
+8 s 1280x720 clip with burned-in English subtitles and a fixed "@NoodleTV" logo, its SRT imported with
+`captions.import`. `cover --mode detect` found the subtitle band (x 0.21-0.79, y 0.84-0.93; the text is at 0.24-0.76,
+0.85-0.91) in 8 of 8 frames in about 1 s; `cover` added a masked Gaussian Blur that leaves the old subtitles unreadable.
+`translate` without a key exited 3 with the 3 lines; `apply` wrote the Vietnamese lines, set the track language to `vi`
+and kept every caption's start and end tick. `translate` against a local OpenAI-compatible mock wrote all 3 lines.
+The bridge mode (`--bridge`, the open app) was not run.

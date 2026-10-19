@@ -75,10 +75,17 @@ def main():
             return {"path": p["path"]}
         if cmd == "effects.apply":
             for cid in p["clips"]:
-                find_clip(cid)["effects"].append({"effect": p["effect"], "enabled": True, "masks": [], "params": {}})
+                effects = find_clip(cid)["effects"]
+                # like the engine: applied effects go before the intrinsic motion / opacity / time_remap
+                at = next((i for i, e in enumerate(effects) if e["effect"] in ("motion", "opacity", "time_remap")), len(effects))
+                effects.insert(at, {"effect": p["effect"], "enabled": True, "masks": [], "params": {}})
             return None
         if cmd == "effects.setParam":
-            find_clip(p["clip"])["effects"][p["effect"]]["params"][p["param"]] = p["value"]
+            effect = find_clip(p["clip"])["effects"][p["effect"]]
+            known = {"gaussian_blur": ("blurriness", "dimensions", "repeat_edge"), "mosaic": ("horizontal", "vertical", "sharp", "softness")}
+            if p["param"] not in known.get(effect["effect"], ()):
+                raise ValueError("invalid parameters for `effects.setParam`: no param `%s`" % p["param"])
+            effect["params"][p["param"]] = p["value"]
             return None
         if cmd == "effects.remove":
             del find_clip(p["clip"])["effects"][p["index"]]
