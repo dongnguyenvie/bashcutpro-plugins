@@ -87,6 +87,7 @@
       "id": "translate",
       "title": "Translate captions…",
       "args": ["translate"],
+      "view": true,
       "needs": "project",
       "edits": true,
       "params": [
@@ -104,6 +105,7 @@
       "id": "review",
       "title": "Review captions…",
       "args": ["review"],
+      "view": true,
       "needs": "project",
       "edits": false,
       "params": [
