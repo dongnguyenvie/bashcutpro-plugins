@@ -231,6 +231,14 @@ class FreesoundTests(unittest.TestCase):
         self.assertFalse(any('freesound.org/apiv2' in u or 'mixkit' in u for u, _ in web.calls))
         self.assertEqual(rows[0]['from'], 'openverse')
 
+    def test_openverse_licence_reads_like_the_stock_one(self):
+        lic = self.audio.openverse_licence
+        self.assertEqual(lic({'license': 'by', 'license_version': '4.0'}), 'CC BY 4.0')
+        self.assertEqual(lic({'license': 'by-nc', 'license_version': '3.0'}), 'CC BY-NC 3.0')
+        self.assertEqual(lic({'license': 'cc0', 'license_version': '1.0'}), 'CC0')
+        self.assertEqual(lic({'license': 'pdm'}), 'Public Domain Mark')
+        self.assertIsNone(lic({}))
+
     def test_freesound_source_without_key_says_so(self):
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True):
             rows = run(self.audio, ['--dest', folder, '--sfx', 'pop', '--sfx-source', 'freesound'])

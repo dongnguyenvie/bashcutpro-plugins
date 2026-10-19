@@ -115,7 +115,7 @@ class OnnxBackend:
     def session(self, model_id):
         if model_id not in self.sessions:
             if self.models.missing(model_id):
-                raise AppError("no_model", "%s is not downloaded: run `models --download`" % model_id)
+                raise AppError("no_model", "%s is not downloaded: run `models --download --model %s`" % (model_id, model_id))
             path = os.path.join(self.models.folder(model_id), FILES[model_id])
             self.sessions[model_id] = self.ort.InferenceSession(path, providers=["CPUExecutionProvider"])
         return self.sessions[model_id]

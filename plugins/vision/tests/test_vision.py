@@ -184,6 +184,17 @@ class ModelsTests(Base):
         self.assertEqual(ids, ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"])
         self.assertFalse(any(m["downloaded"] for m in result["data"]["models"]))
 
+    def test_download_fetches_only_the_named_model(self):
+        import argparse
+        from unittest import mock
+        from vision_plugin import cli
+        fetched = []
+        found = mock.Mock(missing=lambda m: True, model=lambda m: {"title": m}, folder=lambda m: m,
+                          fetch=lambda m: fetched.append(m))
+        with mock.patch.object(cli, "models", return_value=found):
+            cli.cmd_models(argparse.Namespace(download=True, model="yunet-face-2023mar"))
+        self.assertEqual(fetched, ["yunet-face-2023mar"])
+
     def test_setup_dry_run(self):
         code, result = self.run_cli("setup", "--dry-run", project=False)
         self.assertEqual(code, 0, result)

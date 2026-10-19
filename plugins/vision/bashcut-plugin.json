@@ -62,7 +62,8 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "download", "flag": "--download", "type": "bool", "default": false}
+        {"id": "download", "flag": "--download", "type": "bool", "default": false},
+        {"id": "model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true}
       ]
     },
     {
