@@ -1,0 +1,41 @@
+{
+  "schema": "bashcut-batch/1",
+  "inputs": [
+    "."
+  ],
+  "projectsFolder": "bashcut-batch/projects",
+  "outputsFolder": "bashcut-batch/exports",
+  "onFailure": "skip",
+  "name": "clean-audio",
+  "description": "Clean audio for a folder: voice polish and loudness on every clip, a WAV per input",
+  "concurrency": 2,
+  "steps": [
+    {
+      "label": "voice polish and loudness",
+      "commands": [
+        {
+          "id": "edit.selectAll",
+          "params": {}
+        },
+        {
+          "id": "bashcut.audio.polish",
+          "params": {
+            "amount": 0.5,
+            "target": -16
+          }
+        }
+      ]
+    },
+    {
+      "label": "measure loudness",
+      "command": "bashcut.audio.loudness",
+      "params": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "{name}-clean.wav",
+      "format": "wav"
+    }
+  ]
+}
