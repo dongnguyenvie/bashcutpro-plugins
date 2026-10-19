@@ -1,0 +1,492 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "bashcut.library",
+  "name": "Library",
+  "version": "0.1.0",
+  "summary": "One place for reusable looks, titles, text styles, stickers, overlays, sounds, music beds, effect presets, project templates and brand kits: save them from a project, search them, apply them to another, share them as packs.",
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/library",
+  "category": "library",
+  "platforms": [
+    "macos",
+    "windows",
+    "linux"
+  ],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": []
+  },
+  "entry": {
+    "command": [
+      "python3",
+      "plugin.py"
+    ],
+    "windows": [
+      "py",
+      "-3",
+      "plugin.py"
+    ]
+  },
+  "connect": {
+    "project": [
+      "--project",
+      "{project}"
+    ],
+    "bridge": [
+      "--bridge",
+      "{address}"
+    ],
+    "cli": [
+      "--cli",
+      "{cli}"
+    ]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": [
+      "mcp-headless",
+      "mcp-bridge"
+    ],
+    "tools": [
+      "command_run",
+      "media_import",
+      "sequence_inspect"
+    ],
+    "commands": [
+      "graphics.template.export",
+      "graphics.template.apply",
+      "presets.save",
+      "presets.export",
+      "presets.import",
+      "presets.apply",
+      "lut.export",
+      "lumetri.setLook",
+      "file.exportMedia",
+      "sequence.addTracks",
+      "timeline.place",
+      "captions.setStyle",
+      "file.save"
+    ],
+    "effects": []
+  },
+  "settings": [
+    {
+      "id": "libraryDir",
+      "title": "Library folder",
+      "type": "path",
+      "env": [
+        "BASHCUT_LIBRARY_DIR"
+      ],
+      "flag": "--library-dir",
+      "optional": true,
+      "help": "Where the index and files live (default <data dir>/bashcut/library)."
+    }
+  ],
+  "actions": [
+    {
+      "id": "search",
+      "title": "Search the library…",
+      "args": [
+        "search"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "query",
+          "flag": "--query",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "kind",
+          "flag": "--kind",
+          "type": "enum",
+          "choices": [
+            "",
+            "brand-kit",
+            "effect-preset",
+            "look",
+            "lut",
+            "music",
+            "overlay",
+            "sound",
+            "sticker",
+            "template",
+            "text-style",
+            "title"
+          ],
+          "default": ""
+        },
+        {
+          "id": "tags",
+          "flag": "--tags",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "favourites",
+          "flag": "--favourites",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "add",
+      "title": "Add a file…",
+      "args": [
+        "add"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "kind",
+          "flag": "--kind",
+          "type": "enum",
+          "choices": [
+            "brand-kit",
+            "effect-preset",
+            "look",
+            "lut",
+            "music",
+            "overlay",
+            "sound",
+            "sticker",
+            "template",
+            "text-style",
+            "title"
+          ],
+          "default": "sticker"
+        },
+        {
+          "id": "file",
+          "flag": "--file",
+          "type": "path"
+        },
+        {
+          "id": "title",
+          "flag": "--title",
+          "type": "string"
+        },
+        {
+          "id": "purpose",
+          "flag": "--purpose",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "tags",
+          "flag": "--tags",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "license",
+          "flag": "--license",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "preview",
+          "flag": "--preview",
+          "type": "path",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "save",
+      "title": "Save the selection…",
+      "args": [
+        "save"
+      ],
+      "needs": "project",
+      "edits": false,
+      "params": [
+        {
+          "id": "kind",
+          "flag": "--kind",
+          "type": "enum",
+          "choices": [
+            "effect-preset",
+            "look",
+            "lut",
+            "music",
+            "overlay",
+            "sound",
+            "sticker",
+            "text-style",
+            "title"
+          ],
+          "default": "title"
+        },
+        {
+          "id": "clip",
+          "flag": "--clip",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "id": "lut",
+          "flag": "--lut",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "id": "start",
+          "flag": "--start",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "id": "end",
+          "flag": "--end",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "id": "title",
+          "flag": "--title",
+          "type": "string"
+        },
+        {
+          "id": "purpose",
+          "flag": "--purpose",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "tags",
+          "flag": "--tags",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "license",
+          "flag": "--license",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "preview",
+          "flag": "--preview",
+          "type": "path",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "apply",
+      "title": "Apply or place an item",
+      "args": [
+        "apply"
+      ],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {
+          "id": "id",
+          "flag": "--id",
+          "type": "string"
+        },
+        {
+          "id": "out",
+          "flag": "--out",
+          "type": "path",
+          "optional": true
+        },
+        {
+          "id": "clip",
+          "flag": "--clip",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "id": "seconds",
+          "flag": "--seconds",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "id": "track",
+          "flag": "--track",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "id": "values",
+          "flag": "--values",
+          "type": "string",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "favourite",
+      "title": "Favourite",
+      "args": [
+        "favourite"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "id",
+          "flag": "--id",
+          "type": "string"
+        },
+        {
+          "id": "off",
+          "flag": "--off",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "remove",
+      "title": "Remove an item",
+      "args": [
+        "remove"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "id",
+          "flag": "--id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "packExport",
+      "title": "Export a pack…",
+      "args": [
+        "pack-export"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "out",
+          "flag": "--out",
+          "type": "path"
+        },
+        {
+          "id": "kind",
+          "flag": "--kind",
+          "type": "enum",
+          "choices": [
+            "",
+            "brand-kit",
+            "effect-preset",
+            "look",
+            "lut",
+            "music",
+            "overlay",
+            "sound",
+            "sticker",
+            "template",
+            "text-style",
+            "title"
+          ],
+          "default": ""
+        },
+        {
+          "id": "tags",
+          "flag": "--tags",
+          "type": "string",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": "packImport",
+      "title": "Import a pack…",
+      "args": [
+        "pack-import"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "path",
+          "flag": "--path",
+          "type": "path"
+        }
+      ]
+    },
+    {
+      "id": "stats",
+      "title": "Library stats",
+      "args": [
+        "stats"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": []
+    },
+    {
+      "id": "brandShow",
+      "title": "Show a brand kit",
+      "args": [
+        "brand",
+        "show"
+      ],
+      "needs": "none",
+      "edits": false,
+      "params": [
+        {
+          "id": "id",
+          "flag": "--id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "brandApply",
+      "title": "Apply a brand kit part",
+      "args": [
+        "brand",
+        "apply"
+      ],
+      "needs": "project",
+      "edits": true,
+      "params": [
+        {
+          "id": "id",
+          "flag": "--id",
+          "type": "string"
+        },
+        {
+          "id": "part",
+          "flag": "--part",
+          "type": "enum",
+          "choices": [
+            "logo",
+            "intro",
+            "outro",
+            "lowerThird",
+            "captionStyle"
+          ],
+          "default": "lowerThird"
+        },
+        {
+          "id": "seconds",
+          "flag": "--seconds",
+          "type": "number",
+          "optional": true
+        }
+      ]
+    }
+  ],
+  "skills": [
+    "skills/library-plugin/SKILL.md"
+  ]
+}
