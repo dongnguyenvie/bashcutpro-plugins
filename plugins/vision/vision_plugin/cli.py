@@ -22,9 +22,9 @@ from .images import read_png_size
 from .mcp import AppError, McpClient
 from .ocr import find_tesseract, read_text
 from .settings import PACKAGES, resolve, venv_python
-from .timeline import (clip_entry, every_frame, export_still, fps_text, import_sequence, import_still, load_sidecar,
-                       reframe_steps, sample_times, save_sidecar, sequence_time, settings, sidecar_path, video_clips,
-                       ensure_video_track)
+from .timeline import (clip_entry, every_frame, export_still, footage_items, fps_text, import_sequence, import_still,
+                       load_sidecar, reframe_steps, sample_times, save_sidecar, sequence_time, settings, sidecar_path,
+                       video_clips, ensure_video_track)
 
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXIT_HANDOFF = 3
@@ -176,7 +176,7 @@ def cmd_cutout(args):
     look = backend(models)
     with connect(args) as app:
         sequence = app.tool("sequence_inspect") or {}
-        clip = video_clips(sequence, [args.clip] if args.clip else None)[0]
+        clip = video_clips(sequence, [args.clip] if args.clip else None, footage_items(app))[0]
         times = every_frame(clip, sequence, args.max_frames)
         out = os.path.abspath(args.out) if args.out else os.path.join(project_folder(args), "vision", "cutout-%s" % clip["clip"])
         os.makedirs(out, exist_ok=True)
@@ -229,7 +229,7 @@ def cmd_subjects(args):
         sequence = app.tool("sequence_inspect") or {}
         scratch = tempfile.mkdtemp(prefix="bashcut-vision-")
         try:
-            for clip in video_clips(sequence, args.clip):
+            for clip in video_clips(sequence, args.clip, footage_items(app)):
                 progress("Looking at clip %s (%s)" % (clip["clip"], clip.get("name")))
                 samples, size = [], None
                 for i, time in enumerate(sample_times(clip, args.samples)):
@@ -278,7 +278,7 @@ def cmd_ocr(args):
     tesseract = find_tesseract(args.tesseract or resolve({})["tesseract"])
     with connect(args) as app:
         sequence = app.tool("sequence_inspect") or {}
-        clips = video_clips(sequence, args.clip)
+        clips = video_clips(sequence, args.clip, footage_items(app))
         frames = agent_frames(app, clips, args.samples, os.path.join(os.path.dirname(path), "vision-frames"))
     if not tesseract:
         raise Handoff("No Tesseract here: read the text on these frames, then run ocr-apply", {
@@ -320,7 +320,7 @@ def cmd_describe(args):
     path = sidecar_path(args.sidecar, args.project)
     with connect(args) as app:
         sequence = app.tool("sequence_inspect") or {}
-        frames = agent_frames(app, video_clips(sequence, args.clip), args.samples, os.path.join(os.path.dirname(path), "vision-frames"))
+        frames = agent_frames(app, video_clips(sequence, args.clip, footage_items(app)), args.samples, os.path.join(os.path.dirname(path), "vision-frames"))
     raise Handoff("Describe each clip from its frames (what, who, where, shot size, motion, mood), then run describe-apply", {
         "frames": frames, "sidecar": path, "then": "describe-apply",
         "answer": {"clips": [{"clip": "<id>", "description": "one or two sentences", "tags": ["wide", "outdoor"]}]}})
