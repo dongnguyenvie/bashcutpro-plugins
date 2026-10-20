@@ -46,9 +46,14 @@ python3 -m unittest discover -s tests
 
 ## How a plugin runs
 
-There is no plugin host inside BashCutPro yet (`crates/bashcut-plugin-host` is planned). Until then a plugin is run by
-an agent (Claude Code, Codex) following the plugin's skill, or by a person from a shell. The manifest already says what
-a host will need, so the same plugin works unchanged once the host exists:
+**In the app** (the usual way): open **Plugins** on BashCutPro's right-hand rail, press **Check registry**, **Install**
+the plugins you want (most need Python 3.9 or newer), fill in their **Settings** (API keys go to the system key store),
+and **Run** an action from its form. Actions that edit the open project need the app started with its control channel
+(`--control 9876`). The guide's [Plugins section](https://github.com/dongnguyenvie/BashCutPro/blob/main/bashcut/guide/en/rail.md#plugins)
+walks through it. The in-app host is `crates/bashcut-plugin-host` in BashCutPro.
+
+**Without the app**, a plugin can also be run by an agent (Claude Code, Codex) following the plugin's skill, or by a
+person from a shell. The host and these runs all start a plugin the same way, from its manifest:
 
 1. **Start**: run `entry.command` (or the `entry.<os>` override) in the plugin folder, followed by the action's `args`,
    the connection arguments (`connect`) and the action's parameters as flags.
