@@ -19,11 +19,12 @@
       "timeoutSeconds": 3600
     },
     {
-      "label": "captions from the transcript",
-      "command": "transcript.createCaptions",
+      "label": "readable captions from the words",
+      "command": "bashcut.captions.create",
       "params": {
         "maxChars": 42,
-        "lines": 2
+        "lines": 2,
+        "maxCps": 20
       }
     },
     {

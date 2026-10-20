@@ -22,7 +22,8 @@
       "label": "pick quotes and make shorts",
       "agent": {
         "skill": "rough-cut",
-        "brief": "This is a long podcast recording ({name}). Pick the 3 strongest self-contained moments, 20 to 60 seconds each, each with a clear hook in its first 3 seconds. Make each its own vertical 1080x1920 sequence named short-1, short-2, short-3, keeping the speaker in frame. Add word captions to each (transcript.createCaptions, then bashcut.captions.wordStyle with style.preset pop). Export each with bashcut.profiles.apply {profile: shorts, path: {outputs}/{name}-short-N.mp4, wait: true}. Save the project."
+        "brief": "This is a long podcast recording ({name}). Pick the 3 strongest self-contained moments, 20 to 60 seconds each, each with a clear hook in its first 3 seconds, cut in pauses between phrases, never inside a word. Make each its own vertical 1080x1920 sequence named short-1, short-2, short-3, keeping the speaker in frame. In each short: captions with bashcut.captions.create {maxChars: 32, lines: 2} (at most 20 characters a second; shorten the cues it lists under left), the voice with bashcut.audio.polish {profile: shorts}, then bashcut.review.run {profile: shorts} and fix its blocking findings, then captions.export to {outputs}/{name}-short-N.srt, and only then bashcut.captions.wordStyle with style.preset pop. Export each with bashcut.profiles.apply {profile: shorts, path: {outputs}/{name}-short-N.mp4, wait: true}. Save the project.",
+        "reviewProfile": "shorts"
       },
       "timeoutSeconds": 2700
     }

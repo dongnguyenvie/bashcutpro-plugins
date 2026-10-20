@@ -19,18 +19,19 @@
       "timeoutSeconds": 3600
     },
     {
-      "label": "captions from the transcript",
-      "command": "transcript.createCaptions",
+      "label": "readable captions from the words",
+      "command": "bashcut.captions.create",
       "params": {
         "maxChars": 42,
-        "lines": 2
+        "lines": 2,
+        "maxCps": 20
       }
     },
     {
       "label": "reframe per aspect and export",
       "agent": {
         "skill": "edit-workflow",
-        "brief": "Make one sequence per aspect from the main sequence of {name}: 16:9 for youtube, 9:16 for tiktok, reels and shorts, 1:1 for facebook-square. Reframe each so the subject stays in frame (the vision plugin does it per clip: python3 {plugins}/bashcut.vision/plugin.py subjects --project {project} --cli {cli} --reframe, run on the vertical and square sequences). Keep the captions inside each profile's safe area (bashcut.profiles.get). Export each with bashcut.profiles.apply {profile, path: {outputs}/{name}-<profile>.mp4, wait: true}. Save the project."
+        "brief": "Make one sequence per aspect from the main sequence of {name}: 16:9 for youtube, 9:16 for tiktok, reels and shorts, 1:1 for facebook-square. Reframe each so the subject stays in frame (the vision plugin does it per clip: python3 {plugins}/bashcut.vision/plugin.py subjects --project {project} --cli {cli} --reframe, run on the vertical and square sequences). Keep the captions inside each profile's safe area (bashcut.profiles.get); in the 9:16 and 1:1 sequences make them again with bashcut.captions.create {maxChars: 32, lines: 2} (left empty is the target: at most 20 characters a second). Review every sequence with bashcut.review.run and its profile, and fix blocking findings. Write each sequence's captions as {outputs}/{name}-<profile>.srt (captions.export) before any word style. Export each with bashcut.profiles.apply {profile, path: {outputs}/{name}-<profile>.mp4, wait: true}. Save the project."
       },
       "timeoutSeconds": 3600
     }
