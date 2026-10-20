@@ -10,7 +10,7 @@ PACK = os.path.join(ROOT, "packs", "batch")
 
 KINDS = ("command", "commands", "plugin", "agent")
 # bashcut-batch's placeholders (bashcut/batch.md); {prompt} only in agent argv
-PLACEHOLDERS = {"input", "media", "name", "project", "itemDir", "outputs", "cli", "plugins"}
+PLACEHOLDERS = {"input", "media", "name", "project", "itemDir", "outputs", "cli", "plugins", "kit"}
 # BashCutPro's built-in output profiles (bashcut.profiles.list)
 PROFILES = {"tiktok", "reels", "shorts", "youtube", "youtube-4k", "facebook-square"}
 KIT_SKILLS = {"rough-cut", "edit-workflow", "captions-text", "audio-mix", "review", "beat-cut"}
@@ -52,6 +52,30 @@ class BatchPresets(unittest.TestCase):
                 with self.subTest(name):
                     style = ids.index("bashcut.captions.wordStyle")
                     self.assertNotIn("captions.export", ids[style:])
+
+    def test_captions_come_from_the_words_at_a_readable_speed(self):
+        # bashcut.captions.create (BashCutPro#200) keeps cues at 20 characters a second or less; createCaptions does not
+        for name, p in self.all:
+            text = json.dumps(p)
+            with self.subTest(name):
+                self.assertNotIn("transcript.createCaptions", text)
+                ids = [s.get("command") for s in p.get("steps", [])]
+                briefs = " ".join(s["agent"].get("brief", "") for s in p.get("steps", []) if "agent" in s)
+                if "bashcut.captions.wordStyle" in ids or "captions" in briefs.lower():
+                    self.assertTrue("bashcut.captions.create" in ids or "bashcut.captions.create" in briefs)
+                for s in p.get("steps", []):
+                    if s.get("command") == "bashcut.captions.create":
+                        self.assertLessEqual(s["params"].get("maxCps", 20), 20)
+                        self.assertLessEqual(s["params"].get("maxChars", 42), 42)
+
+    def test_agent_briefs_export_the_srt_before_the_word_style(self):
+        for name, p in self.all:
+            for s in p.get("steps", []):
+                brief = s.get("agent", {}).get("brief", "")
+                if "wordStyle" in brief:
+                    with self.subTest(name):
+                        self.assertIn("captions.export", brief)
+                        self.assertLess(brief.index("captions.export"), brief.index("wordStyle"))
 
     def test_pipeline_shape(self):
         for name, p in self.all:

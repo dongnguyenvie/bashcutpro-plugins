@@ -7,7 +7,7 @@
   "outputsFolder": "bashcut-batch/exports",
   "onFailure": "skip",
   "name": "captions-draft",
-  "description": "Captions draft for a folder: auto captions, a clean word style, an SRT and a YouTube preview per clip",
+  "description": "Captions draft for a folder: captions grouped from the words at 20 characters a second or less, reviewed, an SRT, a clean word style and a YouTube preview per clip",
   "concurrency": 2,
   "steps": [
     {
@@ -19,11 +19,22 @@
       "timeoutSeconds": 3600
     },
     {
-      "label": "captions from the transcript",
-      "command": "transcript.createCaptions",
+      "label": "readable captions from the words",
+      "command": "bashcut.captions.create",
       "params": {
         "maxChars": 42,
-        "lines": 2
+        "lines": 2,
+        "maxCps": 20
+      }
+    },
+    {
+      "label": "review the captions",
+      "command": "bashcut.review.run",
+      "params": {
+        "profile": "youtube",
+        "checks": [
+          "captions"
+        ]
       }
     },
     {
