@@ -27,20 +27,20 @@
       }
     },
     {
+      "label": "SRT",
+      "command": "captions.export",
+      "params": {
+        "path": "{outputs}/{name}.srt",
+        "track": "C1"
+      }
+    },
+    {
       "label": "clean word style",
       "command": "bashcut.captions.wordStyle",
       "params": {
         "style": {
           "preset": "clean"
         }
-      }
-    },
-    {
-      "label": "SRT",
-      "command": "captions.export",
-      "params": {
-        "path": "{outputs}/{name}.srt",
-        "track": "C1"
       }
     }
   ],

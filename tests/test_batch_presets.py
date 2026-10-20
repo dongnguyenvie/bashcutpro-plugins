@@ -44,6 +44,15 @@ class BatchPresets(unittest.TestCase):
     def test_there_are_the_five_presets(self):
         self.assertEqual(sorted(n for n, _ in self.all), ["captions-draft", "clean-audio", "every-platform", "podcast-shorts", "vietsub-folder"])
 
+    def test_captions_are_exported_before_the_word_style_consumes_them(self):
+        # bashcut.captions.wordStyle upgrades captions to graphic clips: a captions.export after it writes an empty file (#170)
+        for name, p in self.all:
+            ids = [s.get("command") for s in p.get("steps", [])]
+            if "bashcut.captions.wordStyle" in ids:
+                with self.subTest(name):
+                    style = ids.index("bashcut.captions.wordStyle")
+                    self.assertNotIn("captions.export", ids[style:])
+
     def test_pipeline_shape(self):
         for name, p in self.all:
             with self.subTest(name):

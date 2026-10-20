@@ -15,7 +15,7 @@ bashcut-batch status ~/clips/out/.bashcut-batch/<id> --wait
 | `vietsub-folder` | transcribe → captions → translate to Vietnamese (`translate-captions`) → cover burned-in subtitles → caption style | `tiktok`, `youtube` profiles | `translate-captions` installed; a Gemini / OpenAI key (`BASHCUT_TC_API_KEY`…), else the item ends **needs attention** with the lines for an agent (hand-off) |
 | `podcast-shorts` | transcribe → agent (`rough-cut`): 3 quotes, one vertical sequence each, word captions, exported | the agent's `shorts` exports | an agent (`claude` on `PATH`) with the kit |
 | `every-platform` | transcribe → captions → agent (`edit-workflow`): one reframed sequence per aspect, captions in each safe area, exported | the agent's `youtube`, `tiktok`, `reels`, `shorts`, `facebook-square` exports | an agent with the kit; `vision` for face-following reframes |
-| `captions-draft` | transcribe → captions → clean word style → SRT | `<name>.srt`, a `youtube` preview | – |
+| `captions-draft` | transcribe → captions → SRT → clean word style (it turns the captions into graphics, so the SRT goes first) | `<name>.srt`, a `youtube` preview | – |
 | `clean-audio` | select all → voice polish + loudness (−16 LUFS) → measure | `<name>-clean.wav` | – |
 
 Each preset is the recipe; the matching kit skills (`rough-cut`, `edit-workflow`, `captions-text`, `audio-mix`)
