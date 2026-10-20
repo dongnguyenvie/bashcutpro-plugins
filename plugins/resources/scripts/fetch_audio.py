@@ -8,9 +8,9 @@
     uv run fetch_audio.py --dest /abs/project/media/audio --slots slots.json [--max-mb 150]
 
 Music: Openverse search (Jamendo, ccMixter, Freesound…), the first --music-count results of at least --min-seconds,
-in search order, only CC0, CC BY and CC BY-SA (safe for a monetised edit with the credit line), never NonCommercial
-or NoDerivatives; when the music category runs short, uncategorised Openverse audio of that length fills up.
---any-licence lifts the licence filter for Openverse music and SFX. SFX: with FREESOUND_API_KEY set (free key:
+in search order, under every licence (each row says which);
+--safe-licence keeps Openverse music and SFX to CC0, CC BY and CC BY-SA (fine for a monetised edit with the credit
+line), and when the music category then runs short, uncategorised Openverse audio of that length fills up. SFX: with FREESOUND_API_KEY set (free key:
 freesound.org/apiv2/apply), the best Freesound matches up to --sfx-seconds, CC0 first, then CC BY (its line carries
 license, author and page for the credit), never NonCommercial; else short Openverse hits (BashCutPro: official APIs
 only, so Mixkit's pages are not read). --sfx-source picks one source. Every row prints its licence, and every file
@@ -39,10 +39,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch_stock import get  # noqa: E402  (curl, with retries on resets, timeouts and HTTP 429/5xx)
 
 WORKERS = 6
-OPENVERSE_LICENCES = ["cc0", "by", "by-sa"]  # monetised edits allowed (BY / BY-SA: the credit line); NC and ND never
+OPENVERSE_LICENCES = ["cc0", "by", "by-sa"]  # --safe-licence: monetised edits allowed (BY / BY-SA: the credit line)
 
 
-def openverse(query, music, size=20, any_licence=False):
+def openverse(query, music, size=20, any_licence=True):
     params = {"q": query, "page_size": min(size, 20)}  # without an API key Openverse refuses pages over 20 (401)
     if music:
         params["category"] = "music"
@@ -79,13 +79,13 @@ def save(url, path):
 
 # Finders return candidates without downloading: {url, name, …row fields}. Downloads happen together afterwards.
 
-def music_candidates(query, count, min_seconds, any_licence=False):
+def music_candidates(query, count, min_seconds, any_licence=True):
     """Openverse's music category first. It is mostly Jamendo, largely NonCommercial: when the allowed licences leave
     too few, uncategorised audio (Freesound, ccMixter loops and beds) of a known length fills up."""
     rows, hits = [], openverse(query, music=True, size=max(20, count * 3), any_licence=any_licence)
     if not any_licence and len(hits) < count * 2:
         seen = {h["url"] for h in hits}
-        hits += [h for h in openverse(query, music=False, size=max(20, count * 3))
+        hits += [h for h in openverse(query, music=False, size=max(20, count * 3), any_licence=False)
                  if h["url"] not in seen and (h.get("duration") or 0) >= max(min_seconds, 1) * 1000]
     for hit in hits:
         seconds = (hit.get("duration") or 0) / 1000
@@ -126,7 +126,7 @@ def freesound(word, max_seconds, count):
     return rows
 
 
-def openverse_sfx(word, max_seconds, count, any_licence=False):
+def openverse_sfx(word, max_seconds, count, any_licence=True):
     return [{"url": hit["url"], "stem": f"sfx-{slug(word)}", "suffix": "." + (hit.get("filetype") or "mp3"),
              "kind": "sfx", "title": hit.get("title"), "from": "openverse", "license": openverse_licence(hit),
              "author": hit.get("creator"), "source": hit.get("foreign_landing_url")}
@@ -134,7 +134,7 @@ def openverse_sfx(word, max_seconds, count, any_licence=False):
             if (hit.get("duration") or 10_000_000) <= max_seconds * 1000]
 
 
-def sfx_candidates(word, source="auto", max_seconds=5, count=1, any_licence=False):
+def sfx_candidates(word, source="auto", max_seconds=5, count=1, any_licence=True):
     """Candidates from the first source that has any, then the next ones until count is reached."""
     finders = {"freesound": lambda: freesound(word, max_seconds, count),
                "openverse": lambda: openverse_sfx(word, max_seconds, count, any_licence)}
@@ -409,8 +409,9 @@ def main(argv=None):
     parser.add_argument("--no-library", dest="library", action="store_false")
     parser.add_argument("--scope", choices=["project", "user"], default="project", help="library scope")
     parser.add_argument("--import", dest="import_", action="store_true", help="media import the folder")
-    parser.add_argument("--any-licence", action="store_true",
-                        help="Openverse: every licence, NonCommercial and NoDerivatives too (default CC0, CC BY, CC BY-SA)")
+    parser.add_argument("--safe-licence", dest="any_licence", action="store_false", default=True,
+                        help="Openverse: CC0, CC BY and CC BY-SA only (default every licence)")
+    parser.add_argument("--any-licence", dest="any_licence", action="store_true", help=argparse.SUPPRESS)  # the default
     args = parser.parse_args(argv)
     dest = Path(args.dest)
     if args.pick:
@@ -438,7 +439,7 @@ def main(argv=None):
             rows.append({"kind": "music" if slot.get("music") else "sfx", "title": words, "slot": slot["slot"],
                          "words": words, "error": error or ("nothing found" if args.any_licence else
                                                              "nothing found under CC0, CC BY or CC BY-SA: other "
-                                                             "words, or --any-licence to see every licence")})
+                                                             "words, or drop --safe-licence")})
             continue
         slot["candidates"] = candidates
         got = download_slot(slot, dest, budget, taken)

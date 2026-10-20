@@ -195,24 +195,24 @@ OPENVERSE_MUSIC = {'results': [openverse_hit(1, 'by-nc-nd', '3.0'), openverse_hi
 
 
 class MusicLicenceTests(unittest.TestCase):
-    """BashCutPro#220: music under CC0 / CC BY / CC BY-SA unless --any-licence; the licence on every row and file."""
+    """Music under every licence unless --safe-licence (CC0 / CC BY / CC BY-SA); the licence on every row and file."""
 
     def setUp(self):
         self.audio = load('audio-mix/fetch_audio.py')
 
-    def test_default_asks_for_safe_licences_and_drops_the_rest(self):
+    def test_default_takes_every_licence(self):
         web = FakeWeb([('https://api.openverse.org/v1/audio/', OPENVERSE_MUSIC)])
         with mock.patch.object(self.audio, 'get', web):
             rows = self.audio.music_candidates('calm acoustic', 3, 30)
-        self.assertEqual(web.query('https://api.openverse.org/')['license'], ['cc0,by,by-sa'])
-        self.assertEqual([r['license'] for r in rows], ['CC0', 'CC BY 4.0', 'CC BY-SA 4.0'])
-
-    def test_any_licence_lifts_the_filter(self):
-        web = FakeWeb([('https://api.openverse.org/v1/audio/', OPENVERSE_MUSIC)])
-        with mock.patch.object(self.audio, 'get', web):
-            rows = self.audio.music_candidates('calm acoustic', 3, 30, any_licence=True)
         self.assertNotIn('license', web.query('https://api.openverse.org/'))
         self.assertIn('CC BY-NC-ND 3.0', [r['license'] for r in rows])
+
+    def test_safe_licence_asks_for_safe_licences_and_drops_the_rest(self):
+        web = FakeWeb([('https://api.openverse.org/v1/audio/', OPENVERSE_MUSIC)])
+        with mock.patch.object(self.audio, 'get', web):
+            rows = self.audio.music_candidates('calm acoustic', 3, 30, any_licence=False)
+        self.assertEqual(web.query('https://api.openverse.org/')['license'], ['cc0,by,by-sa'])
+        self.assertEqual([r['license'] for r in rows], ['CC0', 'CC BY 4.0', 'CC BY-SA 4.0'])
 
     def test_short_music_category_fills_up_from_uncategorised_audio(self):
         calls = []
@@ -225,7 +225,7 @@ class MusicLicenceTests(unittest.TestCase):
                                            openverse_hit(8, 'by')]}).encode()
 
         with mock.patch.object(self.audio, 'get', web):
-            rows = self.audio.music_candidates('calm acoustic', 2, 30)
+            rows = self.audio.music_candidates('calm acoustic', 2, 30, any_licence=False)
         self.assertEqual([c.get('category') for c in calls], [['music'], None])
         self.assertEqual(calls[1]['license'], ['cc0,by,by-sa'])
         self.assertEqual([(r['title'], r['license']) for r in rows], [('Track 8', 'CC BY 4.0')])
@@ -234,7 +234,8 @@ class MusicLicenceTests(unittest.TestCase):
         web = FakeWeb([('https://api.openverse.org/v1/audio/', OPENVERSE_MUSIC), ('https://cdn.example/', b'mp3')])
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True), \
                 mock.patch.object(self.audio, 'get', web):
-            rows = run(self.audio, ['--dest', folder, '--music', 'calm', '--music-count', '2', '--no-library'])
+            rows = run(self.audio, ['--dest', folder, '--music', 'calm', '--music-count', '2', '--no-library',
+                                     '--safe-licence'])
             record = json.loads((Path(folder) / 'music-track-3-2.mp3.licence.json').read_text())
         self.assertEqual([r['license'] for r in rows], ['CC0', 'CC BY 4.0'])
         self.assertEqual((record['license'], record['author'], record['source'], record['fetchedBy']),
@@ -245,7 +246,7 @@ class MusicLicenceTests(unittest.TestCase):
         out = io.StringIO()
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True), \
                 mock.patch.object(self.audio, 'get', web), contextlib.redirect_stdout(out):
-            self.audio.main(['--dest', folder, '--music', 'calm', '--music-count', '4', '--no-library'])
+            self.audio.main(['--dest', folder, '--music', 'calm', '--music-count', '4', '--no-library', '--safe-licence'])
         header, *lines = out.getvalue().splitlines()
         column = header.split('\t').index('licence')
         self.assertEqual([l.split('\t')[column] for l in lines], ['CC0', 'CC BY 4.0', 'CC BY-SA 4.0'])
@@ -254,8 +255,8 @@ class MusicLicenceTests(unittest.TestCase):
         web = FakeWeb([('https://api.openverse.org/v1/audio/', {'results': [openverse_hit(1, 'by-nc-nd')]})])
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True), \
                 mock.patch.object(self.audio, 'get', web):
-            rows = run(self.audio, ['--dest', folder, '--music', 'calm', '--no-library'])
-        self.assertIn('--any-licence', rows[0]['error'])
+            rows = run(self.audio, ['--dest', folder, '--music', 'calm', '--no-library', '--safe-licence'])
+        self.assertIn('--safe-licence', rows[0]['error'])
 
 
 class FreesoundTests(unittest.TestCase):
@@ -315,12 +316,12 @@ class FreesoundTests(unittest.TestCase):
         self.assertEqual(lic({'license': 'pdm'}), 'Public Domain Mark')
         self.assertIsNone(lic({}))
 
-    def test_openverse_sfx_only_safe_licences(self):
+    def test_openverse_sfx_safe_licence_only_safe_licences(self):
         found = {'results': [dict(OPENVERSE_MUSIC['results'][0], duration=900),
                              dict(OPENVERSE_MUSIC['results'][1], duration=900)]}
         web = FakeWeb([('https://api.openverse.org/v1/audio/', found)])
         with mock.patch.object(self.audio, 'get', web):
-            rows = self.audio.openverse_sfx('pop', 5, 2)
+            rows = self.audio.openverse_sfx('pop', 5, 2, any_licence=False)
         self.assertEqual(web.query('https://api.openverse.org/')['license'], ['cc0,by,by-sa'])
         self.assertEqual([r['license'] for r in rows], ['CC0'])
 
@@ -417,7 +418,7 @@ class CandidateTests(unittest.TestCase):
         cells = lines[1].split('\t')
         self.assertEqual(cells[8:12], ['0.81', '12.5', '8.0', 'freesound'])
         self.assertEqual(cells[13], 'project:lib-1')
-        self.assertTrue(cells[12])  # the licence column (BashCutPro#220)
+        self.assertTrue(cells[12])  # the licence column
         analyzes = [c for c in fake.calls if c[:2] == ('library', 'analyze')]
         self.assertEqual(len(analyzes), 1)  # one job for every candidate
         self.assertEqual(analyzes[0][2], 'project:lib-1,project:lib-2,project:lib-3')

@@ -93,8 +93,9 @@ def build_parser():
     p.add_argument("--kind", required=True, choices=finder.KINDS)
     p.add_argument("--query", required=True, help="search words")
     p.add_argument("--count", type=int, default=12, help="candidates (1-%d)" % finder.MAX_COUNT)
-    p.add_argument("--any-licence", action="store_true",
-                   help="music and sfx: NonCommercial and NoDerivatives too (default CC0, CC BY, CC BY-SA)")
+    p.add_argument("--safe-licence", dest="any_licence", action="store_false", default=True,
+                   help="music and sfx: CC0, CC BY and CC BY-SA only (default every licence)")
+    p.add_argument("--any-licence", dest="any_licence", action="store_true", help=argparse.SUPPRESS)  # the default
 
     p = sub.add_parser("download", help="fetch one search result with its licence record; prints its path and credit line")
     p.add_argument("--kind", required=True, choices=finder.KINDS)
