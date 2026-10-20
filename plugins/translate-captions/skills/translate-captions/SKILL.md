@@ -6,12 +6,12 @@ description: Translate a BashCutPro sequence's captions into another language wh
 # Translate Captions (BashCutPro)
 
 The plugin is a command-line program next to this skill (`plugin.py`, Python 3.9+). It talks to
-BashCutPro through `filmcraft-cli mcp`, so pass where the project is:
+BashCutPro through `bashcutpro mcp`, so pass where the project is:
 
 - the open app: `--bridge 127.0.0.1:<port>` (the app runs with `filmcraft --control <port>`);
 - a project file, headless: `--project <file.fcproj>` (saved when the command edits it; `--no-save` to keep it).
 
-`filmcraft-cli` is found from `--cli`, `$FILMCRAFT_CLI`, `PATH` or the install folder. Below, `TC` means
+`bashcutpro` (or `filmcraft-cli`) is found from `--cli`, `$BASHCUTPRO_CLI`, `$FILMCRAFT_CLI`, `PATH` or the install folder. Below, `TC` means
 `python3 <plugin dir>/plugin.py` (`py -3 …` on Windows) plus one of those two options. Every command
 prints one JSON object (`ok`, `message`, `data` or `error`); read `message` to the user.
 

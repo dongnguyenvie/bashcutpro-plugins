@@ -71,7 +71,7 @@ project setting (the style lives in the output folder); the BashCut provider ran
 - `bashcut-plugin.json`: the manifest; `plugin.py`: the entry point
 - `image_gen/`: `cli.py` (commands, the locked style, the record), `service.py` (the request, Gemini and OpenAI),
   `picture.py` (PNG decode and encode, centre crop, ffmpeg), `timeline.py` (import, label, place), `mcp.py` (MCP
-  client for `filmcraft-cli mcp`), `settings.py`
+  client for `bashcutpro mcp`), `settings.py`
 - `skills/image-gen/SKILL.md`: the agent skill
 - `tests/`: unit tests, a fake Gemini / OpenAI server on 127.0.0.1 (`fake_service.py`) and a fake
   `filmcraft-cli mcp` (`fake_filmcraft.py`); no real key or network
