@@ -23,7 +23,7 @@ py -3 plugin.py fetch --script audio --bridge 127.0.0.1:9876 --import --args '["
 | `fetch` | runs one script (`--script`, its own flags in `--args` as a string or JSON list, or after `--`); every file it saves gets `<file>.licence.json`; with `--import` every fetched file is imported (`--credits`: and credited in the project notes); files the script picked with `@frame[:duration]` are placed on `--video-track` (V2) or `--audio-track` (A2) | `media_import`, `sequence_inspect`, `sequence.addTracks`, `timeline.place`, `project.notes`, `project.setNotes`, `file.save` |
 | `import` | imports `--path` files or every file of `--folder` that has a licence record, with `--frame` places them one after another, with `--credits` writes their credit lines into the project notes | the same |
 | `credits` | the credit lines of a folder's files, from their records | – |
-| `search` | candidates of `--kind` `music`, `sfx`, `photo`, `video`, `icon` or `font` for `--query`, each with title, author, licence, source page, file URL and preview URL (music and sfx: CC0 / CC BY / CC BY-SA unless `--any-licence`); **nothing is downloaded** (BashCutPro's Library ▸ Online tab shows the licence before anything is fetched) | – |
+| `search` | candidates of `--kind` `music`, `sfx`, `photo`, `video`, `icon` or `font` for `--query`, each with title, author, licence, source page, file URL and preview URL (music and sfx: every licence, CC0 / CC BY / CC BY-SA only with `--safe-licence`); **nothing is downloaded** (BashCutPro's Library ▸ Online tab shows the licence before anything is fetched) | – |
 | `download` | one search result (`--kind`, `--url`, `--title`, `--license`, `--author`, `--source`) into `<data dir>/bashcut-plugins/bashcut.resources/downloads/<kind>/` with its licence record; returns the path and the credit line. Importing and placing is the caller's (the app uses its own commands); a font downloads the family's whole Regular and Bold `.ttf` from Google Fonts | – |
 
 Output and exit status follow `bashcut-result/1` (see the [repository README](../../README.md#how-a-plugin-runs)).
@@ -33,7 +33,7 @@ Output and exit status follow `bashcut-result/1` (see the [repository README](..
 | Script | Sources (official APIs or distributions) | Keys |
 |---|---|---|
 | `stock` | Wikimedia Commons API, Openverse API, NASA Images API, Internet Archive search; Pixabay and Pexels APIs with a key | `PIXABAY_API_KEY`, `PEXELS_API_KEY` |
-| `audio` | music: Openverse, CC0 / CC BY / CC BY-SA only (never NonCommercial or NoDerivatives; `--any-licence` lifts it), uncategorised Openverse audio when the music category runs short; SFX: Freesound API (CC0 / CC BY, never NonCommercial), else Openverse under the same licences as music | `FREESOUND_API_KEY` |
+| `audio` | music: Openverse under every licence (`--safe-licence`: CC0 / CC BY / CC BY-SA only, filled up from uncategorised Openverse audio when the music category runs short); SFX: Freesound API (CC0 / CC BY), else Openverse under the same licences as music | `FREESOUND_API_KEY` |
 | `emoji` | Noto Animated Emoji (Google Fonts CDN), OpenMoji (its GitHub release) | – |
 | `logos` | Simple Icons (npm package), Iconify logo sets (Iconify API) | – |
 | `illustrations` | Open Peeps, Open Doodles, Humaaans, unDraw (their published files) | – |

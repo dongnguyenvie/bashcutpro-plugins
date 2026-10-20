@@ -32,7 +32,7 @@
     {
       "id": "bashcut.resources",
       "name": "Online Resources",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "summary": "Open music, SFX, stock photos and video, icons, emoji, logos, illustrations, fonts and LUTs from official APIs: search with the licence shown before download, each file's licence recorded next to it; credit lines only when asked.",
       "category": "resources",
       "platforms": ["macos", "windows", "linux"],

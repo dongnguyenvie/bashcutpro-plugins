@@ -51,8 +51,8 @@ def _item(kind, origin, **fields):
     return row
 
 
-def _music(query, count, any_licence=False):
-    """CC0, CC BY and CC BY-SA only unless any_licence (#220): never NonCommercial or NoDerivatives by default."""
+def _music(query, count, any_licence=True):
+    """Every licence by default; any_licence=False keeps to CC0, CC BY and CC BY-SA."""
     _, audio = _scripts()
     return [_item("music", "openverse", title=r.get("title"), author=r.get("author"), license=r.get("license"),
                   source=r.get("source"), url=r.get("url"), preview=r.get("url"), seconds=r.get("seconds"),
@@ -60,7 +60,7 @@ def _music(query, count, any_licence=False):
             for r in audio.music_candidates(query, count, 0, any_licence)][:count]
 
 
-def _sfx(query, count, any_licence=False):
+def _sfx(query, count, any_licence=True):
     _, audio = _scripts()
     rows, error = audio.sfx_candidates(query, "auto", 10, count, any_licence)
     if rows is None:
@@ -120,9 +120,9 @@ FINDERS = {"music": _music, "sfx": _sfx, "photo": lambda q, n: _stock("photo", q
            "video": lambda q, n: _stock("video", q, n), "icon": _icons, "font": _fonts}
 
 
-def search(kind, query, count=12, any_licence=False):
-    """Candidates of `kind` for `query`; nothing is downloaded. Music and SFX: any_licence also lists NonCommercial
-    and NoDerivatives files."""
+def search(kind, query, count=12, any_licence=True):
+    """Candidates of `kind` for `query`; nothing is downloaded. Music and SFX: every licence unless any_licence is
+    False (then CC0, CC BY and CC BY-SA only)."""
     if kind not in FINDERS:
         raise AppError("bad_args", "kind must be one of %s" % ", ".join(KINDS))
     query = (query or "").strip()
