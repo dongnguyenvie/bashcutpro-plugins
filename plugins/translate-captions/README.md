@@ -54,7 +54,7 @@ removal; blur or mosaic on the clip itself instead of an opaque band or a zoom; 
 
 - `bashcut-plugin.json`: the manifest
 - `plugin.py`: the entry point
-- `translate_captions/`: `cli.py` (commands), `mcp.py` (MCP client for `filmcraft-cli mcp`), `captions.py` (caption
+- `translate_captions/`: `cli.py` (commands), `mcp.py` (MCP client for `bashcutpro mcp`), `captions.py` (caption
   round trip), `translate.py` (batching, prompt, Gemini and OpenAI), `cover.py` (finding and covering subtitles),
   `bmp.py` (reading frames), `settings.py`
 - `skills/translate-captions/SKILL.md`: the agent skill, including translating without a key

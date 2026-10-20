@@ -26,7 +26,7 @@ def connection_args(parser):
     group = parser.add_argument_group("connection (one of)")
     group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
     group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to filmcraft-cli (default: $FILMCRAFT_CLI, PATH, the install folder)")
+    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
     group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
 
 
