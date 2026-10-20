@@ -51,17 +51,18 @@ def _item(kind, origin, **fields):
     return row
 
 
-def _music(query, count):
+def _music(query, count, any_licence=False):
+    """CC0, CC BY and CC BY-SA only unless any_licence (#220): never NonCommercial or NoDerivatives by default."""
     _, audio = _scripts()
     return [_item("music", "openverse", title=r.get("title"), author=r.get("author"), license=r.get("license"),
                   source=r.get("source"), url=r.get("url"), preview=r.get("url"), seconds=r.get("seconds"),
                   tags=r.get("tags"))
-            for r in audio.music_candidates(query, count, 0)][:count]
+            for r in audio.music_candidates(query, count, 0, any_licence)][:count]
 
 
-def _sfx(query, count):
+def _sfx(query, count, any_licence=False):
     _, audio = _scripts()
-    rows, error = audio.sfx_candidates(query, "auto", 10, count)
+    rows, error = audio.sfx_candidates(query, "auto", 10, count, any_licence)
     if rows is None:
         raise AppError("failed", error or "no sound effect source")
     return [_item("sfx", r.get("from") or "openverse", title=r.get("title"), author=r.get("author"),
@@ -119,8 +120,9 @@ FINDERS = {"music": _music, "sfx": _sfx, "photo": lambda q, n: _stock("photo", q
            "video": lambda q, n: _stock("video", q, n), "icon": _icons, "font": _fonts}
 
 
-def search(kind, query, count=12):
-    """Candidates of `kind` for `query`; nothing is downloaded."""
+def search(kind, query, count=12, any_licence=False):
+    """Candidates of `kind` for `query`; nothing is downloaded. Music and SFX: any_licence also lists NonCommercial
+    and NoDerivatives files."""
     if kind not in FINDERS:
         raise AppError("bad_args", "kind must be one of %s" % ", ".join(KINDS))
     query = (query or "").strip()
@@ -128,6 +130,8 @@ def search(kind, query, count=12):
         raise AppError("bad_args", "give --query (search words)")
     count = max(1, min(int(count or 12), MAX_COUNT))
     try:
+        if kind in ("music", "sfx"):
+            return FINDERS[kind](query, count, any_licence)
         return FINDERS[kind](query, count)
     except SystemExit as stop:  # a script's own usage stop (e.g. a missing key)
         raise AppError("failed", str(stop.code))

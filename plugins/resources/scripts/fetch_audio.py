@@ -7,13 +7,15 @@
     uv run fetch_audio.py --dest /abs/project/media/audio --music "acoustic folk" --sfx whoosh,pop [--import]
     uv run fetch_audio.py --dest /abs/project/media/audio --slots slots.json [--max-mb 150]
 
-Music: Openverse search (Jamendo, ccMixter, Freesound…), the first --music-count results of at least
---min-seconds, in search order. SFX: with FREESOUND_API_KEY set (free key: freesound.org/apiv2/apply), the best
-Freesound matches up to --sfx-seconds, CC0 first, then CC BY (its line carries license, author and page for the
-credit), never NonCommercial; else short Openverse hits (BashCutPro: official APIs only, so Mixkit's pages are
-not read). --sfx-source picks
-one source. Downloads whatever the licence (the user handles rights). With --import, `bashcut media import DEST
---base-rev last` adds them and each line gets its media ID. Prints one compact JSON line per file.
+Music: Openverse search (Jamendo, ccMixter, Freesound…), the first --music-count results of at least --min-seconds,
+in search order, only CC0, CC BY and CC BY-SA (safe for a monetised edit with the credit line), never NonCommercial
+or NoDerivatives; when the music category runs short, uncategorised Openverse audio of that length fills up.
+--any-licence lifts the licence filter for Openverse music and SFX. SFX: with FREESOUND_API_KEY set (free key:
+freesound.org/apiv2/apply), the best Freesound matches up to --sfx-seconds, CC0 first, then CC BY (its line carries
+license, author and page for the credit), never NonCommercial; else short Openverse hits (BashCutPro: official APIs
+only, so Mixkit's pages are not read). --sfx-source picks one source. Every row prints its licence, and every file
+gets `<file>.licence.json` (title, licence, author, source page, date) next to it. With --import, `bashcut media
+import DEST --base-rev last` adds them and each line gets its media ID. Prints one compact JSON line per file.
 
 Candidates (--sfx-count or --music-count above 1, or --slots): every file is downloaded in parallel, saved to the
 project library (`library add`, tags = kind, slot, words) and measured there (`library analyze`: seconds, LUFS,
@@ -37,14 +39,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch_stock import get  # noqa: E402  (curl, with retries on resets, timeouts and HTTP 429/5xx)
 
 WORKERS = 6
+OPENVERSE_LICENCES = ["cc0", "by", "by-sa"]  # monetised edits allowed (BY / BY-SA: the credit line); NC and ND never
 
 
-def openverse(query, music, size=20):
+def openverse(query, music, size=20, any_licence=False):
     params = {"q": query, "page_size": min(size, 20)}  # without an API key Openverse refuses pages over 20 (401)
     if music:
         params["category"] = "music"
+    if not any_licence:
+        params["license"] = ",".join(OPENVERSE_LICENCES)
     data = json.loads(get("https://api.openverse.org/v1/audio/?" + urllib.parse.urlencode(params)))
-    return [r for r in data.get("results", []) if r.get("url")]
+    return [r for r in data.get("results", []) if r.get("url")
+            and (any_licence or (r.get("license") or "").lower() in OPENVERSE_LICENCES)]
+
+
+def openverse_licence(hit):
+    """Openverse's licence code as people read it ("by", "4.0" -> "CC BY 4.0"; "cc0" -> "CC0"), as fetch_stock does."""
+    code = (hit.get("license") or "").lower()
+    if code == "cc0":
+        return "CC0"
+    if code == "pdm":
+        return "Public Domain Mark"
+    return " ".join(x for x in ("CC", code.upper(), hit.get("license_version")) if x) if code else None
 
 
 def slug(text):
@@ -63,9 +79,15 @@ def save(url, path):
 
 # Finders return candidates without downloading: {url, name, …row fields}. Downloads happen together afterwards.
 
-def music_candidates(query, count, min_seconds):
-    rows = []
-    for hit in openverse(query, music=True, size=max(20, count * 3)):
+def music_candidates(query, count, min_seconds, any_licence=False):
+    """Openverse's music category first. It is mostly Jamendo, largely NonCommercial: when the allowed licences leave
+    too few, uncategorised audio (Freesound, ccMixter loops and beds) of a known length fills up."""
+    rows, hits = [], openverse(query, music=True, size=max(20, count * 3), any_licence=any_licence)
+    if not any_licence and len(hits) < count * 2:
+        seen = {h["url"] for h in hits}
+        hits += [h for h in openverse(query, music=False, size=max(20, count * 3))
+                 if h["url"] not in seen and (h.get("duration") or 0) >= max(min_seconds, 1) * 1000]
+    for hit in hits:
         seconds = (hit.get("duration") or 0) / 1000
         if seconds and seconds < min_seconds:
             continue
@@ -76,16 +98,6 @@ def music_candidates(query, count, min_seconds):
                      "license": openverse_licence(hit), "author": hit.get("creator"),
                      "source": hit.get("foreign_landing_url")})
     return rows[:count * 2]  # spares for dead links
-
-
-def openverse_licence(hit):
-    """Openverse's licence code as people read it ("by", "4.0" -> "CC BY 4.0"; "cc0" -> "CC0"), as fetch_stock does."""
-    code = (hit.get("license") or "").lower()
-    if code == "cc0":
-        return "CC0"
-    if code == "pdm":
-        return "Public Domain Mark"
-    return " ".join(x for x in ("CC", code.upper(), hit.get("license_version")) if x) if code else None
 
 
 FREESOUND_LICENCES = ['"Creative Commons 0"', '"Attribution"']  # CC0 first; NonCommercial never
@@ -114,18 +126,18 @@ def freesound(word, max_seconds, count):
     return rows
 
 
-def openverse_sfx(word, max_seconds, count):
+def openverse_sfx(word, max_seconds, count, any_licence=False):
     return [{"url": hit["url"], "stem": f"sfx-{slug(word)}", "suffix": "." + (hit.get("filetype") or "mp3"),
              "kind": "sfx", "title": hit.get("title"), "from": "openverse", "license": openverse_licence(hit),
              "author": hit.get("creator"), "source": hit.get("foreign_landing_url")}
-            for hit in openverse(word, music=False, size=max(20, count * 3))
+            for hit in openverse(word, music=False, size=max(20, count * 3), any_licence=any_licence)
             if (hit.get("duration") or 10_000_000) <= max_seconds * 1000]
 
 
-def sfx_candidates(word, source="auto", max_seconds=5, count=1):
+def sfx_candidates(word, source="auto", max_seconds=5, count=1, any_licence=False):
     """Candidates from the first source that has any, then the next ones until count is reached."""
     finders = {"freesound": lambda: freesound(word, max_seconds, count),
-               "openverse": lambda: openverse_sfx(word, max_seconds, count)}
+               "openverse": lambda: openverse_sfx(word, max_seconds, count, any_licence)}
     if source == "freesound" and not os.environ.get("FREESOUND_API_KEY"):
         return None, "FREESOUND_API_KEY is not set"
     rows = []
@@ -171,11 +183,20 @@ def download_slot(slot, dest, budget, taken):
                 n += 1
                 name = numbered(candidate["stem"], n, count, candidate["suffix"])
             (dest / name).write_bytes(body)
+            write_licence(dest / name, candidate)
             taken.update((name, candidate["url"]))
             budget.spend(len(body))
             row = {k: v for k, v in candidate.items() if k not in ("stem", "suffix")}
             rows.append({"file": name, **row})
     return rows
+
+
+def write_licence(path, row):
+    """<file>.licence.json next to the file, the record resources_plugin.licences writes (the fetch command keeps it)."""
+    record = {"file": path.name}
+    record.update({k: row[k] for k in ("title", "license", "author", "source", "kind") if row.get(k)})
+    record.update(fetchedBy="bashcut.resources fetch_audio", fetched=time.strftime("%Y-%m-%d"))
+    Path(f"{path}.licence.json").write_text(json.dumps(record, ensure_ascii=False, indent=1))
 
 
 def _fetch(candidate):
@@ -305,17 +326,17 @@ def cell(value, places=1):
 def table(rows):
     """One line per candidate, grouped by slot: the numbers to choose by. Music adds beat confidence (conf) and
     energy: range quiet→loud in dB, the second it lifts to its loud level (lift)."""
-    lines = ["slot\tn\tsec\tLUFS\tTP\tonset\tpeak\tbpm\tconf\trange\tlift\tfrom\tid\ttitle"]
+    lines = ["slot\tn\tsec\tLUFS\tTP\tonset\tpeak\tbpm\tconf\trange\tlift\tfrom\tlicence\tid\ttitle"]
     for row in rows:
         marks, energy = row.get("landmarks") or {}, row.get("energy") or {}
         if row.get("error") and not row.get("file"):
-            lines.append("\t".join([str(row.get("slot", "-"))] + ["-"] * 12 + [f"{row.get('words')}: {row['error']}"]))
+            lines.append("\t".join([str(row.get("slot", "-"))] + ["-"] * 13 + [f"{row.get('words')}: {row['error']}"]))
             continue
         lines.append("\t".join([
             str(row.get("slot", "-")), str(row.get("n", "-")), cell(row.get("seconds")), cell(row.get("lufs")),
             cell(row.get("truePeak")), cell(marks.get("onset"), 2), cell(marks.get("peak"), 2), cell(row.get("bpm"), 0),
             cell(row.get("beatConfidence"), 2), cell(energy.get("rangeDb")), cell(energy.get("liftAt")),
-            row.get("from") or "openverse", str(row.get("id") or row.get("error") or row["file"]),
+            row.get("from") or "openverse", row.get("license") or "unknown", str(row.get("id") or row.get("error") or row["file"]),
             (row.get("title") or "")[:40]]))
     return "\n".join(lines)
 
@@ -388,6 +409,8 @@ def main(argv=None):
     parser.add_argument("--no-library", dest="library", action="store_false")
     parser.add_argument("--scope", choices=["project", "user"], default="project", help="library scope")
     parser.add_argument("--import", dest="import_", action="store_true", help="media import the folder")
+    parser.add_argument("--any-licence", action="store_true",
+                        help="Openverse: every licence, NonCommercial and NoDerivatives too (default CC0, CC BY, CC BY-SA)")
     args = parser.parse_args(argv)
     dest = Path(args.dest)
     if args.pick:
@@ -403,8 +426,8 @@ def main(argv=None):
 
     def find(slot):
         if slot.get("music"):
-            return music_candidates(slot["music"], slot["count"], args.min_seconds), None
-        return sfx_candidates(slot["sfx"], args.sfx_source, args.sfx_seconds, slot["count"])
+            return music_candidates(slot["music"], slot["count"], args.min_seconds, args.any_licence), None
+        return sfx_candidates(slot["sfx"], args.sfx_source, args.sfx_seconds, slot["count"], args.any_licence)
 
     with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
         found = list(pool.map(find, slots))
@@ -413,7 +436,9 @@ def main(argv=None):
         words = slot.get("music") or slot.get("sfx")
         if error or not candidates:
             rows.append({"kind": "music" if slot.get("music") else "sfx", "title": words, "slot": slot["slot"],
-                         "words": words, "error": error or "nothing found"})
+                         "words": words, "error": error or ("nothing found" if args.any_licence else
+                                                             "nothing found under CC0, CC BY or CC BY-SA: other "
+                                                             "words, or --any-licence to see every licence")})
             continue
         slot["candidates"] = candidates
         got = download_slot(slot, dest, budget, taken)

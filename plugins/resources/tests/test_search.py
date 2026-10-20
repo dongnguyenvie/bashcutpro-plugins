@@ -66,7 +66,8 @@ class SearchTest(unittest.TestCase):
                 os.environ[k] = v
 
     def test_music_lists_licence_and_downloads_nothing(self):
-        self.audio.music_candidates = lambda q, n, s: [
+        asked = []
+        self.audio.music_candidates = lambda q, n, s, any_licence=False: asked.append(any_licence) or [
             {"url": "https://files.example/bed.mp3", "title": "Morning Bed", "seconds": 95, "license": "cc0",
              "author": "Ann", "source": "https://openverse.org/audio/1", "tags": ["calm"]}]
         items = finder.search("music", "calm acoustic", 5)
@@ -75,6 +76,8 @@ class SearchTest(unittest.TestCase):
         self.assertEqual((it["kind"], it["license"], it["author"], it["preview"]), ("music", "cc0", "Ann", "https://files.example/bed.mp3"))
         self.assertEqual(it["source"], "https://openverse.org/audio/1")
         self.assertFalse(os.path.exists(os.path.join(self.dir, "bashcut-plugins")), "search downloads nothing")
+        finder.search("music", "calm acoustic", 5, any_licence=True)
+        self.assertEqual(asked, [False, True])  # CC0 / CC BY / CC BY-SA unless asked (BashCutPro#220)
 
     def test_icons_carry_their_set_licence(self):
         items = finder.search("icon", "home", 2)
@@ -147,6 +150,8 @@ class SearchTest(unittest.TestCase):
                     argv += [p["flag"], p["choices"][0]]
                 elif p["type"] == "integer":
                     argv += [p["flag"], "3"]
+                elif p["type"] == "bool":
+                    argv += [p["flag"]]
                 else:
                     argv += [p["flag"], "https://files.example/x.mp3" if p["id"] == "url" else "x"]
             parser.parse_args(argv)
