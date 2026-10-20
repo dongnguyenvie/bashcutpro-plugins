@@ -93,6 +93,8 @@ def build_parser():
     p.add_argument("--kind", required=True, choices=finder.KINDS)
     p.add_argument("--query", required=True, help="search words")
     p.add_argument("--count", type=int, default=12, help="candidates (1-%d)" % finder.MAX_COUNT)
+    p.add_argument("--any-licence", action="store_true",
+                   help="music and sfx: NonCommercial and NoDerivatives too (default CC0, CC BY, CC BY-SA)")
 
     p = sub.add_parser("download", help="fetch one search result with its licence record; prints its path and credit line")
     p.add_argument("--kind", required=True, choices=finder.KINDS)
@@ -301,7 +303,7 @@ def cmd_credits(args):
 
 
 def cmd_search(args):
-    items = finder.search(args.kind, args.query, args.count)
+    items = finder.search(args.kind, args.query, args.count, args.any_licence)
     return "%d %s results for %s" % (len(items), args.kind, args.query), {"kind": args.kind, "query": args.query, "items": items}
 
 

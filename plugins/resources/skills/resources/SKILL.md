@@ -34,7 +34,10 @@ with licence and preview URL; `RS download --kind … --url … --title … --li
 with its record (then `RS import --path <file>`). The app's Library ▸ Online tab uses the same two commands.
 
 Music and SFX: `--script audio --args "--dest <dir>/media/audio --music 'acoustic folk' --sfx whoosh,pop"`.
-Without `FREESOUND_API_KEY`, sound effects come from Openverse. Never NonCommercial for SFX.
+Without `FREESOUND_API_KEY`, sound effects come from Openverse. Music and Openverse SFX are searched under CC0, CC
+BY and CC BY-SA only (a monetised edit may use them; BY / BY-SA need the credit line), never NonCommercial or
+NoDerivatives: a CC BY-NC-ND bed once went into a vlog meant for monetising (BashCutPro#220). Say the licence of the
+track you place. `--any-licence` (fetch script or `search`) only when the user asks for every licence.
 
 ## Rules
 
