@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vieneu-tts",
   "name": "VieNeu TTS (Vietnamese)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "Vietnamese voiceover on this computer with VieNeu-TTS v3 Turbo (25 preset voices, voice cloning with consent), imported and placed on an audio track.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -43,7 +43,7 @@
       "default": "Hải Đăng",
       "env": ["BASHCUT_VIENEU_VOICE"],
       "flag": "--voice",
-      "help": "Preset voice used when no reference clip is given (`voices` lists region, style and gender)."
+      "help": "Preset voice used when there is no voice to clone (List the voices shows region, style and gender)."
     },
     {
       "id": "variation",
@@ -62,7 +62,7 @@
       "env": ["BASHCUT_VIENEU_PYTHON"],
       "flag": "--python",
       "optional": true,
-      "help": "The interpreter that has the vieneu package; empty = the private environment `setup` makes."
+      "help": "The Python that has the vieneu package. Empty: the private one that Install VieNeu makes."
     }
   ],
   "actions": [
@@ -89,8 +89,8 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "downloadModel", "flag": "--download-model", "type": "bool", "default": false},
-        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+        {"id": "downloadModel", "title": "Also download the model", "flag": "--download-model", "type": "bool", "default": false},
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
       ]
     },
     {
@@ -100,12 +100,12 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "text", "flag": "--text", "type": "string", "optional": true},
-        {"id": "lines", "flag": "--lines", "type": "path", "optional": true},
-        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "cloneConsent", "flag": "--clone-consent", "type": "bool", "default": false},
-        {"id": "takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+        {"id": "text", "title": "Text", "flag": "--text", "type": "string", "optional": true},
+        {"id": "lines", "title": "Lines file", "flag": "--lines", "type": "path", "optional": true},
+        {"id": "reference", "title": "Voice to clone", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "cloneConsent", "title": "The voice's owner agreed", "flag": "--clone-consent", "type": "bool", "default": false},
+        {"id": "takes", "title": "Takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
+        {"id": "out", "title": "Takes folder", "flag": "--out", "type": "path", "optional": true}
       ]
     },
     {
@@ -115,9 +115,9 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "audio", "flag": "--audio", "type": "path"},
-        {"id": "seconds", "flag": "--seconds", "type": "number"},
-        {"id": "track", "flag": "--track", "type": "string", "default": "A2"}
+        {"id": "audio", "title": "Take", "flag": "--audio", "type": "path"},
+        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number"},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "A2"}
       ]
     },
     {
@@ -127,16 +127,16 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "text", "flag": "--text", "type": "string", "optional": true},
-        {"id": "lines", "flag": "--lines", "type": "path", "optional": true},
-        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "cloneConsent", "flag": "--clone-consent", "type": "bool", "default": false},
-        {"id": "takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
-        {"id": "rate", "flag": "--rate", "type": "number", "optional": true},
-        {"id": "track", "flag": "--track", "type": "string", "default": "A2"},
-        {"id": "at", "flag": "--at", "type": "number", "default": 0},
-        {"id": "gap", "flag": "--gap", "type": "number", "default": 0.4},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+        {"id": "text", "title": "Text", "flag": "--text", "type": "string", "optional": true},
+        {"id": "lines", "title": "Lines file", "flag": "--lines", "type": "path", "optional": true},
+        {"id": "reference", "title": "Voice to clone", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "cloneConsent", "title": "The voice's owner agreed", "flag": "--clone-consent", "type": "bool", "default": false},
+        {"id": "takes", "title": "Takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
+        {"id": "rate", "title": "Syllables a second", "flag": "--rate", "type": "number", "optional": true},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "A2"},
+        {"id": "at", "title": "First line at (s)", "flag": "--at", "type": "number", "default": 0},
+        {"id": "gap", "title": "Gap between lines (s)", "flag": "--gap", "type": "number", "default": 0.4},
+        {"id": "out", "title": "Takes folder", "flag": "--out", "type": "path", "optional": true}
       ]
     }
   ],

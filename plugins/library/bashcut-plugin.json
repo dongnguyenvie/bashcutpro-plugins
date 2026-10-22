@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.library",
   "name": "Library",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "One place for reusable looks, titles, text styles, stickers, overlays, sounds, music beds, effect presets, project templates and brand kits: save them from a project, search them, apply them to another, share them as packs.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -97,12 +97,14 @@
       "params": [
         {
           "id": "query",
+          "title": "Words",
           "flag": "--query",
           "type": "string",
           "default": ""
         },
         {
           "id": "kind",
+          "title": "Kind",
           "flag": "--kind",
           "type": "enum",
           "choices": [
@@ -123,12 +125,14 @@
         },
         {
           "id": "tags",
+          "title": "Tags",
           "flag": "--tags",
           "type": "string",
           "default": ""
         },
         {
           "id": "favourites",
+          "title": "Favourites only",
           "flag": "--favourites",
           "type": "bool",
           "default": false
@@ -146,6 +150,7 @@
       "params": [
         {
           "id": "kind",
+          "title": "Kind",
           "flag": "--kind",
           "type": "enum",
           "choices": [
@@ -165,34 +170,40 @@
         },
         {
           "id": "file",
+          "title": "File",
           "flag": "--file",
           "type": "path"
         },
         {
           "id": "title",
+          "title": "Title",
           "flag": "--title",
           "type": "string"
         },
         {
           "id": "purpose",
+          "title": "Purpose",
           "flag": "--purpose",
           "type": "string",
           "default": ""
         },
         {
           "id": "tags",
+          "title": "Tags",
           "flag": "--tags",
           "type": "string",
           "default": ""
         },
         {
           "id": "license",
+          "title": "Licence",
           "flag": "--license",
           "type": "string",
           "default": ""
         },
         {
           "id": "preview",
+          "title": "Preview",
           "flag": "--preview",
           "type": "path",
           "optional": true
@@ -210,6 +221,7 @@
       "params": [
         {
           "id": "kind",
+          "title": "Kind",
           "flag": "--kind",
           "type": "enum",
           "choices": [
@@ -227,53 +239,62 @@
         },
         {
           "id": "clip",
+          "title": "Clip (default: the selection)",
           "flag": "--clip",
           "type": "integer",
           "optional": true
         },
         {
           "id": "lut",
+          "title": "LUT",
           "flag": "--lut",
           "type": "string",
           "optional": true
         },
         {
           "id": "start",
+          "title": "Range start (s)",
           "flag": "--start",
           "type": "number",
           "optional": true
         },
         {
           "id": "end",
+          "title": "Range end (s)",
           "flag": "--end",
           "type": "number",
           "optional": true
         },
         {
           "id": "title",
+          "title": "Title",
           "flag": "--title",
           "type": "string"
         },
         {
           "id": "purpose",
+          "title": "Purpose",
           "flag": "--purpose",
           "type": "string",
           "default": ""
         },
         {
           "id": "tags",
+          "title": "Tags",
           "flag": "--tags",
           "type": "string",
           "default": ""
         },
         {
           "id": "license",
+          "title": "Licence",
           "flag": "--license",
           "type": "string",
           "default": ""
         },
         {
           "id": "preview",
+          "title": "Preview",
           "flag": "--preview",
           "type": "path",
           "optional": true
@@ -291,35 +312,41 @@
       "params": [
         {
           "id": "id",
+          "title": "Item",
           "flag": "--id",
           "type": "string"
         },
         {
           "id": "out",
+          "title": "New project (templates)",
           "flag": "--out",
           "type": "path",
           "optional": true
         },
         {
           "id": "clip",
+          "title": "Clips (default: the selection)",
           "flag": "--clip",
           "type": "string",
           "optional": true
         },
         {
           "id": "seconds",
+          "title": "Start (s)",
           "flag": "--seconds",
           "type": "number",
           "optional": true
         },
         {
           "id": "track",
+          "title": "Track",
           "flag": "--track",
           "type": "string",
           "optional": true
         },
         {
           "id": "values",
+          "title": "Title values (JSON)",
           "flag": "--values",
           "type": "string",
           "optional": true
@@ -337,11 +364,13 @@
       "params": [
         {
           "id": "id",
+          "title": "Item",
           "flag": "--id",
           "type": "string"
         },
         {
           "id": "off",
+          "title": "Remove from favourites",
           "flag": "--off",
           "type": "bool",
           "default": false
@@ -359,6 +388,7 @@
       "params": [
         {
           "id": "id",
+          "title": "Item",
           "flag": "--id",
           "type": "string"
         }
@@ -375,11 +405,13 @@
       "params": [
         {
           "id": "out",
+          "title": "Pack file",
           "flag": "--out",
           "type": "path"
         },
         {
           "id": "kind",
+          "title": "Kind",
           "flag": "--kind",
           "type": "enum",
           "choices": [
@@ -400,6 +432,7 @@
         },
         {
           "id": "tags",
+          "title": "Tags",
           "flag": "--tags",
           "type": "string",
           "default": ""
@@ -417,6 +450,7 @@
       "params": [
         {
           "id": "path",
+          "title": "Pack file",
           "flag": "--path",
           "type": "path"
         }
@@ -444,6 +478,7 @@
       "params": [
         {
           "id": "id",
+          "title": "Brand kit",
           "flag": "--id",
           "type": "string"
         }
@@ -461,11 +496,13 @@
       "params": [
         {
           "id": "id",
+          "title": "Brand kit",
           "flag": "--id",
           "type": "string"
         },
         {
           "id": "part",
+          "title": "Part",
           "flag": "--part",
           "type": "enum",
           "choices": [
@@ -479,6 +516,7 @@
         },
         {
           "id": "seconds",
+          "title": "Start (s)",
           "flag": "--seconds",
           "type": "number",
           "optional": true

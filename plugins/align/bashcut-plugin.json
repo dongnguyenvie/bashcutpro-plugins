@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.align",
   "name": "Align Script to Speech",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "Put a known script, subtitle file or translation on the speech with word timing (better captions than transcription alone), report low-confidence spans, and check a script's lines against the time they have.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -41,15 +41,15 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "script", "flag": "--script", "type": "path"},
-        {"id": "words", "flag": "--words", "type": "path", "optional": true},
-        {"id": "item", "flag": "--item", "type": "integer", "optional": true},
-        {"id": "lang", "flag": "--lang", "type": "string", "optional": true},
-        {"id": "to", "flag": "--to", "type": "enum", "choices": ["both", "transcript", "captions", "none"], "default": "both"},
-        {"id": "captionName", "flag": "--caption-name", "type": "string", "default": "Aligned"},
-        {"id": "low", "flag": "--low", "type": "number", "default": 0.5},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true},
-        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+        {"id": "script", "title": "Script or subtitle file", "flag": "--script", "type": "path"},
+        {"id": "words", "title": "Heard words file", "flag": "--words", "type": "path", "optional": true},
+        {"id": "item", "title": "Media item of the words", "flag": "--item", "type": "integer", "optional": true},
+        {"id": "lang", "title": "Language", "flag": "--lang", "type": "string", "optional": true},
+        {"id": "to", "title": "Write to", "flag": "--to", "type": "enum", "choices": ["both", "transcript", "captions", "none"], "default": "both"},
+        {"id": "captionName", "title": "Caption track name", "flag": "--caption-name", "type": "string", "default": "Aligned"},
+        {"id": "low", "title": "Low-confidence threshold", "flag": "--low", "type": "number", "default": 0.5},
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true},
+        {"id": "dryRun", "title": "Files only, no changes", "flag": "--dry-run", "type": "bool", "default": false}
       ]
     },
     {
@@ -59,13 +59,13 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "script", "flag": "--script", "type": "path"},
-        {"id": "lang", "flag": "--lang", "type": "string", "optional": true},
-        {"id": "rate", "flag": "--rate", "type": "number", "optional": true},
-        {"id": "rateFrom", "flag": "--rate-from", "type": "path", "optional": true},
-        {"id": "windows", "flag": "--windows", "type": "path", "optional": true},
-        {"id": "seconds", "flag": "--seconds", "type": "number", "optional": true},
-        {"id": "margin", "flag": "--margin", "type": "number", "default": 0.0}
+        {"id": "script", "title": "Script or subtitle file", "flag": "--script", "type": "path"},
+        {"id": "lang", "title": "Language", "flag": "--lang", "type": "string", "optional": true},
+        {"id": "rate", "title": "Speaking rate (units a second)", "flag": "--rate", "type": "number", "optional": true},
+        {"id": "rateFrom", "title": "Measure rate from words file", "flag": "--rate-from", "type": "path", "optional": true},
+        {"id": "windows", "title": "Narration windows file", "flag": "--windows", "type": "path", "optional": true},
+        {"id": "seconds", "title": "Time for the whole script (s)", "flag": "--seconds", "type": "number", "optional": true},
+        {"id": "margin", "title": "Free share of each window", "flag": "--margin", "type": "number", "default": 0.0}
       ]
     }
   ],

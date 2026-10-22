@@ -87,8 +87,8 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `connect` | `{project, bridge, cli}` | argument templates the host adds: `{project}` a `.fcproj` path, `{address}` `host:port` of the open app, `{cli}` the path of the BashCutPro command line (`bashcutpro`, else `filmcraft-cli`; also in `BASHCUTPRO_CLI`) |
 | `output` | `"bashcut-result/1"` | the result protocol above |
 | `app` | object | what the plugin needs from BashCutPro: `minVersion` (the workspace version, `0.9.0` today), `connections` (`mcp-headless`, `mcp-bridge`, `control`), `tools` (MCP tools), `commands` (engine command ids), `effects` (effect ids). A host checks them against `command_list` / `effects.list` before running |
-| `settings` | list | `{id, title, type, default?, choices?, env: [...], flag, optional?, help}`; `type` one of string, secret, enum, integer, number, bool, path; a `secret` has no default and is passed only through `env` or `flag` |
-| `actions` | list | what the plugin can do: `{id, title, args, needs: "project" | "none", edits: bool, params: [{id, flag, type, default?, choices?, optional?}], handoff?: {exit, then}}` |
+| `settings` | list | `{id, title, type, default?, choices?, env: [...], flag, optional?, help}`; `type` one of string, secret, enum, integer, number, bool, path; a `secret` has no default and is passed only through `env` or `flag`; `help` is shown under the field, in the user's words (no flags, exit statuses or command names) |
+| `actions` | list | what the plugin can do: `{id, title, args, needs: "project" | "none", edits: bool, params: [{id, title, flag, type, default?, choices?, optional?}], handoff?: {exit, then}}`; a param's `title` is its label in the app's form, sentence case, in the README's words |
 | `skills` | list | agent skills (Markdown with front matter), relative paths |
 
 ## Registry: `registry.json`

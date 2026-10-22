@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.image-gen",
   "name": "Image Generation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "AI pictures for an edit with your own Gemini or OpenAI key (or a local OpenAI-compatible server): every scene in one batch, one locked style and the same character from reference pictures, imported labelled as AI-generated.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -79,7 +79,7 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true}
       ]
     },
     {
@@ -89,16 +89,16 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "scenes", "flag": "--scenes", "type": "path", "optional": true},
-        {"id": "prompt", "flag": "--prompt", "type": "string", "optional": true},
-        {"id": "style", "flag": "--style", "type": "path", "optional": true},
-        {"id": "styleText", "flag": "--style-text", "type": "string", "optional": true},
-        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "seed", "flag": "--seed", "type": "integer", "optional": true},
-        {"id": "restyle", "flag": "--restyle", "type": "bool", "default": false},
-        {"id": "width", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "height", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+        {"id": "scenes", "title": "Scenes file", "flag": "--scenes", "type": "path", "optional": true},
+        {"id": "prompt", "title": "Prompt", "flag": "--prompt", "type": "string", "optional": true},
+        {"id": "style", "title": "Style file", "flag": "--style", "type": "path", "optional": true},
+        {"id": "styleText", "title": "Style text", "flag": "--style-text", "type": "string", "optional": true},
+        {"id": "reference", "title": "Reference picture", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "seed", "title": "Seed", "flag": "--seed", "type": "integer", "optional": true},
+        {"id": "restyle", "title": "New style", "flag": "--restyle", "type": "bool", "default": false},
+        {"id": "width", "title": "Width (px)", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "height", "title": "Height (px)", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true}
       ]
     },
     {
@@ -108,10 +108,10 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "image", "flag": "--image", "type": "path"},
-        {"id": "seconds", "flag": "--seconds", "type": "number", "optional": true},
-        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
-        {"id": "track", "flag": "--track", "type": "string", "default": "V2"}
+        {"id": "image", "title": "Picture", "flag": "--image", "type": "path"},
+        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number", "optional": true},
+        {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2"}
       ]
     },
     {
@@ -121,17 +121,17 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "scenes", "flag": "--scenes", "type": "path", "optional": true},
-        {"id": "prompt", "flag": "--prompt", "type": "string", "optional": true},
-        {"id": "style", "flag": "--style", "type": "path", "optional": true},
-        {"id": "styleText", "flag": "--style-text", "type": "string", "optional": true},
-        {"id": "reference", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "seed", "flag": "--seed", "type": "integer", "optional": true},
-        {"id": "restyle", "flag": "--restyle", "type": "bool", "default": false},
-        {"id": "width", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "height", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true},
-        {"id": "track", "flag": "--track", "type": "string", "default": "V2"}
+        {"id": "scenes", "title": "Scenes file", "flag": "--scenes", "type": "path", "optional": true},
+        {"id": "prompt", "title": "Prompt", "flag": "--prompt", "type": "string", "optional": true},
+        {"id": "style", "title": "Style file", "flag": "--style", "type": "path", "optional": true},
+        {"id": "styleText", "title": "Style text", "flag": "--style-text", "type": "string", "optional": true},
+        {"id": "reference", "title": "Reference picture", "flag": "--reference", "type": "path", "optional": true},
+        {"id": "seed", "title": "Seed", "flag": "--seed", "type": "integer", "optional": true},
+        {"id": "restyle", "title": "New style", "flag": "--restyle", "type": "bool", "default": false},
+        {"id": "width", "title": "Width (px)", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "height", "title": "Height (px)", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2"}
       ]
     }
   ],

@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.resources",
   "name": "Online Resources",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them; credit lines only when asked.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -39,7 +39,7 @@
       "type": "secret",
       "env": ["PIXABAY_API_KEY"],
       "optional": true,
-      "help": "Free key from pixabay.com/api/docs: Pixabay photos and video in `stock`."
+      "help": "Free key from pixabay.com/api/docs: adds Pixabay photos and video to stock fetches."
     },
     {
       "id": "pexelsKey",
@@ -47,7 +47,7 @@
       "type": "secret",
       "env": ["PEXELS_API_KEY"],
       "optional": true,
-      "help": "Free key from pexels.com/api: Pexels photos and video in `stock`."
+      "help": "Free key from pexels.com/api: adds Pexels photos and video to stock fetches."
     },
     {
       "id": "freesoundKey",
@@ -55,7 +55,7 @@
       "type": "secret",
       "env": ["FREESOUND_API_KEY"],
       "optional": true,
-      "help": "Free key from freesound.org/apiv2/apply: Freesound sound effects in `audio` (else Openverse)."
+      "help": "Free key from freesound.org/apiv2/apply: sound effects come from Freesound (else from Openverse)."
     }
   ],
   "actions": [
@@ -74,7 +74,7 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
       ]
     },
     {
@@ -84,13 +84,13 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "script", "flag": "--script", "type": "enum",
+        {"id": "script", "title": "Script", "flag": "--script", "type": "enum",
          "choices": ["audio", "emoji", "facts", "font", "fonts", "illustrations", "logos", "lottie", "luts", "stock"], "default": "stock"},
-        {"id": "args", "flag": "--args", "type": "string", "default": ""},
-        {"id": "import", "flag": "--import", "type": "bool", "default": false},
-        {"id": "videoTrack", "flag": "--video-track", "type": "string", "default": "V2"},
-        {"id": "audioTrack", "flag": "--audio-track", "type": "string", "default": "A2"},
-        {"id": "credits", "flag": "--credits", "type": "bool", "default": false}
+        {"id": "args", "title": "Script options", "flag": "--args", "type": "string", "default": ""},
+        {"id": "import", "title": "Import into the project", "flag": "--import", "type": "bool", "default": false},
+        {"id": "videoTrack", "title": "Video track", "flag": "--video-track", "type": "string", "default": "V2"},
+        {"id": "audioTrack", "title": "Audio track", "flag": "--audio-track", "type": "string", "default": "A2"},
+        {"id": "credits", "title": "Credit in project notes", "flag": "--credits", "type": "bool", "default": false}
       ]
     },
     {
@@ -100,11 +100,11 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "path", "flag": "--path", "type": "path", "optional": true},
-        {"id": "folder", "flag": "--folder", "type": "path", "optional": true},
-        {"id": "frame", "flag": "--frame", "type": "integer", "optional": true},
-        {"id": "duration", "flag": "--duration", "type": "integer", "optional": true},
-        {"id": "credits", "flag": "--credits", "type": "bool", "default": false}
+        {"id": "path", "title": "Files", "flag": "--path", "type": "path", "optional": true},
+        {"id": "folder", "title": "Folder", "flag": "--folder", "type": "path", "optional": true},
+        {"id": "frame", "title": "Place at frame", "flag": "--frame", "type": "integer", "optional": true},
+        {"id": "duration", "title": "Length (frames)", "flag": "--duration", "type": "integer", "optional": true},
+        {"id": "credits", "title": "Credit in project notes", "flag": "--credits", "type": "bool", "default": false}
       ]
     },
     {
@@ -114,10 +114,10 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
-        {"id": "query", "flag": "--query", "type": "string"},
-        {"id": "count", "flag": "--count", "type": "integer", "default": 12, "minimum": 1, "maximum": 40},
-        {"id": "safeLicence", "flag": "--safe-licence", "type": "bool", "default": false}
+        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
+        {"id": "query", "title": "Search for", "flag": "--query", "type": "string"},
+        {"id": "count", "title": "Results", "flag": "--count", "type": "integer", "default": 12, "minimum": 1, "maximum": 40},
+        {"id": "safeLicence", "title": "CC0 / CC BY / CC BY-SA only", "flag": "--safe-licence", "type": "bool", "default": false}
       ]
     },
     {
@@ -127,12 +127,12 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
-        {"id": "url", "flag": "--url", "type": "string"},
-        {"id": "title", "flag": "--title", "type": "string", "default": ""},
-        {"id": "license", "flag": "--license", "type": "string", "default": ""},
-        {"id": "author", "flag": "--author", "type": "string", "default": ""},
-        {"id": "source", "flag": "--source", "type": "string", "default": ""}
+        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
+        {"id": "url", "title": "File URL", "flag": "--url", "type": "string"},
+        {"id": "title", "title": "Title", "flag": "--title", "type": "string", "default": ""},
+        {"id": "license", "title": "Licence", "flag": "--license", "type": "string", "default": ""},
+        {"id": "author", "title": "Author", "flag": "--author", "type": "string", "default": ""},
+        {"id": "source", "title": "Source page", "flag": "--source", "type": "string", "default": ""}
       ]
     },
     {
@@ -142,7 +142,7 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "folder", "flag": "--folder", "type": "path"}
+        {"id": "folder", "title": "Folder", "flag": "--folder", "type": "path"}
       ]
     }
   ],
