@@ -26,6 +26,28 @@ class RegistryTests(unittest.TestCase):
             self.assertEqual(check_registry.check_python_version(base, "0.1.3"),
                              ["pkg/__init__.py: __version__ is '0.1.2', the manifest says '0.1.3'"])
 
+    def test_default_true_bool_needs_the_no_form(self):
+        m = {"actions": [{"id": "go", "params": [
+            {"id": "keep", "flag": "--keep", "type": "bool", "default": True},
+            {"id": "dry", "flag": "--dry", "type": "bool"}]}]}
+        with tempfile.TemporaryDirectory() as base:
+            script = os.path.join(base, "plugin.py")
+            with open(script, "w", encoding="utf-8") as f:
+                f.write('import argparse\np = argparse.ArgumentParser()\np.add_argument("--keep", action="store_true")\n'
+                        'p.add_argument("--dry", action="store_true")\n')
+            self.assertEqual(check_registry.check_bool_defaults(base, m),
+                             ["action go: bool param keep defaults to true, so the script must accept --no-keep "
+                              "(argparse.BooleanOptionalAction)"])
+            with open(script, "w", encoding="utf-8") as f:
+                f.write('import argparse, json, sys\np = argparse.ArgumentParser()\n'
+                        'p.add_argument("--keep", action=argparse.BooleanOptionalAction, default=True)\n'
+                        'print(json.dumps(p.parse_args(sys.argv[1:]).keep))\n')
+            self.assertEqual(check_registry.check_bool_defaults(base, m), [])
+            # the form BashCutPro sends for false really turns it off
+            import subprocess
+            run = lambda *a: subprocess.run([sys.executable, script, *a], capture_output=True, text=True).stdout.strip()
+            self.assertEqual((run(), run("--keep"), run("--no-keep")), ("true", "true", "false"))
+
     def test_choice_labels_name_only_the_items_choices(self):
         def manifest(labels):
             vi = {"title": "Dịch vụ"}
