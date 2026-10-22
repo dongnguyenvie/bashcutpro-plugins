@@ -22,8 +22,9 @@ LANGS = {"vi"}
 
 
 def check_i18n(m):
-    """`i18n: {lang: {title?, help?}}` (on the plugin: `{name?, summary?}`) is optional; once a plugin has
-    a language anywhere, every name/summary/title/help on it has one in that language."""
+    """`i18n: {lang: {title?, help?}}` (on the plugin: `{name?, summary?}`; on an enum setting or param also
+    `choices: {value: label}`) is optional; once a plugin has a language anywhere, every name/summary/title/help
+    on it has one in that language. A choices map may be partial, but names only the item's own choices."""
     problems = []
     parts = [("plugin", m, ("name", "summary"))]
     parts += [("setting %s" % s.get("id"), s, ("title", "help")) for s in m.get("settings") or []]
@@ -42,8 +43,21 @@ def check_i18n(m):
             langs.add(lang)
             if lang not in LANGS:
                 problems.append("%s: i18n language %r is not one of %s" % (what, lang, sorted(LANGS)))
-            if not isinstance(text, dict) or set(text) - set(keys):
-                problems.append("%s: i18n.%s holds only %s" % (what, lang, ", ".join(keys)))
+            allowed = set(keys) | ({"choices"} if obj.get("choices") else set())
+            if not isinstance(text, dict) or set(text) - allowed:
+                problems.append("%s: i18n.%s holds only %s" % (what, lang, ", ".join(sorted(allowed))))
+                continue
+            labels = text.get("choices")
+            if labels is None:
+                continue
+            if not isinstance(labels, dict):
+                problems.append("%s: i18n.%s.choices is an object {value: label}" % (what, lang))
+                continue
+            for value, label in labels.items():
+                if value not in obj["choices"]:
+                    problems.append("%s: i18n.%s.choices labels %r, which is not one of its choices" % (what, lang, value))
+                if not (isinstance(label, str) and label.strip()):
+                    problems.append("%s: i18n.%s.choices.%s is an empty label" % (what, lang, value))
     for lang in sorted(langs):
         for what, obj, keys in parts:
             text = (obj.get("i18n") or {}).get(lang)

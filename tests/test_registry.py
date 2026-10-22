@@ -26,6 +26,21 @@ class RegistryTests(unittest.TestCase):
             self.assertEqual(check_registry.check_python_version(base, "0.1.3"),
                              ["pkg/__init__.py: __version__ is '0.1.2', the manifest says '0.1.3'"])
 
+    def test_choice_labels_name_only_the_items_choices(self):
+        def manifest(labels):
+            vi = {"title": "Dịch vụ"}
+            if labels is not None:
+                vi["choices"] = labels
+            return {"settings": [{"id": "service", "title": "Service", "type": "enum",
+                                  "choices": ["gemini", "openai"], "i18n": {"vi": vi}}]}
+        self.assertEqual(check_registry.check_i18n(manifest(None)), [])
+        self.assertEqual(check_registry.check_i18n(manifest({"gemini": "Gemini (Google)"})), [])
+        self.assertEqual(len(check_registry.check_i18n(manifest({"claude": "Claude"}))), 1)
+        self.assertEqual(len(check_registry.check_i18n(manifest({"gemini": " "}))), 1)
+        self.assertEqual(len(check_registry.check_i18n(manifest(["Gemini"]))), 1)
+        plain = {"settings": [{"id": "key", "title": "Key", "type": "string", "i18n": {"vi": {"title": "Khóa", "choices": {}}}}]}
+        self.assertEqual(len(check_registry.check_i18n(plain)), 1)
+
     def test_registry_i18n_follows_the_manifest(self):
         manifest = {"i18n": {"vi": {"name": "Dịch phụ đề", "summary": "Dịch phụ đề."}}}
         good = {"id": "a.b", "i18n": {"vi": {"name": "Dịch phụ đề", "summary": "Dịch phụ đề, giữ thời gian."}}}

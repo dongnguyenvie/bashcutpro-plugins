@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.resources",
   "name": "Online Resources",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them; credit lines only when asked.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -90,7 +90,7 @@
       "edits": true,
       "params": [
         {"id": "script", "title": "Script", "flag": "--script", "type": "enum",
-         "choices": ["audio", "emoji", "facts", "font", "fonts", "illustrations", "logos", "lottie", "luts", "stock"], "default": "stock", "i18n": {"vi": {"title": "Script"}}},
+         "choices": ["audio", "emoji", "facts", "font", "fonts", "illustrations", "logos", "lottie", "luts", "stock"], "default": "stock", "i18n": {"vi": {"title": "Script", "choices": {"audio": "Âm thanh", "emoji": "Emoji", "facts": "Dữ kiện", "font": "Phông chữ", "fonts": "Bộ phông chữ", "illustrations": "Hình minh họa", "logos": "Logo", "lottie": "Lottie", "luts": "LUT", "stock": "Ảnh và video stock"}}}},
         {"id": "args", "title": "Script options", "flag": "--args", "type": "string", "default": "", "i18n": {"vi": {"title": "Tùy chọn script"}}},
         {"id": "import", "title": "Import into the project", "flag": "--import", "type": "bool", "default": false, "i18n": {"vi": {"title": "Nhập vào dự án"}}},
         {"id": "videoTrack", "title": "Video track", "flag": "--video-track", "type": "string", "default": "V2", "i18n": {"vi": {"title": "Track video"}}},
@@ -121,7 +121,7 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music", "i18n": {"vi": {"title": "Loại"}}},
+        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music", "i18n": {"vi": {"title": "Loại", "choices": {"music": "Nhạc", "sfx": "Hiệu ứng âm thanh", "photo": "Ảnh", "video": "Video", "icon": "Biểu tượng", "font": "Phông chữ"}}}},
         {"id": "query", "title": "Search for", "flag": "--query", "type": "string", "i18n": {"vi": {"title": "Tìm"}}},
         {"id": "count", "title": "Results", "flag": "--count", "type": "integer", "default": 12, "minimum": 1, "maximum": 40, "i18n": {"vi": {"title": "Số kết quả"}}},
         {"id": "safeLicence", "title": "CC0 / CC BY / CC BY-SA only", "flag": "--safe-licence", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chỉ CC0 / CC BY / CC BY-SA"}}}
@@ -135,7 +135,7 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music", "i18n": {"vi": {"title": "Loại"}}},
+        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music", "i18n": {"vi": {"title": "Loại", "choices": {"music": "Nhạc", "sfx": "Hiệu ứng âm thanh", "photo": "Ảnh", "video": "Video", "icon": "Biểu tượng", "font": "Phông chữ"}}}},
         {"id": "url", "title": "File URL", "flag": "--url", "type": "string", "i18n": {"vi": {"title": "URL tệp"}}},
         {"id": "title", "title": "Title", "flag": "--title", "type": "string", "default": "", "i18n": {"vi": {"title": "Tiêu đề"}}},
         {"id": "license", "title": "Licence", "flag": "--license", "type": "string", "default": "", "i18n": {"vi": {"title": "Giấy phép"}}},
