@@ -85,6 +85,30 @@ def check_python_version(base, version):
     return problems
 
 
+def check_bool_defaults(base, m):
+    """A bool param with `default: true` is turned off by BashCutPro with `--no-<name>` (BF1), so the plugin's
+    Python (tests aside) must accept it: name `--no-<name>` or use `BooleanOptionalAction`."""
+    wanted = [(a.get("id"), p) for a in m.get("actions") or [] for p in a.get("params") or []
+              if p.get("type") == "bool" and p.get("default") is True]
+    if not wanted:
+        return []
+    source = ""
+    for folder, dirs, files in os.walk(base):
+        dirs[:] = sorted(d for d in dirs if d not in ("tests", "node_modules", "__pycache__") and not d.startswith("."))
+        for name in sorted(files):
+            if name.endswith(".py"):
+                with open(os.path.join(folder, name), encoding="utf-8") as f:
+                    source += f.read()
+    problems = []
+    for action, p in wanted:
+        flag = str(p.get("flag", ""))
+        off = "--no-" + flag.lstrip("-")
+        if off not in source and not (flag in source and "BooleanOptionalAction" in source):
+            problems.append("action %s: bool param %s defaults to true, so the script must accept %s "
+                            "(argparse.BooleanOptionalAction)" % (action, p.get("id"), off))
+    return problems
+
+
 def check_registry_i18n(entry, manifest):
     """A registry entry's `i18n: {lang: {name, summary}}` (optional) uses the manifest's translated name,
     and once the manifest has a language, the entry has its name and summary in it too."""
@@ -169,6 +193,7 @@ def check_manifest(path):
                  "action %s: handoff.then names an action" % a.get("id"))
     problems += ["%s: %s" % (where, x) for x in check_i18n(m)]
     problems += ["%s: %s" % (where, x) for x in check_python_version(base, m.get("version"))]
+    problems += ["%s: %s" % (where, x) for x in check_bool_defaults(base, m)]
     for skill in m.get("skills") or []:
         need(os.path.isfile(os.path.join(base, skill)), "skill %s is missing" % skill)
     return m, problems
