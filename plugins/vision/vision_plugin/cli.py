@@ -372,8 +372,9 @@ def relaunch(argv):
 
 
 def main(argv=None):
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+    for stream in (sys.stdin, sys.stdout):  # UTF-8 whatever the code page (`--answer -` and the result)
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     argv = sys.argv[1:] if argv is None else argv
     args = build_parser().parse_args(argv)
     if args.command in MODEL_COMMANDS:

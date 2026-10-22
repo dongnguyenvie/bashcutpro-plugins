@@ -65,7 +65,8 @@ def node_version(path):
     if not path or not os.path.isfile(path):
         return None
     try:
-        done = subprocess.run(node_command(path) + ["-v"], capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
+        done = subprocess.run(node_command(path) + ["-v"], capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL,
+                              encoding="utf-8", errors="replace")
     except (OSError, subprocess.TimeoutExpired):
         return None
     return parse_version(done.stdout) if done.returncode == 0 else None
@@ -217,7 +218,8 @@ def install(node, dry_run, progress):
     env = environment(node, extra={"HOME": p["chromeHome"], "USERPROFILE": p["chromeHome"], "CI": "1"})
     if subprocess.run(steps[1], cwd=p["runtime"], env=env, stdin=subprocess.DEVNULL, stdout=sys.stderr).returncode != 0:
         raise AppError("setup_failed", "hyperframes browser ensure failed")
-    done = subprocess.run(steps[2], cwd=p["runtime"], env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    done = subprocess.run(steps[2], cwd=p["runtime"], env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL,
+                          encoding="utf-8", errors="replace")
     lines = done.stdout.strip().splitlines()
     chrome = lines[-1].strip() if lines else ""
     if not os.path.isfile(chrome):

@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,7 @@ from translate_captions.captions import (  # noqa: E402
     lines_from_listing, set_text_steps, stale_lines, translations_from_answer)
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
+PLUGIN = os.path.join(os.path.dirname(HERE), "plugin.py")
 TPS = 254016000000
 
 
@@ -72,7 +74,7 @@ class RoundTripTests(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.project = os.path.join(self.dir, "state.json")
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump({"captions": listing(), "sequence": {"video": [], "audio": []}}, f)
         self.env = {k: os.environ.get(k) for k in ("BASHCUT_TC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "FILMCRAFT_DATA_DIR")}
         for k in self.env:
@@ -93,7 +95,7 @@ class RoundTripTests(unittest.TestCase):
         return code, json.loads(out.getvalue())
 
     def state(self):
-        with open(self.project) as f:
+        with open(self.project, encoding="utf-8") as f:
             return json.load(f)
 
     def test_translate_keeps_timing_and_saves(self):
@@ -136,15 +138,15 @@ class RoundTripTests(unittest.TestCase):
         self.assertEqual([(l["caption"], l["maxChars"]) for l in lines], [(51, 34), (52, 25)])
 
         exported = os.path.join(self.dir, "lines.json")
-        with open(exported, "w") as f:
+        with open(exported, "w", encoding="utf-8") as f:
             json.dump(out["data"], f)
         answer = os.path.join(self.dir, "answer.json")
-        with open(answer, "w") as f:
+        with open(answer, "w", encoding="utf-8") as f:
             json.dump({"lines": [{"caption": 51, "text": "Dòng đầu tiên"}, {"caption": 52, "text": "Dòng thứ hai"}]}, f, ensure_ascii=False)
         # someone edits caption 52 between the export and the answer: it is skipped
         state = self.state()
         state["captions"]["tracks"][0]["captions"][0]["text"] = "Edited by hand"
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump(state, f)
 
         code, out = self.run_cli("apply", "--answer", answer, "--lines", exported, "--target", "vi")
@@ -154,17 +156,42 @@ class RoundTripTests(unittest.TestCase):
         texts = [c["text"] for c in self.state()["captions"]["tracks"][0]["captions"]]
         self.assertEqual(texts[:2], ["Edited by hand", "Dòng đầu tiên"])
 
+    def run_plugin(self, *argv, stdin=b""):
+        """plugin.py in its own process with piped stdio, as the host and an agent start it: the code page
+        (cp1252 on a Western Windows) must not matter, so UTF-8 mode and PYTHONIOENCODING are off."""
+        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONUTF8", "PYTHONIOENCODING")}
+        done = subprocess.run([sys.executable, PLUGIN] + list(argv) + ["--cli", FAKE, "--project", self.project],
+                              input=stdin, capture_output=True, env=env, timeout=60)
+        return done.returncode, json.loads(done.stdout.decode("utf-8"))
+
+    def test_vietnamese_survives_the_agent_round_trip_through_pipes(self):
+        state = self.state()
+        state["captions"]["tracks"][0]["captions"][0]["text"] = "Xin chào các bạn"
+        with open(self.project, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False)
+        code, out = self.run_plugin("export-lines", "--target", "en")
+        self.assertEqual(code, 0, out)
+        self.assertIn("Xin chào các bạn", [l["text"] for l in out["data"]["lines"]])
+
+        answer = {"lines": [{"caption": 51, "text": "Dòng đầu tiên"}, {"caption": 52, "text": "Phụ đề thứ hai ở đây"}]}
+        code, out = self.run_plugin("apply", "--answer", "-", "--target", "vi",
+                                    stdin=json.dumps(answer, ensure_ascii=False).encode("utf-8"))
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["data"]["written"], 2)
+        texts = [c["text"] for c in self.state()["captions"]["tracks"][0]["captions"]]
+        self.assertEqual(texts[:2], ["Phụ đề thứ hai ở đây", "Dòng đầu tiên"])
+
     def test_export_lines_to_a_file(self):
         path = os.path.join(self.dir, "out.json")
         code, out = self.run_cli("export-lines", "--target", "en", "--out", path)
         self.assertEqual(code, 0, out)
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         self.assertEqual(data["target"], "en")
         self.assertEqual(len(data["lines"]), 2)
 
     def test_no_captions_and_bad_args(self):
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump({"captions": {"tracks": []}, "sequence": {"video": []}}, f)
         code, out = self.run_cli("export-lines")
         self.assertEqual((code, out["error"]["code"]), (1, "no_captions"))

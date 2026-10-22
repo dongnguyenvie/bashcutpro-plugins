@@ -38,7 +38,7 @@ python3 -m unittest discover -s tests
 (cd plugins/vieneu-tts && python3 -m unittest discover -s tests)
 (cd plugins/align && python3 -m unittest discover -s tests)
 (cd plugins/vision && python3 -m unittest discover -s tests)
-(cd plugins/resources && python3 -X utf8 -m unittest discover -s tests)
+(cd plugins/resources && python3 -m unittest discover -s tests)
 (cd plugins/image-gen && python3 -m unittest discover -s tests)
 (cd plugins/hyperframes && python3 -m unittest discover -s tests)
 (cd plugins/library && python3 -m unittest discover -s tests)
@@ -66,7 +66,8 @@ person from a shell. The host and these runs all start a plugin the same way, fr
 4. **Result** (`output: "bashcut-result/1"`): one JSON object on stdout, `{"ok": true, "message", "data"}` or
    `{"ok": false, "error": {"code", "message"}, "data"?}`; progress lines on stderr. Exit status 0 success, 1 failure,
    2 usage error, **3 hand-off**: the plugin cannot finish alone (no API key) and `data` holds what the calling agent
-   needs to finish it (then it runs the action named in `handoff.then`).
+   needs to finish it (then it runs the action named in `handoff.then`). stdin and stdout are UTF-8 whatever the
+   system code page is (Windows pipes default to it, e.g. cp1252), so Vietnamese captions and names survive.
 5. **Edits** are engine commands, so they are undoable in the app; in headless mode the plugin saves the project
    (`file.save`) unless told `--no-save`.
 

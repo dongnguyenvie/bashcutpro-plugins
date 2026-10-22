@@ -87,7 +87,8 @@ def encode_mov(ffmpeg, frames_dir, fps, target):
     command = [ffmpeg, "-y", "-loglevel", "error", "-framerate", str(fps), "-start_number", "1",
                "-i", os.path.join(frames_dir, "frame_%06d.png"), "-c:v", "prores_ks", "-profile:v", "4444",
                "-pix_fmt", "yuva444p10le", "-alpha_bits", "16", "-vendor", "apl0", target]
-    done = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    done = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL,
+                          encoding="utf-8", errors="replace")
     if done.returncode != 0:
         raise AppError("encode_failed", "FFmpeg could not encode ProRes 4444: %s" % done.stderr.strip()[-800:])
 

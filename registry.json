@@ -6,7 +6,7 @@
     {
       "id": "bashcut.translate-captions",
       "name": "Translate Captions",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "summary": "Translate captions with your own Gemini or OpenAI key (or your agent), keeping their timing; blur burned-in subtitles.",
       "category": "captions",
       "platforms": ["macos", "windows", "linux"],
@@ -19,7 +19,7 @@
     {
       "id": "bashcut.vieneu-tts",
       "name": "VieNeu TTS (Vietnamese)",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "summary": "Vietnamese voiceover on this computer with VieNeu-TTS (25 voices, cloning with consent), placed on an audio track.",
       "category": "voice",
       "platforms": ["macos", "windows", "linux"],
@@ -45,7 +45,7 @@
     {
       "id": "bashcut.image-gen",
       "name": "Image Generation",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "summary": "AI pictures with your own Gemini or OpenAI key (or a local server): every scene in one batch, one locked style, the same character from reference pictures, imported labelled as AI-generated.",
       "category": "graphics",
       "platforms": ["macos", "windows", "linux"],
@@ -58,7 +58,7 @@
     {
       "id": "bashcut.hyperframes",
       "name": "HyperFrames Graphics",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "summary": "HTML/CSS + GSAP graphics rendered with HyperFrames to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
       "category": "graphics",
       "platforms": ["macos", "windows", "linux"],
@@ -97,7 +97,7 @@
     {
       "id": "bashcut.vision",
       "name": "Vision",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "summary": "Cut out a person or object, find faces and people per shot and reframe following the face, read on-screen text, describe shots with your agent.",
       "category": "vision",
       "platforms": ["macos", "windows", "linux"],
