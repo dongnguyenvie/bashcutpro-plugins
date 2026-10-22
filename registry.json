@@ -19,7 +19,7 @@
     {
       "id": "bashcut.vieneu-tts",
       "name": "VieNeu TTS (Vietnamese)",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "summary": "Vietnamese voiceover on this computer with VieNeu-TTS (25 voices, cloning with consent), placed on an audio track.",
       "category": "voice",
       "platforms": ["macos", "windows", "linux"],
@@ -32,7 +32,7 @@
     {
       "id": "bashcut.resources",
       "name": "Online Resources",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "summary": "Open music, SFX, stock photos and video, icons, emoji, logos, illustrations, fonts and LUTs from official APIs: search with the licence shown before download, each file's licence recorded next to it; credit lines only when asked.",
       "category": "resources",
       "platforms": ["macos", "windows", "linux"],
@@ -97,7 +97,7 @@
     {
       "id": "bashcut.vision",
       "name": "Vision",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "summary": "Cut out a person or object, find faces and people per shot and reframe following the face, read on-screen text, describe shots with your agent.",
       "category": "vision",
       "platforms": ["macos", "windows", "linux"],

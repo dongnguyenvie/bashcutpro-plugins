@@ -12,7 +12,7 @@ equal.
   only ever renamed into place after its hash matched, so a file in the cache is a verified file.
 - An interrupted download keeps `<file>.part` and resumes with an HTTP Range request; a server that ignores the range
   starts over. A wrong hash deletes the part and tries the mirror, then fails.
-- Progress lines go to stderr.
+- Progress lines go to stderr, in UTF-8 whatever the code page.
 """
 
 import hashlib
@@ -59,6 +59,8 @@ def cache_dir(env=None):
 
 
 def progress(message):
+    if hasattr(sys.stderr, "reconfigure"):  # UTF-8 whatever the code page (Windows): the Runs log reads Vietnamese
+        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
     print(message, file=sys.stderr, flush=True)
 
 
