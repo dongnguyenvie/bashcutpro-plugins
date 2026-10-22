@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.image-gen",
   "name": "Image Generation",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "summary": "AI pictures for an edit with your own Gemini or OpenAI key (or a local OpenAI-compatible server): every scene in one batch, one locked style and the same character from reference pictures, imported labelled as AI-generated.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -41,7 +41,8 @@
       "default": "gemini",
       "env": ["BASHCUT_IMAGE_SERVICE"],
       "flag": "--service",
-      "help": "Who makes the pictures. The key is sent only to this service."
+      "help": "Who makes the pictures. The key is sent only to this service.",
+      "i18n": {"vi": {"title": "Dịch vụ", "help": "Bên tạo ảnh. Khóa chỉ được gửi tới dịch vụ này."}}
     },
     {
       "id": "apiKey",
@@ -50,7 +51,8 @@
       "env": ["BASHCUT_IMAGE_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
       "flag": "--api-key",
       "optional": true,
-      "help": "Your Gemini or OpenAI key. Nothing is sent without one, except to a server on this machine."
+      "help": "Your Gemini or OpenAI key. Nothing is sent without one, except to a server on this machine.",
+      "i18n": {"vi": {"title": "Khóa API", "help": "Khóa Gemini hoặc OpenAI của bạn. Không có khóa thì không gửi gì đi, trừ tới máy chủ trên máy này."}}
     },
     {
       "id": "model",
@@ -59,7 +61,8 @@
       "default": "auto",
       "env": ["BASHCUT_IMAGE_MODEL"],
       "flag": "--model",
-      "help": "auto = gemini-2.5-flash-image (Gemini) or gpt-image-1 (OpenAI); or any image model id of the service."
+      "help": "auto = gemini-2.5-flash-image (Gemini) or gpt-image-1 (OpenAI); or any image model id of the service.",
+      "i18n": {"vi": {"title": "Mô hình", "help": "auto = gemini-2.5-flash-image (Gemini) hoặc gpt-image-1 (OpenAI); hoặc mã bất kỳ mô hình ảnh nào của dịch vụ."}}
     },
     {
       "id": "endpoint",
@@ -68,7 +71,8 @@
       "default": "",
       "env": ["BASHCUT_IMAGE_ENDPOINT"],
       "flag": "--endpoint",
-      "help": "For OpenAI: any server with /v1/images/generations and /v1/images/edits, such as a local model (needs no key)."
+      "help": "For OpenAI: any server with /v1/images/generations and /v1/images/edits, such as a local model (needs no key).",
+      "i18n": {"vi": {"title": "Địa chỉ máy chủ", "help": "Với OpenAI: máy chủ bất kỳ có /v1/images/generations và /v1/images/edits, ví dụ mô hình chạy trên máy (không cần khóa)."}}
     }
   ],
   "actions": [
@@ -79,8 +83,9 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true}
-      ]
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục xuất"}}}
+      ],
+      "i18n": {"vi": {"title": "Xem phong cách cố định"}}
     },
     {
       "id": "generate",
@@ -89,17 +94,18 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "scenes", "title": "Scenes file", "flag": "--scenes", "type": "path", "optional": true},
-        {"id": "prompt", "title": "Prompt", "flag": "--prompt", "type": "string", "optional": true},
-        {"id": "style", "title": "Style file", "flag": "--style", "type": "path", "optional": true},
-        {"id": "styleText", "title": "Style text", "flag": "--style-text", "type": "string", "optional": true},
-        {"id": "reference", "title": "Reference picture", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "seed", "title": "Seed", "flag": "--seed", "type": "integer", "optional": true},
-        {"id": "restyle", "title": "New style", "flag": "--restyle", "type": "bool", "default": false},
-        {"id": "width", "title": "Width (px)", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "height", "title": "Height (px)", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true}
-      ]
+        {"id": "scenes", "title": "Scenes file", "flag": "--scenes", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp cảnh"}}},
+        {"id": "prompt", "title": "Prompt", "flag": "--prompt", "type": "string", "optional": true, "i18n": {"vi": {"title": "Câu lệnh"}}},
+        {"id": "style", "title": "Style file", "flag": "--style", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp phong cách"}}},
+        {"id": "styleText", "title": "Style text", "flag": "--style-text", "type": "string", "optional": true, "i18n": {"vi": {"title": "Mô tả phong cách"}}},
+        {"id": "reference", "title": "Reference picture", "flag": "--reference", "type": "path", "optional": true, "i18n": {"vi": {"title": "Ảnh tham chiếu"}}},
+        {"id": "seed", "title": "Seed", "flag": "--seed", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Seed"}}},
+        {"id": "restyle", "title": "New style", "flag": "--restyle", "type": "bool", "default": false, "i18n": {"vi": {"title": "Phong cách mới"}}},
+        {"id": "width", "title": "Width (px)", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true, "i18n": {"vi": {"title": "Chiều rộng (px)"}}},
+        {"id": "height", "title": "Height (px)", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true, "i18n": {"vi": {"title": "Chiều cao (px)"}}},
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục xuất"}}}
+      ],
+      "i18n": {"vi": {"title": "Tạo ảnh"}}
     },
     {
       "id": "import",
@@ -108,11 +114,12 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "image", "title": "Picture", "flag": "--image", "type": "path"},
-        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number", "optional": true},
-        {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true},
-        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2"}
-      ]
+        {"id": "image", "title": "Picture", "flag": "--image", "type": "path", "i18n": {"vi": {"title": "Ảnh"}}},
+        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number", "optional": true, "i18n": {"vi": {"title": "Bắt đầu (giây)"}}},
+        {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true, "i18n": {"vi": {"title": "Độ dài (giây)"}}},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2", "i18n": {"vi": {"title": "Track"}}}
+      ],
+      "i18n": {"vi": {"title": "Nhập và đặt ảnh"}}
     },
     {
       "id": "illustrate",
@@ -121,19 +128,21 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "scenes", "title": "Scenes file", "flag": "--scenes", "type": "path", "optional": true},
-        {"id": "prompt", "title": "Prompt", "flag": "--prompt", "type": "string", "optional": true},
-        {"id": "style", "title": "Style file", "flag": "--style", "type": "path", "optional": true},
-        {"id": "styleText", "title": "Style text", "flag": "--style-text", "type": "string", "optional": true},
-        {"id": "reference", "title": "Reference picture", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "seed", "title": "Seed", "flag": "--seed", "type": "integer", "optional": true},
-        {"id": "restyle", "title": "New style", "flag": "--restyle", "type": "bool", "default": false},
-        {"id": "width", "title": "Width (px)", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "height", "title": "Height (px)", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true},
-        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true},
-        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2"}
-      ]
+        {"id": "scenes", "title": "Scenes file", "flag": "--scenes", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp cảnh"}}},
+        {"id": "prompt", "title": "Prompt", "flag": "--prompt", "type": "string", "optional": true, "i18n": {"vi": {"title": "Câu lệnh"}}},
+        {"id": "style", "title": "Style file", "flag": "--style", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp phong cách"}}},
+        {"id": "styleText", "title": "Style text", "flag": "--style-text", "type": "string", "optional": true, "i18n": {"vi": {"title": "Mô tả phong cách"}}},
+        {"id": "reference", "title": "Reference picture", "flag": "--reference", "type": "path", "optional": true, "i18n": {"vi": {"title": "Ảnh tham chiếu"}}},
+        {"id": "seed", "title": "Seed", "flag": "--seed", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Seed"}}},
+        {"id": "restyle", "title": "New style", "flag": "--restyle", "type": "bool", "default": false, "i18n": {"vi": {"title": "Phong cách mới"}}},
+        {"id": "width", "title": "Width (px)", "flag": "--width", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true, "i18n": {"vi": {"title": "Chiều rộng (px)"}}},
+        {"id": "height", "title": "Height (px)", "flag": "--height", "type": "integer", "minimum": 64, "maximum": 4096, "optional": true, "i18n": {"vi": {"title": "Chiều cao (px)"}}},
+        {"id": "out", "title": "Output folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục xuất"}}},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2", "i18n": {"vi": {"title": "Track"}}}
+      ],
+      "i18n": {"vi": {"title": "Minh họa các cảnh…"}}
     }
   ],
-  "skills": ["skills/image-gen/SKILL.md"]
+  "skills": ["skills/image-gen/SKILL.md"],
+  "i18n": {"vi": {"name": "Tạo ảnh", "summary": "Ảnh AI cho bản dựng bằng khóa Gemini hoặc OpenAI của bạn (hoặc máy chủ tương thích OpenAI trên máy): mọi cảnh trong một lượt, một phong cách cố định và cùng nhân vật từ ảnh tham chiếu, nhập vào với nhãn do AI tạo."}}
 }

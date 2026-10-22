@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.library",
   "name": "Library",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "summary": "One place for reusable looks, titles, text styles, stickers, overlays, sounds, music beds, effect presets, project templates and brand kits: save them from a project, search them, apply them to another, share them as packs.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -82,7 +82,8 @@
       ],
       "flag": "--library-dir",
       "optional": true,
-      "help": "Where the index and files live (default <data dir>/bashcut/library)."
+      "help": "Where the index and files live (default <data dir>/bashcut/library).",
+      "i18n": {"vi": {"title": "Thư mục thư viện", "help": "Nơi lưu chỉ mục và các tệp (mặc định <data dir>/bashcut/library)."}}
     }
   ],
   "actions": [
@@ -100,7 +101,8 @@
           "title": "Words",
           "flag": "--query",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Từ khóa"}}
         },
         {
           "id": "kind",
@@ -121,23 +123,27 @@
             "text-style",
             "title"
           ],
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Loại"}}
         },
         {
           "id": "tags",
           "title": "Tags",
           "flag": "--tags",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Thẻ"}}
         },
         {
           "id": "favourites",
           "title": "Favourites only",
           "flag": "--favourites",
           "type": "bool",
-          "default": false
+          "default": false,
+          "i18n": {"vi": {"title": "Chỉ mục yêu thích"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Tìm trong thư viện…"}}
     },
     {
       "id": "add",
@@ -166,49 +172,57 @@
             "text-style",
             "title"
           ],
-          "default": "sticker"
+          "default": "sticker",
+          "i18n": {"vi": {"title": "Loại"}}
         },
         {
           "id": "file",
           "title": "File",
           "flag": "--file",
-          "type": "path"
+          "type": "path",
+          "i18n": {"vi": {"title": "Tệp"}}
         },
         {
           "id": "title",
           "title": "Title",
           "flag": "--title",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Tiêu đề"}}
         },
         {
           "id": "purpose",
           "title": "Purpose",
           "flag": "--purpose",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Mục đích"}}
         },
         {
           "id": "tags",
           "title": "Tags",
           "flag": "--tags",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Thẻ"}}
         },
         {
           "id": "license",
           "title": "Licence",
           "flag": "--license",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Giấy phép"}}
         },
         {
           "id": "preview",
           "title": "Preview",
           "flag": "--preview",
           "type": "path",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Xem trước"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Thêm tệp…"}}
     },
     {
       "id": "save",
@@ -235,71 +249,82 @@
             "text-style",
             "title"
           ],
-          "default": "title"
+          "default": "title",
+          "i18n": {"vi": {"title": "Loại"}}
         },
         {
           "id": "clip",
           "title": "Clip (default: the selection)",
           "flag": "--clip",
           "type": "integer",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Clip (mặc định: vùng chọn)"}}
         },
         {
           "id": "lut",
           "title": "LUT",
           "flag": "--lut",
           "type": "string",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "LUT"}}
         },
         {
           "id": "start",
           "title": "Range start (s)",
           "flag": "--start",
           "type": "number",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Đầu đoạn (giây)"}}
         },
         {
           "id": "end",
           "title": "Range end (s)",
           "flag": "--end",
           "type": "number",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Cuối đoạn (giây)"}}
         },
         {
           "id": "title",
           "title": "Title",
           "flag": "--title",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Tiêu đề"}}
         },
         {
           "id": "purpose",
           "title": "Purpose",
           "flag": "--purpose",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Mục đích"}}
         },
         {
           "id": "tags",
           "title": "Tags",
           "flag": "--tags",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Thẻ"}}
         },
         {
           "id": "license",
           "title": "Licence",
           "flag": "--license",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Giấy phép"}}
         },
         {
           "id": "preview",
           "title": "Preview",
           "flag": "--preview",
           "type": "path",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Xem trước"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Lưu vùng chọn…"}}
     },
     {
       "id": "apply",
@@ -314,44 +339,51 @@
           "id": "id",
           "title": "Item",
           "flag": "--id",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Mục"}}
         },
         {
           "id": "out",
           "title": "New project (templates)",
           "flag": "--out",
           "type": "path",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Dự án mới (mẫu)"}}
         },
         {
           "id": "clip",
           "title": "Clips (default: the selection)",
           "flag": "--clip",
           "type": "string",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Các clip (mặc định: vùng chọn)"}}
         },
         {
           "id": "seconds",
           "title": "Start (s)",
           "flag": "--seconds",
           "type": "number",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Bắt đầu (giây)"}}
         },
         {
           "id": "track",
           "title": "Track",
           "flag": "--track",
           "type": "string",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Track"}}
         },
         {
           "id": "values",
           "title": "Title values (JSON)",
           "flag": "--values",
           "type": "string",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Giá trị tiêu đề (JSON)"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Áp dụng hoặc đặt một mục"}}
     },
     {
       "id": "favourite",
@@ -366,16 +398,19 @@
           "id": "id",
           "title": "Item",
           "flag": "--id",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Mục"}}
         },
         {
           "id": "off",
           "title": "Remove from favourites",
           "flag": "--off",
           "type": "bool",
-          "default": false
+          "default": false,
+          "i18n": {"vi": {"title": "Bỏ khỏi yêu thích"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Yêu thích"}}
     },
     {
       "id": "remove",
@@ -390,9 +425,11 @@
           "id": "id",
           "title": "Item",
           "flag": "--id",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Mục"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Xóa một mục"}}
     },
     {
       "id": "packExport",
@@ -407,7 +444,8 @@
           "id": "out",
           "title": "Pack file",
           "flag": "--out",
-          "type": "path"
+          "type": "path",
+          "i18n": {"vi": {"title": "Tệp gói"}}
         },
         {
           "id": "kind",
@@ -428,16 +466,19 @@
             "text-style",
             "title"
           ],
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Loại"}}
         },
         {
           "id": "tags",
           "title": "Tags",
           "flag": "--tags",
           "type": "string",
-          "default": ""
+          "default": "",
+          "i18n": {"vi": {"title": "Thẻ"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Xuất gói…"}}
     },
     {
       "id": "packImport",
@@ -452,9 +493,11 @@
           "id": "path",
           "title": "Pack file",
           "flag": "--path",
-          "type": "path"
+          "type": "path",
+          "i18n": {"vi": {"title": "Tệp gói"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Nhập gói…"}}
     },
     {
       "id": "stats",
@@ -464,7 +507,8 @@
       ],
       "needs": "none",
       "edits": false,
-      "params": []
+      "params": [],
+      "i18n": {"vi": {"title": "Thống kê thư viện"}}
     },
     {
       "id": "brandShow",
@@ -480,9 +524,11 @@
           "id": "id",
           "title": "Brand kit",
           "flag": "--id",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Bộ nhận diện thương hiệu"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Xem bộ nhận diện thương hiệu"}}
     },
     {
       "id": "brandApply",
@@ -498,7 +544,8 @@
           "id": "id",
           "title": "Brand kit",
           "flag": "--id",
-          "type": "string"
+          "type": "string",
+          "i18n": {"vi": {"title": "Bộ nhận diện thương hiệu"}}
         },
         {
           "id": "part",
@@ -512,19 +559,23 @@
             "lowerThird",
             "captionStyle"
           ],
-          "default": "lowerThird"
+          "default": "lowerThird",
+          "i18n": {"vi": {"title": "Phần"}}
         },
         {
           "id": "seconds",
           "title": "Start (s)",
           "flag": "--seconds",
           "type": "number",
-          "optional": true
+          "optional": true,
+          "i18n": {"vi": {"title": "Bắt đầu (giây)"}}
         }
-      ]
+      ],
+      "i18n": {"vi": {"title": "Áp dụng một phần bộ nhận diện"}}
     }
   ],
   "skills": [
     "skills/library-plugin/SKILL.md"
-  ]
+  ],
+  "i18n": {"vi": {"name": "Thư viện", "summary": "Một nơi cho màu phim, tiêu đề, kiểu chữ, sticker, lớp phủ, âm thanh, nhạc nền, preset hiệu ứng, mẫu dự án và bộ nhận diện thương hiệu dùng lại được: lưu từ dự án, tìm kiếm, áp dụng cho dự án khác, chia sẻ thành gói."}}
 }

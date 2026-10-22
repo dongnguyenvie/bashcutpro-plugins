@@ -17,6 +17,42 @@ ID = re.compile(r"^[a-z0-9]+(\.[a-z0-9-]+)+$")
 VERSION = re.compile(r"^\d+\.\d+\.\d+$")
 
 
+LANGS = {"vi"}
+
+
+def check_i18n(m):
+    """`i18n: {lang: {title?, help?}}` (on the plugin: `{name?, summary?}`) is optional; once a plugin has
+    a language anywhere, every name/summary/title/help on it has one in that language."""
+    problems = []
+    parts = [("plugin", m, ("name", "summary"))]
+    parts += [("setting %s" % s.get("id"), s, ("title", "help")) for s in m.get("settings") or []]
+    for a in m.get("actions") or []:
+        parts.append(("action %s" % a.get("id"), a, ("title", "help")))
+        parts += [("action %s param %s" % (a.get("id"), p.get("id")), p, ("title", "help")) for p in a.get("params") or []]
+    langs = set()
+    for what, obj, keys in parts:
+        i18n = obj.get("i18n")
+        if i18n is None:
+            continue
+        if not isinstance(i18n, dict):
+            problems.append("%s: i18n is an object {lang: {...}}" % what)
+            continue
+        for lang, text in i18n.items():
+            langs.add(lang)
+            if lang not in LANGS:
+                problems.append("%s: i18n language %r is not one of %s" % (what, lang, sorted(LANGS)))
+            if not isinstance(text, dict) or set(text) - set(keys):
+                problems.append("%s: i18n.%s holds only %s" % (what, lang, ", ".join(keys)))
+    for lang in sorted(langs):
+        for what, obj, keys in parts:
+            text = (obj.get("i18n") or {}).get(lang)
+            text = text if isinstance(text, dict) else {}
+            for key in keys:
+                if isinstance(obj.get(key), str) and obj[key] and not (isinstance(text.get(key), str) and text[key].strip()):
+                    problems.append("%s: %s has no i18n.%s.%s" % (what, key, lang, key))
+    return problems
+
+
 def check_manifest(path):
     problems = []
     where = os.path.relpath(path, ROOT)
@@ -76,6 +112,7 @@ def check_manifest(path):
         if handoff:
             need(handoff.get("then") in actions or handoff.get("then") in [x.get("id") for x in m["actions"]],
                  "action %s: handoff.then names an action" % a.get("id"))
+    problems += ["%s: %s" % (where, x) for x in check_i18n(m)]
     for skill in m.get("skills") or []:
         need(os.path.isfile(os.path.join(base, skill)), "skill %s is missing" % skill)
     return m, problems

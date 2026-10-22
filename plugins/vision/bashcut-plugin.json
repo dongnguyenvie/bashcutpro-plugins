@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vision",
   "name": "Vision",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "summary": "Picture understanding out of process: cut out a person or object (alpha PNG sequence placed above the clip), face and person boxes per shot with face-following reframe, on-screen text with boxes, and shot descriptions by your agent.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -41,7 +41,8 @@
       "env": ["BASHCUT_VISION_PYTHON"],
       "flag": "--python",
       "optional": true,
-      "help": "A Python with onnxruntime, numpy and Pillow. Empty: the private one that Install the model packages makes."
+      "help": "A Python with onnxruntime, numpy and Pillow. Empty: the private one that Install the model packages makes.",
+      "i18n": {"vi": {"title": "Python cho các mô hình", "help": "Bản Python có onnxruntime, numpy và Pillow. Để trống: dùng bản riêng do Cài các gói mô hình tạo ra."}}
     },
     {
       "id": "tesseract",
@@ -51,7 +52,8 @@
       "env": ["BASHCUT_VISION_TESSERACT"],
       "flag": "--tesseract",
       "optional": true,
-      "help": "Reads on-screen text on this computer. Without it, the agent reads the frames for you."
+      "help": "Reads on-screen text on this computer. Without it, the agent reads the frames for you.",
+      "i18n": {"vi": {"title": "Chương trình Tesseract", "help": "Đọc chữ trên màn hình ngay trên máy này. Không có nó thì agent sẽ đọc các khung hình giúp bạn."}}
     }
   ],
   "actions": [
@@ -62,9 +64,10 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "download", "title": "Download missing models", "flag": "--download", "type": "bool", "default": false},
-        {"id": "model", "title": "Model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true}
-      ]
+        {"id": "download", "title": "Download missing models", "flag": "--download", "type": "bool", "default": false, "i18n": {"vi": {"title": "Tải các mô hình còn thiếu"}}},
+        {"id": "model", "title": "Model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true, "i18n": {"vi": {"title": "Mô hình"}}}
+      ],
+      "i18n": {"vi": {"title": "Mô hình…"}}
     },
     {
       "id": "setup",
@@ -73,9 +76,10 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "python", "title": "Python", "flag": "--python", "type": "path", "optional": true},
-        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
-      ]
+        {"id": "python", "title": "Python", "flag": "--python", "type": "path", "optional": true, "i18n": {"vi": {"title": "Python"}}},
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chỉ hiện các bước"}}}
+      ],
+      "i18n": {"vi": {"title": "Cài các gói mô hình…"}}
     },
     {
       "id": "cutout",
@@ -84,14 +88,15 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "clip", "title": "Clip (default: the first video clip)", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "kind", "title": "Subject", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto"},
-        {"id": "output", "title": "Output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba"},
-        {"id": "smooth", "title": "Smoothing", "flag": "--smooth", "type": "number", "default": 0.6},
-        {"id": "maxFrames", "title": "Max frames", "flag": "--max-frames", "type": "integer", "default": 900},
-        {"id": "out", "title": "Frames folder", "flag": "--out", "type": "path", "optional": true},
-        {"id": "noPlace", "title": "Don't place", "flag": "--no-place", "type": "bool", "default": false}
-      ]
+        {"id": "clip", "title": "Clip (default: the first video clip)", "flag": "--clip", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Clip (mặc định: clip video đầu tiên)"}}},
+        {"id": "kind", "title": "Subject", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto", "i18n": {"vi": {"title": "Chủ thể"}}},
+        {"id": "output", "title": "Output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba", "i18n": {"vi": {"title": "Đầu ra"}}},
+        {"id": "smooth", "title": "Smoothing", "flag": "--smooth", "type": "number", "default": 0.6, "i18n": {"vi": {"title": "Làm mượt"}}},
+        {"id": "maxFrames", "title": "Max frames", "flag": "--max-frames", "type": "integer", "default": 900, "i18n": {"vi": {"title": "Số khung hình tối đa"}}},
+        {"id": "out", "title": "Frames folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục khung hình"}}},
+        {"id": "noPlace", "title": "Don't place", "flag": "--no-place", "type": "bool", "default": false, "i18n": {"vi": {"title": "Không đặt vào timeline"}}}
+      ],
+      "i18n": {"vi": {"title": "Tách chủ thể…"}}
     },
     {
       "id": "subjects",
@@ -100,11 +105,12 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 6},
-        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true},
-        {"id": "reframe", "title": "Reframe to follow the face", "flag": "--reframe", "type": "bool", "default": false}
-      ]
+        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Clip (mặc định: mọi clip video)"}}},
+        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 6, "i18n": {"vi": {"title": "Số khung hình mỗi clip"}}},
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp kết quả"}}},
+        {"id": "reframe", "title": "Reframe to follow the face", "flag": "--reframe", "type": "bool", "default": false, "i18n": {"vi": {"title": "Đổi khung hình bám theo mặt"}}}
+      ],
+      "i18n": {"vi": {"title": "Tìm khuôn mặt và người…"}}
     },
     {
       "id": "ocr",
@@ -113,13 +119,14 @@
       "needs": "project",
       "edits": false,
       "params": [
-        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 4},
-        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true},
-        {"id": "tesseract", "title": "Tesseract program", "flag": "--tesseract", "type": "path", "optional": true},
-        {"id": "languages", "title": "Languages", "flag": "--languages", "type": "string", "default": "eng"}
+        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Clip (mặc định: mọi clip video)"}}},
+        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 4, "i18n": {"vi": {"title": "Số khung hình mỗi clip"}}},
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp kết quả"}}},
+        {"id": "tesseract", "title": "Tesseract program", "flag": "--tesseract", "type": "path", "optional": true, "i18n": {"vi": {"title": "Chương trình Tesseract"}}},
+        {"id": "languages", "title": "Languages", "flag": "--languages", "type": "string", "default": "eng", "i18n": {"vi": {"title": "Ngôn ngữ"}}}
       ],
-      "handoff": {"exit": 3, "then": "ocr-apply"}
+      "handoff": {"exit": 3, "then": "ocr-apply"},
+      "i18n": {"vi": {"title": "Đọc chữ trên màn hình"}}
     },
     {
       "id": "ocr-apply",
@@ -128,9 +135,10 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path"},
-        {"id": "answer", "title": "Agent's answer file", "flag": "--answer", "type": "path"}
-      ]
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "i18n": {"vi": {"title": "Tệp kết quả"}}},
+        {"id": "answer", "title": "Agent's answer file", "flag": "--answer", "type": "path", "i18n": {"vi": {"title": "Tệp trả lời của agent"}}}
+      ],
+      "i18n": {"vi": {"title": "Lưu chữ đã đọc"}}
     },
     {
       "id": "describe",
@@ -139,11 +147,12 @@
       "needs": "project",
       "edits": false,
       "params": [
-        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 3},
-        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true}
+        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Clip (mặc định: mọi clip video)"}}},
+        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 3, "i18n": {"vi": {"title": "Số khung hình mỗi clip"}}},
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp kết quả"}}}
       ],
-      "handoff": {"exit": 3, "then": "describe-apply"}
+      "handoff": {"exit": 3, "then": "describe-apply"},
+      "i18n": {"vi": {"title": "Mô tả cảnh quay"}}
     },
     {
       "id": "describe-apply",
@@ -152,11 +161,13 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path"},
-        {"id": "answer", "title": "Agent's answer file", "flag": "--answer", "type": "path"}
-      ]
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "i18n": {"vi": {"title": "Tệp kết quả"}}},
+        {"id": "answer", "title": "Agent's answer file", "flag": "--answer", "type": "path", "i18n": {"vi": {"title": "Tệp trả lời của agent"}}}
+      ],
+      "i18n": {"vi": {"title": "Lưu mô tả cảnh quay"}}
     }
   ],
   "models": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"],
-  "skills": ["skills/vision/SKILL.md"]
+  "skills": ["skills/vision/SKILL.md"],
+  "i18n": {"vi": {"name": "Thị giác máy", "summary": "Hiểu hình ảnh trong tiến trình riêng: tách người hoặc vật (chuỗi PNG có alpha đặt trên clip), khung khuôn mặt và người theo từng cảnh với khung hình bám theo mặt, chữ trên màn hình kèm khung, và mô tả cảnh do agent của bạn viết."}}
 }
