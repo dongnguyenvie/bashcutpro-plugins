@@ -77,14 +77,14 @@ def get(url, timeout=30, agent=PLAIN_AGENT):
 
 def read_json(path, default):
     try:
-        return json.loads(Path(path).read_text())
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return default
 
 
 def write_json(path, value):
     tmp = Path(str(path) + ".tmp")
-    tmp.write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":")))
+    tmp.write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tmp.replace(path)
 
 
@@ -458,7 +458,7 @@ def draw_sheet(rows, text, role, folder):
 
 def bashcut(*args):
     try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True)
+        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     except FileNotFoundError:
         return {"error": "bashcut is not on PATH"}
     try:

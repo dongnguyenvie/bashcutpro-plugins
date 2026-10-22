@@ -317,7 +317,7 @@ def humaaans_items(name, folder, fetch):
                 for kind, part, shift in (("head", head, "82 0"), (posture, bottom, "0 187"), ("torso", torso, "22 82")):
                     group = ET.SubElement(person, f"{{{SVG_NS}}}g", {"transform": f"translate({shift})"})
                     group.append(jsx_to_svg(parts[kind][part], f"{kind[:2]}{part}"))
-                (folder / "svg" / f"{item_id}.svg").write_text(ET.tostring(svg, encoding="unicode"))
+                (folder / "svg" / f"{item_id}.svg").write_text(ET.tostring(svg, encoding="unicode"), encoding="utf-8")
                 label = f"{split_camel(bottom)}, {split_camel(torso)}"
                 tags = list(dict.fromkeys(words(f"{posture} {label} {split_camel(head)}")))
                 items.append({"id": item_id, "pose": posture, "label": label, "tags": tags,
@@ -333,7 +333,7 @@ def ingest(name, refresh=False, fetch=None):
     folder = shared_dir() / name
     index_path = folder / "index.json"
     if index_path.exists() and not refresh:
-        return json.loads(index_path.read_text()), None
+        return json.loads(index_path.read_text(encoding="utf-8")), None
     started = time.time()
     (folder / "svg").mkdir(parents=True, exist_ok=True)
     fetch = fetch or (lambda url: get(url, timeout=60))
@@ -341,8 +341,8 @@ def ingest(name, refresh=False, fetch=None):
     if not index:
         raise OSError(f"{name}: nothing found at {SETS[name]['page']}")
     index_path.write_text(json.dumps({"set": name, "license": SETS[name]["license"], "page": SETS[name]["page"],
-                                      "items": index}, indent=1))
-    return json.loads(index_path.read_text()), round(time.time() - started, 1)
+                                      "items": index}, indent=1), encoding="utf-8")
+    return json.loads(index_path.read_text(encoding="utf-8")), round(time.time() - started, 1)
 
 
 def svg_file(name, item, fetch=None):
@@ -378,7 +378,7 @@ def rank(slots, items, count):
 
 
 def read_slots(path, count):
-    text = Path(path).read_text()
+    text = Path(path).read_text(encoding="utf-8")
     try:
         slots = json.loads(text)
     except ValueError:
@@ -533,7 +533,7 @@ def project_style():
 
 
 def store_style(name, palette):
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
         json.dump({"set": name, "palette": palette or None}, f)
     bashcut("project", "set-data", "illustrations", f.name, "--merge", "--base-rev", "last")
     os.unlink(f.name)
@@ -569,7 +569,7 @@ def candidates(args):
     with concurrent.futures.ThreadPoolExecutor(4) as pool:  # unDraw files are fetched here the first time
         list(pool.map(thumb, rows))
     sheets = draw_sheets(rows, dest, max(1, args.sheet_slots))
-    (dest / "illustrations.json").write_text(json.dumps({"set": name, "palette": palette, "rows": rows}, indent=1))
+    (dest / "illustrations.json").write_text(json.dumps({"set": name, "palette": palette, "rows": rows}, indent=1), encoding="utf-8")
     if args.set or args.palette is not None:
         store_style(name, palette)
     for slot in slots:
@@ -580,7 +580,7 @@ def candidates(args):
 
 def pick(args):
     dest = Path(args.dest)
-    manifest = json.loads((dest / "illustrations.json").read_text())
+    manifest = json.loads((dest / "illustrations.json").read_text(encoding="utf-8"))
     name, palette = manifest["set"], manifest["palette"]
     meta = SETS[name]
     out = []
@@ -643,7 +643,7 @@ def main(argv=None):
     if args.sets:
         for name, meta in SETS.items():
             index = shared_dir() / name / "index.json"
-            count = len(json.loads(index.read_text())["items"]) if index.exists() else None
+            count = len(json.loads(index.read_text(encoding="utf-8"))["items"]) if index.exists() else None
             print(json.dumps({"set": name, "license": meta["license"], "page": meta["page"], "items": count}))
         return
     if not args.dest:

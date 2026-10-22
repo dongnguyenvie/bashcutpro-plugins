@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def bashcut(*args):
-    out = subprocess.run(["bashcut", *args], capture_output=True, text=True)
+    out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     try:
         return json.loads(out.stdout or out.stderr)
     except ValueError:

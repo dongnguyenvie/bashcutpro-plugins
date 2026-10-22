@@ -11,6 +11,7 @@ from unittest import mock
 
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
 SYSTEM = Path('/System/Library/Fonts/Supplemental')
+ARIAL = next((p for p in (SYSTEM / 'Arial.ttf', Path('C:/Windows/Fonts/arial.ttf')) if p.exists()), None)  # macOS, Windows
 
 
 def load():
@@ -117,10 +118,10 @@ class FontLibraryTests(unittest.TestCase):
         self.assertEqual(self.ff.rank(families, 'vietnamese', 'title', ['condensed'], picks, other)[0], 'anton')
         self.assertEqual(self.ff.rank(families, 'vietnamese', 'caption', ['serif'], {}, scopes), ['lora'])
 
-    @unittest.skipUnless(has('PIL') and (SYSTEM / 'Arial.ttf').exists(), 'needs Pillow and macOS fonts')
+    @unittest.skipUnless(has('PIL') and ARIAL, 'needs Pillow and Arial (macOS or Windows)')
     def test_candidates_draw_one_sheet_and_leave_out_fonts_missing_letters(self):
         run(self.ff, ['--ingest'])
-        arial = str(SYSTEM / 'Arial.ttf')
+        arial = str(ARIAL)
         full = {ord(c): 'g' for c in set(self.ff.LETTERS['vietnamese'] + 'Phở bò ĐàLạt,0123456789')}
         lacking = {k: v for k, v in full.items() if k != ord('ộ')}
         cmap = lambda path: lacking if 'lora' in str(path) else full
@@ -138,7 +139,7 @@ class FontLibraryTests(unittest.TestCase):
         self.assertEqual([r['family'] for r in lines], ['Be Vietnam Pro', 'Anton'])  # Lora lacks ộ
         self.assertEqual(set(lines[0]), {'n', 'family', 'weight', 'tags'})
         self.assertEqual(lines[0]['weight'], 700)
-        picks = json.loads((self.ff.shared('data') / 'picks.json').read_text())
+        picks = json.loads((self.ff.shared('data') / 'picks.json').read_text(encoding='utf-8'))
         self.assertEqual(picks['recipe:food']['be-vietnam-pro'], {'shown': 1, 'picked': 0})
 
     def test_pick_imports_the_whole_file_and_saves_a_text_preset(self):
@@ -168,7 +169,7 @@ class FontLibraryTests(unittest.TestCase):
         params = json.loads(add[add.index('--params') + 1])
         self.assertEqual(params, {'textPreset': 'hook-title', 'textStyle': {'font': 'Anton-Regular'}})
         self.assertIn('--kind', add)
-        picks = json.loads((self.ff.shared('data') / 'picks.json').read_text())
+        picks = json.loads((self.ff.shared('data') / 'picks.json').read_text(encoding='utf-8'))
         self.assertEqual(picks['recipe:food']['anton']['picked'], 2)
 
     def test_pick_without_candidates_says_so(self):

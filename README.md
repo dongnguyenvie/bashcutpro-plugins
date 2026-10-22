@@ -66,8 +66,10 @@ person from a shell. The host and these runs all start a plugin the same way, fr
 4. **Result** (`output: "bashcut-result/1"`): one JSON object on stdout, `{"ok": true, "message", "data"}` or
    `{"ok": false, "error": {"code", "message"}, "data"?}`; progress lines on stderr. Exit status 0 success, 1 failure,
    2 usage error, **3 hand-off**: the plugin cannot finish alone (no API key) and `data` holds what the calling agent
-   needs to finish it (then it runs the action named in `handoff.then`). stdin and stdout are UTF-8 whatever the
-   system code page is (Windows pipes default to it, e.g. cp1252), so Vietnamese captions and names survive.
+   needs to finish it (then it runs the action named in `handoff.then`). stdin, stdout and stderr are UTF-8 whatever
+   the system code page is (Windows pipes default to it, e.g. cp1252), so Vietnamese captions and names survive, in
+   the result and in the Runs log. Every text file a plugin reads or writes names `encoding="utf-8"`, which
+   `tests/test_text_encoding.py` checks across `plugins/`.
 5. **Edits** are engine commands, so they are undoable in the app; in headless mode the plugin saves the project
    (`file.save`) unless told `--no-save`.
 

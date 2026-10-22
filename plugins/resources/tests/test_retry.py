@@ -93,7 +93,7 @@ class BatchTests(unittest.TestCase):
         fake = FakeBashCut()
         with mock.patch.object(self.stock.subprocess, 'run', curl), mock.patch.object(self.stock, 'bashcut', fake):
             rows = run(self.stock, ['--source', 'pexels', '--query', 'clay pot', '--candidates', '3', '--dest', folder])
-        return rows, fake, json.loads((Path(folder) / 'candidates.json').read_text())
+        return rows, fake, json.loads((Path(folder) / 'candidates.json').read_text(encoding='utf-8'))
 
     def test_a_flaky_file_is_retried_until_it_arrives(self):
         flaky = 'https://images.pexels.com/101.jpeg?auto=compress&w=1080'

@@ -111,12 +111,12 @@ class IngestTests(unittest.TestCase):
         self.f = load('fetch_luts')
         own = self.tmp / 'own'
         own.mkdir()
-        (own / 'warm.cube').write_text(cube(lambda c: np.clip(c * [1.15, 1.0, 0.8], 0, 1)))
-        (own / 'warm-copy.cube').write_text(cube(lambda c: np.clip(c * [1.15, 1.0, 0.8], 0, 1)))  # same bytes
-        (own / 'warm-near.cube').write_text(cube(lambda c: np.clip(c * [1.151, 1.0, 0.8], 0, 1)))  # same look
+        (own / 'warm.cube').write_text(cube(lambda c: np.clip(c * [1.15, 1.0, 0.8], 0, 1)), encoding='utf-8')
+        (own / 'warm-copy.cube').write_text(cube(lambda c: np.clip(c * [1.15, 1.0, 0.8], 0, 1)), encoding='utf-8')  # same bytes
+        (own / 'warm-near.cube').write_text(cube(lambda c: np.clip(c * [1.151, 1.0, 0.8], 0, 1)), encoding='utf-8')  # same look
         (own / 'teal.png').write_bytes(hald(lambda c: np.clip(c * [0.85, 1.0, 1.15], 0, 1)))
-        (own / 'log.cube').write_text(cube(lambda c: np.clip((c - 0.5) * 3 + 0.5, 0, 1)))
-        (own / 'broken.cube').write_text('LUT_3D_SIZE 3\n1 2\n')
+        (own / 'log.cube').write_text(cube(lambda c: np.clip((c - 0.5) * 3 + 0.5, 0, 1)), encoding='utf-8')
+        (own / 'broken.cube').write_text('LUT_3D_SIZE 3\n1 2\n', encoding='utf-8')
         self.own = own
         self.added = []
 

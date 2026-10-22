@@ -129,7 +129,7 @@ def useanimations(fetch, folder):
             data = js_object(package.extractfile(member).read().decode())["animationData"]
         except (ValueError, KeyError):
             continue
-        (folder / "useanimations" / f"{item['id']}.json").write_text(json.dumps(data, separators=(",", ":")))
+        (folder / "useanimations" / f"{item['id']}.json").write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
         tags = [*(item.get("keywords") or []), item.get("category") or ""]
         rows.append({"key": f"ua-{item['id']}", "source": "useanimations", "id": item["id"],
                      "name": item.get("title") or item["id"], "tags": [t for t in tags if t],
@@ -155,7 +155,7 @@ def ingest(refresh=False, fetch=None):
     folder = shared_dir()
     path = folder / "index.json"
     if path.exists() and not refresh:
-        return json.loads(path.read_text())["items"], None
+        return json.loads(path.read_text(encoding="utf-8"))["items"], None
     started = time.time()
     fetch = fetch or (lambda url: get(url, timeout=120))
     folder.mkdir(parents=True, exist_ok=True)
@@ -164,7 +164,7 @@ def ingest(refresh=False, fetch=None):
         rows = ua.result() + emoji.result()
     for order, row in enumerate(rows):
         row["order"] = order
-    path.write_text(json.dumps({"sources": SOURCES, "items": rows}, ensure_ascii=False))
+    path.write_text(json.dumps({"sources": SOURCES, "items": rows}, ensure_ascii=False), encoding="utf-8")
     return rows, round(time.time() - started, 1)
 
 
@@ -201,12 +201,12 @@ def lottiefiles(word, count, max_kb, refresh=False, send=None):
     """LottieFiles' public search for a word (cached per word), as rows; a file over max_kb is left out."""
     path = shared_dir() / "lottiefiles" / f"search-{slug(word)}.json"
     if path.exists() and not refresh:
-        edges = json.loads(path.read_text())
+        edges = json.loads(path.read_text(encoding="utf-8"))
     else:
         answer = (send or post)(LOTTIEFILES, {"query": LOTTIEFILES_QUERY, "variables": {"q": word, "n": count * 2}})
         edges = ((answer.get("data") or {}).get("searchPublicAnimations") or {}).get("edges") or []
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(edges))
+        path.write_text(json.dumps(edges), encoding="utf-8")
     rows = []
     for edge in edges:
         node = edge.get("node") or {}
@@ -341,7 +341,7 @@ def candidates(args):
         if row.get("error"):
             continue
         try:
-            text = Path(row["json"]).read_text()
+            text = Path(row["json"]).read_text(encoding="utf-8")
             row.update(frame_strip(text, dest / row["file"]))
             colors = palette(json.loads(text))
             row.update(colors=len(colors), mono="gradient" not in colors and len(set(colors) - {"#ffffff"}) <= 1)
@@ -350,7 +350,7 @@ def candidates(args):
         row["size"] = " ".join(str(b) for b in (SOURCES[row["source"]]["short"], row.get("name", "")[:16],
                                                 "mono" if row.get("mono") else "") if b)
     sheets = draw_sheets(shown, dest, max(1, args.sheet_slots))
-    (dest / "lottie.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    (dest / "lottie.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     for slot in dict.fromkeys(r["slot"] for r in out):
         mine = [r for r in out if r["slot"] == slot and r.get("n")]
         line = {"slot": slot, "candidates": len(mine),
@@ -362,7 +362,7 @@ def candidates(args):
 
 def pick(args):
     dest = Path(args.dest)
-    rows = json.loads((dest / "lottie.json").read_text())
+    rows = json.loads((dest / "lottie.json").read_text(encoding="utf-8"))
     folder = Path(args.save_to or dest)
     folder.mkdir(parents=True, exist_ok=True)
     for slot, n, frame, duration in parse_pick(args.pick):

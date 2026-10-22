@@ -105,7 +105,7 @@ def get_json(url):
 
 def bashcut(*args):
     try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True)
+        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     except FileNotFoundError:
         return {"error": "bashcut is not on PATH"}
     try:

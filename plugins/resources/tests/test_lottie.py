@@ -98,8 +98,6 @@ def strip(text, out, tile=220):
     return {"fps": 30.0, "frames": 30, "seconds": 1.0, "width": 64, "height": 64}
 
 
-@unittest.skipIf(os.name == "nt" and not sys.flags.utf8_mode,
-                 "the scripts read and write files as UTF-8: run with python -X utf8 (the plugin starts them so)")
 class LottieTests(unittest.TestCase):
     def setUp(self):
         self.lottie = load("fetch_lottie.py")
@@ -125,7 +123,7 @@ class LottieTests(unittest.TestCase):
         self.assertTrue(rows[0]["loop"])
         self.assertFalse(rows[1]["loop"])
         self.assertEqual((rows[2]["name"], rows[2]["emoji"]), ("party popper", "🎉"))
-        saved = json.loads((Path(self.shared.name) / "lottie/useanimations/checkmark.json").read_text())
+        saved = json.loads((Path(self.shared.name) / "lottie/useanimations/checkmark.json").read_text(encoding="utf-8"))
         self.assertEqual(saved["layers"][0]["ks"]["p"]["k"][0]["i"]["x"], 0.5)
         again, seconds = self.lottie.ingest(fetch=fetch)
         self.assertIsNone(seconds)
@@ -166,13 +164,13 @@ class LottieTests(unittest.TestCase):
                                         "sources": {"useanimations": 1, "lottiefiles": 1}})
             self.assertEqual(lines[2]["sources"], {"noto": 1, "lottiefiles": 1})
             self.assertTrue(Path(lines[3]["sheets"][0]).exists())
-            rows = json.loads((Path(dest) / "lottie.json").read_text())
+            rows = json.loads((Path(dest) / "lottie.json").read_text(encoding="utf-8"))
             self.assertEqual(rows[0]["size"], "ua Checkmark mono")
             self.assertEqual(rows[1]["license"], "Lottie Simple License")
             picked = run(self.lottie, ["--dest", dest, "--pick", "check=1;confetti=2@120:45;confetti=9",
                                        "--save-to", project])
             check, burst, missing = picked
-            burst_fill = json.loads(Path(burst["file"]).read_text())["layers"][0]["shapes"][0]["it"][1]["c"]["k"]
+            burst_fill = json.loads(Path(burst["file"]).read_text(encoding="utf-8"))["layers"][0]["shapes"][0]["it"][1]["c"]["k"]
         self.assertEqual(Path(check["file"]), Path(project) / "check-ua-checkmark.json")
         self.assertEqual((check["license"], check["mono"]), ("MIT", True))
         self.assertEqual(check["place"], f"graphic place lottie --set file={check['file']}")

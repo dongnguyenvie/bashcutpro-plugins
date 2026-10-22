@@ -61,8 +61,9 @@ unchanged in a child process and answers those calls (`resources_plugin/shim.py`
 | `library analyze`, `jobs …`, `media frames`, `fonts import`, `context get` | an error, which the scripts already report on the row and go past |
 
 The scripts keep their indexes and downloads in `BASHCUT_SHARED_DATA` / `BASHCUT_SHARED_CACHE`, which the runner
-points at `shared/` and `cache/` in the plugin's data folder on every OS, and run in UTF-8 mode (they read and write
-files as UTF-8, as on macOS).
+points at `shared/` and `cache/` in the plugin's data folder on every OS, and run in UTF-8 mode. The scripts also name
+`encoding="utf-8"` on every text file and `bashcut` call themselves, so they read and write UTF-8 when an agent runs
+them directly on Windows too.
 
 A licence record:
 
@@ -104,10 +105,11 @@ names the Python that runs the scripts; default the private environment, else th
 ## Test
 
 ```sh
-python3 -X utf8 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v
 ```
 
-Without `-X utf8` on Windows, the facts and Lottie script tests are skipped (the runner always starts the scripts in
-UTF-8 mode). Tests that draw sheets are skipped when Pillow is missing.
+No network and no UTF-8 mode needed (on Windows too). Tests that draw sheets or measure LUTs are skipped when Pillow,
+numpy or rlottie is missing (`setup` installs them for the scripts, not for the test Python); the font measuring test
+needs macOS fonts (Arial Narrow, Arial Rounded, Didot or Bodoni).
 
 Live test pending (needs `filmcraft-cli` and the network): fetched assets imported with their licence noted.
