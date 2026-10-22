@@ -3,8 +3,6 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
-import sys
 from pathlib import Path
 import subprocess
 import tempfile
@@ -100,8 +98,6 @@ class Web:
         return json.dumps(value, ensure_ascii=False).encode()
 
 
-@unittest.skipIf(os.name == "nt" and not sys.flags.utf8_mode,
-                 "the scripts read and write files as UTF-8: run with python -X utf8 (the plugin starts them so)")
 class FactsTests(unittest.TestCase):
     def setUp(self):
         self.facts = load()
@@ -116,7 +112,7 @@ class FactsTests(unittest.TestCase):
         if args[:2] == ('project', 'data'):
             return self.stored.get('facts')
         if args[:2] == ('project', 'set-data'):
-            self.stored['facts'] = json.loads(Path(args[3]).read_text())
+            self.stored['facts'] = json.loads(Path(args[3]).read_text(encoding='utf-8'))
             return {'key': 'facts', 'rev': 2}
         return {'error': 'unexpected'}
 
@@ -191,7 +187,7 @@ class FactsTests(unittest.TestCase):
         self.addCleanup(folder.cleanup)
         path = Path(folder.name) / 'facts.jsonl'
         path.write_text('{"id": "e", "entity": "Đà Lạt", "property": "elevation", "lang": "vi"}\n'
-                        '{"id": "g", "entity": "Vietnam", "indicator": "gdp per capita", "year": 2023}\n')
+                        '{"id": "g", "entity": "Vietnam", "indicator": "gdp per capita", "year": 2023}\n', encoding='utf-8')
         rows = self.rows(['--questions', str(path)])
         self.assertEqual((rows['e']['value'], rows['g']['value']), (1500, 4322.83))
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):

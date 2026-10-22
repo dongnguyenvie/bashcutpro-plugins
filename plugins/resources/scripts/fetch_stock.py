@@ -465,7 +465,8 @@ def download(row, dest):
 
 
 def import_into(dest, rows):
-    out = subprocess.run(["bashcut", "media", "import", str(dest), "--base-rev", "last"], capture_output=True, text=True)
+    out = subprocess.run(["bashcut", "media", "import", str(dest), "--base-rev", "last"],
+                         capture_output=True, text=True, encoding="utf-8")
     try:
         ids = {Path(f["path"]).name: f.get("media") for f in json.loads(out.stdout).get("files", [])}
     except (ValueError, AttributeError):
@@ -477,7 +478,7 @@ def import_into(dest, rows):
 
 def bashcut(*args, retry=True):
     try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True)
+        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     except FileNotFoundError:
         return {"error": "bashcut is not on PATH"}
     try:
@@ -534,7 +535,7 @@ def skipped(row):
 
 def read_slots(args):
     if args.slots:
-        slots = json.loads(Path(args.slots).read_text())
+        slots = json.loads(Path(args.slots).read_text(encoding="utf-8"))
     else:
         slots = [{"slot": slug(args.query), "query": args.query}]
     for i, slot in enumerate(slots):
@@ -729,7 +730,7 @@ def pick(dest, spec, scope):
     """--pick "slot=3@120;other=2,5": the chosen candidates' library IDs, downloading a deferred video first, and
     placed with library place at @frame (:duration in frames) when given."""
     manifest = dest / "candidates.json"
-    rows = json.loads(manifest.read_text())
+    rows = json.loads(manifest.read_text(encoding="utf-8"))
     chosen = []
     wanted = [(s, n) for s, n, _, _ in parse_pick(spec)]
     late = [r for r in rows if r.get("deferred") and (r.get("slot"), r.get("n")) in wanted]
@@ -763,7 +764,7 @@ def pick(dest, spec, scope):
             else:
                 line.update(placed=frame, rev=placed.get("rev"))
         chosen.append(line)
-    manifest.write_text(json.dumps(rows, ensure_ascii=False, indent=1))
+    manifest.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
     return chosen
 
 
@@ -805,7 +806,7 @@ def main(argv=None):
         rows, capped = gather(read_slots(args), pick_source(args.source, read_slots(args)[0]["kind"]), dest, args.max_mb, args.min_short,
                               args.scope, args.library)
         sheets = draw_sheets(rows, dest, max(1, args.sheet_slots))
-        (dest / "candidates.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1))
+        (dest / "candidates.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
         for slot in dict.fromkeys(r["slot"] for r in rows):
             mine = [r for r in rows if r["slot"] == slot]
             line = {"slot": slot, "candidates": len([r for r in mine if r.get("n")]),

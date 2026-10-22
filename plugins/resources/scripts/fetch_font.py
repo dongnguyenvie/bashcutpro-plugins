@@ -132,7 +132,7 @@ def main(argv=None):
         for row in rows:
             if args.import_ and "file" in row:
                 out = subprocess.run(["bashcut", "fonts", "import", str(dest / row["file"])],
-                                     capture_output=True, text=True)
+                                     capture_output=True, text=True, encoding="utf-8")
                 row["imported"] = out.returncode == 0
                 if out.returncode != 0:
                     row["error"] = (out.stderr or out.stdout).strip()[:200]

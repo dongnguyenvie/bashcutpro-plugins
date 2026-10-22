@@ -31,7 +31,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.project = os.path.join(self.dir, "state.json")
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump({}, f)
         self.env = {k: os.environ.get(k) for k in ENV_KEYS}
         for k in ENV_KEYS:

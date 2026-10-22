@@ -172,7 +172,7 @@ class StockTests(unittest.TestCase):
         self.assertEqual(rows[1]['file'], 'pixabay-11-clay-pot.jpg')
 
     def test_no_key_in_the_source(self):
-        text = (SCRIPTS / 'fetch_stock.py').read_text()
+        text = (SCRIPTS / 'fetch_stock.py').read_text(encoding='utf-8')
         self.assertNotRegex(text, r'key=[0-9a-f]{10,}|Authorization": "[A-Za-z0-9]{20,}')
 
 
@@ -236,10 +236,23 @@ class MusicLicenceTests(unittest.TestCase):
                 mock.patch.object(self.audio, 'get', web):
             rows = run(self.audio, ['--dest', folder, '--music', 'calm', '--music-count', '2', '--no-library',
                                      '--safe-licence'])
-            record = json.loads((Path(folder) / 'music-track-3-2.mp3.licence.json').read_text())
+            record = json.loads((Path(folder) / 'music-track-3-2.mp3.licence.json').read_text(encoding='utf-8'))
         self.assertEqual([r['license'] for r in rows], ['CC0', 'CC BY 4.0'])
         self.assertEqual((record['license'], record['author'], record['source'], record['fetchedBy']),
                          ('CC BY 4.0', 'artist3', 'https://www.jamendo.com/track/3', 'bashcut.resources fetch_audio'))
+
+    def test_vietnamese_title_and_author_survive_the_saved_licence_record(self):
+        # the record is JSON with ensure_ascii=False: written in the code page (cp1252 on Windows) it crashed (FX2)
+        hit = dict(openverse_hit(9, 'by'), title='Bài hát ru Việt Nam', creator='Nguyễn Văn Đức')
+        web = FakeWeb([('https://api.openverse.org/v1/audio/', {'results': [hit]}), ('https://cdn.example/', b'mp3')])
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True), \
+                mock.patch.object(self.audio, 'get', web):
+            rows = run(self.audio, ['--dest', folder, '--music', 'ru', '--music-count', '1', '--no-library'])
+            (path,) = Path(folder).glob('*.licence.json')
+            record = json.loads(path.read_text(encoding='utf-8'))
+        self.assertEqual((rows[0]['title'], rows[0]['author']), ('Bài hát ru Việt Nam', 'Nguyễn Văn Đức'))
+        self.assertEqual((record['title'], record['author'], record['file']), (rows[0]['title'], rows[0]['author'],
+                                                                                rows[0]['file']))
 
     def test_candidate_table_has_a_licence_column(self):
         web = FakeWeb([('https://api.openverse.org/v1/audio/', OPENVERSE_MUSIC), ('https://cdn.example/', b'mp3')])
@@ -407,7 +420,7 @@ class CandidateTests(unittest.TestCase):
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
             self.audio.main(['--dest', folder, '--sfx', 'whoosh', '--sfx-count', '3'])
             files = sorted(p.name for p in Path(folder).glob('*.mp3'))
-            manifest = json.loads((Path(folder) / 'candidates.json').read_text())
+            manifest = json.loads((Path(folder) / 'candidates.json').read_text(encoding='utf-8'))
         self.assertEqual(files, ['sfx-whoosh-1.mp3', 'sfx-whoosh-2.mp3', 'sfx-whoosh-3.mp3'])
         self.assertEqual([r['title'] for r in manifest], ['Whoosh 1', 'Whoosh 3', 'Whoosh 4'])
         self.assertEqual(len(fake.adds), 3)
@@ -426,7 +439,7 @@ class CandidateTests(unittest.TestCase):
         picked = io.StringIO()
         with tempfile.TemporaryDirectory() as folder, mock.patch.object(self.audio, 'bashcut', fake), \
                 contextlib.redirect_stdout(picked):
-            (Path(folder) / 'candidates.json').write_text(json.dumps(manifest))
+            (Path(folder) / 'candidates.json').write_text(json.dumps(manifest), encoding='utf-8')
             self.audio.main(['--dest', folder, '--pick', 'whoosh=2@120:30,3;bed=1@0'])
         lines = [json.loads(line) for line in picked.getvalue().splitlines()]
         self.assertEqual(lines[0], {'slot': 'whoosh', 'n': 2, 'id': 'project:lib-2', 'placed': 120, 'rev': 7})
@@ -472,7 +485,7 @@ class CandidateTests(unittest.TestCase):
                 mock.patch.object(self.audio, 'get', web), contextlib.redirect_stdout(out):
             slots = Path(folder) / 'slots.json'
             slots.write_text(json.dumps([{'slot': 'cut', 'sfx': 'pop', 'count': 2},
-                                         {'slot': 'card', 'sfx': 'pop', 'count': 4}]))
+                                         {'slot': 'card', 'sfx': 'pop', 'count': 4}]), encoding='utf-8')
             self.audio.main(['--dest', folder, '--slots', str(slots), '--max-mb', '2', '--no-library'])
             files = sorted(p.name for p in Path(folder).glob('*.mp3'))
         self.assertEqual(files, ['sfx-pop-1.mp3', 'sfx-pop-2.mp3', 'sfx-pop-3.mp3', 'sfx-pop-4.mp3'])

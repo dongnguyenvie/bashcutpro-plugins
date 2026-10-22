@@ -59,7 +59,7 @@ class Base(unittest.TestCase):
         self.composition = os.path.join(self.dir, "card")
         touch(os.path.join(self.composition, "index.html"), PAGE % "")
         self.project = os.path.join(self.dir, "state.json")
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump({}, f)
 
     def restore(self):

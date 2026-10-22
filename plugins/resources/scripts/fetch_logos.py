@@ -55,7 +55,7 @@ def ingest(refresh=False, fetch=None):
     folder = shared_dir() / "simple-icons"
     index = folder / "simple-icons.json"
     if index.exists() and not refresh:
-        return json.loads(index.read_text()), None
+        return json.loads(index.read_text(encoding="utf-8")), None
     started = time.time()
     fetch = fetch or (lambda url: get(url, timeout=120))
     meta = json.loads(fetch(REGISTRY))
@@ -74,8 +74,8 @@ def ingest(refresh=False, fetch=None):
     icons = data.get("icons") if isinstance(data, dict) else data
     for icon in icons:
         icon.setdefault("slug", norm(icon["title"]))
-    index.write_text(json.dumps(icons))
-    (folder / "version").write_text(latest)
+    index.write_text(json.dumps(icons), encoding="utf-8")
+    (folder / "version").write_text(latest, encoding="utf-8")
     return icons, round(time.time() - started, 1)
 
 
@@ -212,7 +212,7 @@ def run(args):
     for name, frame, duration in parse_brands(args.brands):
         icon, close = match(name, icons)
         if icon:
-            svg = (folder / f"{icon['slug']}.svg").read_text()
+            svg = (folder / f"{icon['slug']}.svg").read_text(encoding="utf-8")
             fill, ratio = colour_for(icon["hex"], args.color, args.on)
             png = dest / f"{icon['slug']}-{fill.lstrip('#').lower()}-{args.size}.png"
             render_png(tinted(svg, fill), args.size, svg_shape(svg), png)
@@ -237,7 +237,7 @@ def run(args):
                 for n, other in enumerate(close, 1):
                     thumb = dest / ".thumbs" / f"{other['slug']}.png"
                     thumb.parent.mkdir(exist_ok=True)
-                    svg = (folder / f"{other['slug']}.svg").read_text()
+                    svg = (folder / f"{other['slug']}.svg").read_text(encoding="utf-8")
                     render_png(tinted(svg, f"#{other['hex']}"), 200, svg_shape(svg), thumb)
                     unsure.append({"slot": norm(name) or "logo", "words": name, "n": n, "file": str(thumb),
                                    "kind": "photo", "size": other["slug"]})

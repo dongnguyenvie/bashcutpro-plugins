@@ -87,7 +87,7 @@ class ArchiveTests(unittest.TestCase):
                 mock.patch.object(self.stock, 'bashcut', fake):
             slots = Path(folder) / 'slots.json'
             slots.write_text(json.dumps([{'slot': 'moon', 'query': 'apollo', 'kind': 'video', 'year': '1969',
-                                          'count': 2}]))
+                                          'count': 2}]), encoding='utf-8')
             rows = run(self.stock, ['--source', 'archive', '--slots', str(slots), '--dest', folder])
             self.assertEqual(rows[0], {'slot': 'moon', 'candidates': 2, 'deferred': 2})
             self.assertIn('year:[1969 TO 1969]', web.query('https://archive.org/advancedsearch.php')['q'][0])
@@ -153,7 +153,7 @@ class EmojiTests(unittest.TestCase):
             picked = run(self.emoji, ['--dest', dest, '--pick', 'fire=1@90:30', '--place-size', '0.2'])
         self.assertEqual((picked[0]['emoji'], picked[0]['animated'], picked[0]['placed']), ('🔥', True, 90))
         add = next(c for c in fake.calls if c[:2] == ('library', 'add'))
-        self.assertTrue(add[add.index('--file') + 1].endswith('noto/1f525.webp'))
+        self.assertEqual(Path(add[add.index('--file') + 1]).parts[-2:], ('noto', '1f525.webp'))  # any OS separator
         self.assertEqual(add[add.index('--id') + 1], 'emoji-noto-1f525')
         self.assertIn(('library', 'place', 'project:lib-1', '--at-frame', '90', '--base-rev', 'last', '--duration', '30',
                        '--size', '0.2'), fake.calls)

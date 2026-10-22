@@ -22,6 +22,8 @@ from .timeline import ensure_video_track, import_files, label, overlaps, place_s
 
 
 def progress(message):
+    if hasattr(sys.stderr, "reconfigure"):  # UTF-8 whatever the code page (Windows): the Runs log reads Vietnamese
+        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
     print("[image-gen] " + message, file=sys.stderr, flush=True)
 
 

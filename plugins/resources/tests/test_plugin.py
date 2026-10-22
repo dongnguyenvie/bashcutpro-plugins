@@ -28,7 +28,7 @@ class Base(unittest.TestCase):
         self.dir = tempfile.mkdtemp()
         self.dest = os.path.join(self.dir, "media", "stock")
         self.project = os.path.join(self.dir, "state.json")
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump({"notes": "Brief: a pottery video."}, f)
         self.env = {k: os.environ.get(k) for k in ENV_KEYS}
         for k in ENV_KEYS:
@@ -86,11 +86,11 @@ class ShimTests(unittest.TestCase):
     def test_project_data_round_trip_with_merge(self):
         data = os.path.join(self.dir, "project-data.json")
         source = os.path.join(self.dir, "style.json")
-        with open(source, "w") as f:
+        with open(source, "w", encoding="utf-8") as f:
             json.dump({"set": "open-peeps"}, f)
         self.assertEqual(shim.answer(["project", "data", "illustrations"], data_file=data), {})
         shim.answer(["project", "set-data", "illustrations", source, "--merge", "--base-rev", "last"], data_file=data)
-        with open(source, "w") as f:
+        with open(source, "w", encoding="utf-8") as f:
             json.dump({"palette": ["#fff"]}, f)
         shim.answer(["project", "set-data", "illustrations", source, "--merge"], data_file=data)
         self.assertEqual(shim.answer(["project", "data", "illustrations"], data_file=data), {"set": "open-peeps", "palette": ["#fff"]})

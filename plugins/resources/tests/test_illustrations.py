@@ -132,12 +132,12 @@ class Slots(unittest.TestCase):
     def test_read_slots_text_and_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             text = Path(tmp) / 's.txt'
-            text.write_text('# explainer\nhook: worried person\nmoney: buy online\n')
+            text.write_text('# explainer\nhook: worried person\nmoney: buy online\n', encoding='utf-8')
             slots = self.f.read_slots(text, 8)
             self.assertEqual([(s['slot'], s['query'], s['count']) for s in slots],
                              [('hook', 'worried person', 8), ('money', 'buy online', 8)])
             js = Path(tmp) / 's.json'
-            js.write_text(json.dumps([{'query': 'team at work', 'count': 4}]))
+            js.write_text(json.dumps([{'query': 'team at work', 'count': 4}]), encoding='utf-8')
             self.assertEqual(self.f.read_slots(js, 8)[0], {'slot': 'team-at-work', 'query': 'team at work', 'count': 4})
 
 
@@ -202,7 +202,7 @@ class Sources(unittest.TestCase):
             items = self.f.humaaans_items('humaaans', folder, lambda url: buffer.getvalue())
             self.assertEqual([i['id'] for i in items], ['standing-jogging-hoodie-afro', 'sitting-wheelchair-hoodie-afro'])
             self.assertIn('jogging', items[0]['tags'])
-            svg = (folder / 'svg' / 'standing-jogging-hoodie-afro.svg').read_text()
+            svg = (folder / 'svg' / 'standing-jogging-hoodie-afro.svg').read_text(encoding='utf-8')
             self.assertEqual(svg.count('<path d="M0,0 L10,10 Z"'), 3)  # head, legs and torso
             out = self.f.recolour(svg, ['#2B6CB0'], keep=self.f.SETS['humaaans']['keep'])
             self.assertIn('#2B6CB0', out)

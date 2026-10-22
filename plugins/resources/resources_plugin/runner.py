@@ -3,7 +3,7 @@
 
     python -X utf8 runner.py <script name, e.g. fetch_stock> [script args…]
 
-The scripts call `subprocess.run(["bashcut", …], capture_output=True, text=True)`; this replaces
+The scripts call `subprocess.run(["bashcut", …], capture_output=True, text=True, encoding="utf-8")`; this replaces
 `subprocess.run` for that one program name and passes every other command through. Started by the plugin
 (cli.py `fetch`), with BASHCUT_SHARED_DATA / BASHCUT_SHARED_CACHE pointing into the plugin's data folder, so the
 scripts' indexes and downloads are kept there on every OS, and in UTF-8 mode, which the scripts assume.
@@ -33,7 +33,7 @@ def run(args, *rest, **kwargs):
     text = json.dumps(answer, ensure_ascii=False)
     failed = isinstance(answer, dict) and "error" in answer
     out, err = ("", text) if failed else (text, "")
-    if not kwargs.get("text") and not kwargs.get("universal_newlines"):
+    if not any(kwargs.get(k) for k in ("text", "universal_newlines", "encoding", "errors")):
         out, err = out.encode("utf-8"), err.encode("utf-8")
     return subprocess.CompletedProcess(argv, 1 if failed else 0, out if kwargs.get("capture_output") else None,
                                        err if kwargs.get("capture_output") else None)

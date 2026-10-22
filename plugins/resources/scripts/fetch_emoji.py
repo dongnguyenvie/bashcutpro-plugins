@@ -106,7 +106,7 @@ def ingest(refresh=False, fetch=None):
     folder = shared_dir()
     path = folder / "index.json"
     if path.exists() and not refresh:
-        return json.loads(path.read_text())["items"], None
+        return json.loads(path.read_text(encoding="utf-8"))["items"], None
     started = time.time()
     fetch = fetch or (lambda url: get(url, timeout=60))
     with concurrent.futures.ThreadPoolExecutor(3) as pool:
@@ -114,7 +114,7 @@ def ingest(refresh=False, fetch=None):
                                                                         CLDR_VI))
     rows = build_index(noto.get("icons") or [], openmoji, vi)
     folder.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"sets": SETS, "items": rows}, ensure_ascii=False))
+    path.write_text(json.dumps({"sets": SETS, "items": rows}, ensure_ascii=False), encoding="utf-8")
     return rows, round(time.time() - started, 1)
 
 
@@ -163,7 +163,7 @@ def emoji_file(row, kind, fetch=None):
 
 def openmoji_png(row, size, out):
     from fetch_illustrations import render_png
-    return render_png(emoji_file(row, "openmoji").read_text(), size, 1.0, out)
+    return render_png(emoji_file(row, "openmoji").read_text(encoding="utf-8"), size, 1.0, out)
 
 
 def slot_name(word):
@@ -202,7 +202,7 @@ def candidates(args):
     with concurrent.futures.ThreadPoolExecutor(8) as pool:
         list(pool.map(thumb, [r for r in out if r.get("n")]))
     sheets = draw_sheets([r for r in out if r.get("n")], dest, max(1, args.sheet_slots))
-    (dest / "emoji.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    (dest / "emoji.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     for slot in dict.fromkeys(r["slot"] for r in out):
         mine = [r for r in out if r["slot"] == slot]
         line = {"slot": slot, "candidates": len([r for r in mine if r.get("n")]),
@@ -215,7 +215,7 @@ def candidates(args):
 
 def pick(args):
     dest = Path(args.dest)
-    rows = json.loads((dest / "emoji.json").read_text())
+    rows = json.loads((dest / "emoji.json").read_text(encoding="utf-8"))
     for slot, n, frame, duration in parse_pick(args.pick):
         row = next((r for r in rows if r["slot"] == slot_name(slot) and r.get("n") == n), None)
         if row is None:

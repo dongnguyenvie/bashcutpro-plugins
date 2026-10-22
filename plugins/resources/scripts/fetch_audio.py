@@ -196,7 +196,7 @@ def write_licence(path, row):
     record = {"file": path.name}
     record.update({k: row[k] for k in ("title", "license", "author", "source", "kind") if row.get(k)})
     record.update(fetchedBy="bashcut.resources fetch_audio", fetched=time.strftime("%Y-%m-%d"))
-    Path(f"{path}.licence.json").write_text(json.dumps(record, ensure_ascii=False, indent=1))
+    Path(f"{path}.licence.json").write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def _fetch(candidate):
@@ -209,7 +209,7 @@ def _fetch(candidate):
 
 def bashcut(*args, retry=True):
     try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True)
+        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     except FileNotFoundError:
         return {"error": "bashcut is not on PATH"}
     try:
@@ -355,7 +355,7 @@ def parse_pick(spec):
 
 def place_picks(dest, spec, scope):
     """--pick: the chosen candidates' library IDs, placed at @frame (and :duration) when given."""
-    rows = json.loads((dest / "candidates.json").read_text())
+    rows = json.loads((dest / "candidates.json").read_text(encoding="utf-8"))
     out = []
     for slot, n, frame, duration in parse_pick(spec):
         row = next((r for r in rows if r.get("slot") == slot and r.get("n") == n), None)
@@ -378,7 +378,7 @@ def place_picks(dest, spec, scope):
 
 def read_slots(args):
     if args.slots:
-        slots = json.loads(Path(args.slots).read_text())
+        slots = json.loads(Path(args.slots).read_text(encoding="utf-8"))
         for i, slot in enumerate(slots):
             slot.setdefault("slot", slot.get("sfx") or slot.get("music") or f"slot{i + 1}")
             slot["count"] = int(slot.get("count") or (args.music_count if slot.get("music") else args.sfx_count))
@@ -451,7 +451,7 @@ def main(argv=None):
         to_library([r for r in rows if "file" in r], dest, args.scope)
     if args.import_ and any("file" in r for r in rows):
         out = subprocess.run(["bashcut", "media", "import", str(dest), "--base-rev", "last"],
-                             capture_output=True, text=True)
+                             capture_output=True, text=True, encoding="utf-8")
         try:
             ids = {Path(f["path"]).name: f.get("media") for f in json.loads(out.stdout).get("files", [])}
         except (ValueError, AttributeError):
@@ -460,7 +460,7 @@ def main(argv=None):
         for row in rows:
             row["media"] = ids.get(row.get("file"))
     if candidates_mode:
-        (dest / "candidates.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1))
+        (dest / "candidates.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
         print(table(rows))
         if budget.spent:
             print(f"# download cap of {args.max_mb:g} MB reached: later slots got fewer candidates")

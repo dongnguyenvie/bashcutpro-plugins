@@ -63,7 +63,7 @@ def get(url, timeout=60):
 
 def bashcut(*args, retry=True):
     try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True)
+        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     except FileNotFoundError:
         return {"error": "bashcut is not on PATH"}
     try:
@@ -189,7 +189,7 @@ def parse_cube(text):
 
 
 def read_cube(path):
-    return parse_cube(Path(path).read_text(errors="replace"))
+    return parse_cube(Path(path).read_text(encoding="utf-8", errors="replace"))
 
 
 def apply_lut(c, table):
@@ -530,7 +530,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
         kept.append(fp)
         path = store / f"{slug(name)}.cube"
         label = title(source, name)
-        path.write_text(cube_text(table, label))
+        path.write_text(cube_text(table, label), encoding="utf-8")
         counts["log"] += log
         tags = ["lut", source, *(["log"] if log else auto_tags(fp))]
         if not o.library:
