@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vieneu-tts",
   "name": "VieNeu TTS (Vietnamese)",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "summary": "Vietnamese voiceover on this computer with VieNeu-TTS v3 Turbo (25 preset voices, voice cloning with consent), imported and placed on an audio track.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -43,7 +43,8 @@
       "default": "Hải Đăng",
       "env": ["BASHCUT_VIENEU_VOICE"],
       "flag": "--voice",
-      "help": "Preset voice used when there is no voice to clone (List the voices shows region, style and gender)."
+      "help": "Preset voice used when there is no voice to clone (List the voices shows region, style and gender).",
+      "i18n": {"vi": {"title": "Giọng", "help": "Giọng có sẵn dùng khi không có giọng để nhân bản (Liệt kê giọng cho biết vùng miền, phong cách và giới tính)."}}
     },
     {
       "id": "variation",
@@ -52,7 +53,8 @@
       "default": 0.8,
       "env": ["BASHCUT_VIENEU_VARIATION"],
       "flag": "--variation",
-      "help": "Sampling temperature 0.3-1.2: lower is steadier, higher gives more different takes."
+      "help": "Sampling temperature 0.3-1.2: lower is steadier, higher gives more different takes.",
+      "i18n": {"vi": {"title": "Độ khác nhau giữa các bản thu", "help": "Nhiệt độ lấy mẫu 0.3-1.2: thấp thì ổn định hơn, cao thì các bản thu khác nhau nhiều hơn."}}
     },
     {
       "id": "python",
@@ -62,7 +64,8 @@
       "env": ["BASHCUT_VIENEU_PYTHON"],
       "flag": "--python",
       "optional": true,
-      "help": "The Python that has the vieneu package. Empty: the private one that Install VieNeu makes."
+      "help": "The Python that has the vieneu package. Empty: the private one that Install VieNeu makes.",
+      "i18n": {"vi": {"title": "Python có VieNeu", "help": "Bản Python có gói vieneu. Để trống: dùng bản riêng do Cài VieNeu tạo ra."}}
     }
   ],
   "actions": [
@@ -72,7 +75,8 @@
       "args": ["voices"],
       "needs": "none",
       "edits": false,
-      "params": []
+      "params": [],
+      "i18n": {"vi": {"title": "Liệt kê giọng"}}
     },
     {
       "id": "check",
@@ -80,7 +84,8 @@
       "args": ["check"],
       "needs": "none",
       "edits": false,
-      "params": []
+      "params": [],
+      "i18n": {"vi": {"title": "Kiểm tra bản cài VieNeu"}}
     },
     {
       "id": "setup",
@@ -89,9 +94,10 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "downloadModel", "title": "Also download the model", "flag": "--download-model", "type": "bool", "default": false},
-        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
-      ]
+        {"id": "downloadModel", "title": "Also download the model", "flag": "--download-model", "type": "bool", "default": false, "i18n": {"vi": {"title": "Tải luôn mô hình"}}},
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chỉ hiện các bước"}}}
+      ],
+      "i18n": {"vi": {"title": "Cài VieNeu…"}}
     },
     {
       "id": "synthesize",
@@ -100,13 +106,14 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "text", "title": "Text", "flag": "--text", "type": "string", "optional": true},
-        {"id": "lines", "title": "Lines file", "flag": "--lines", "type": "path", "optional": true},
-        {"id": "reference", "title": "Voice to clone", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "cloneConsent", "title": "The voice's owner agreed", "flag": "--clone-consent", "type": "bool", "default": false},
-        {"id": "takes", "title": "Takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
-        {"id": "out", "title": "Takes folder", "flag": "--out", "type": "path", "optional": true}
-      ]
+        {"id": "text", "title": "Text", "flag": "--text", "type": "string", "optional": true, "i18n": {"vi": {"title": "Văn bản"}}},
+        {"id": "lines", "title": "Lines file", "flag": "--lines", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp các câu"}}},
+        {"id": "reference", "title": "Voice to clone", "flag": "--reference", "type": "path", "optional": true, "i18n": {"vi": {"title": "Giọng cần nhân bản"}}},
+        {"id": "cloneConsent", "title": "The voice's owner agreed", "flag": "--clone-consent", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chủ giọng đã đồng ý"}}},
+        {"id": "takes", "title": "Takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1, "i18n": {"vi": {"title": "Số bản thu"}}},
+        {"id": "out", "title": "Takes folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục bản thu"}}}
+      ],
+      "i18n": {"vi": {"title": "Đọc các câu thành bản thu"}}
     },
     {
       "id": "place",
@@ -115,10 +122,11 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "audio", "title": "Take", "flag": "--audio", "type": "path"},
-        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number"},
-        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "A2"}
-      ]
+        {"id": "audio", "title": "Take", "flag": "--audio", "type": "path", "i18n": {"vi": {"title": "Bản thu"}}},
+        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number", "i18n": {"vi": {"title": "Bắt đầu (giây)"}}},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "A2", "i18n": {"vi": {"title": "Track"}}}
+      ],
+      "i18n": {"vi": {"title": "Đặt một bản thu"}}
     },
     {
       "id": "speak",
@@ -127,19 +135,21 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "text", "title": "Text", "flag": "--text", "type": "string", "optional": true},
-        {"id": "lines", "title": "Lines file", "flag": "--lines", "type": "path", "optional": true},
-        {"id": "reference", "title": "Voice to clone", "flag": "--reference", "type": "path", "optional": true},
-        {"id": "cloneConsent", "title": "The voice's owner agreed", "flag": "--clone-consent", "type": "bool", "default": false},
-        {"id": "takes", "title": "Takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1},
-        {"id": "rate", "title": "Syllables a second", "flag": "--rate", "type": "number", "optional": true},
-        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "A2"},
-        {"id": "at", "title": "First line at (s)", "flag": "--at", "type": "number", "default": 0},
-        {"id": "gap", "title": "Gap between lines (s)", "flag": "--gap", "type": "number", "default": 0.4},
-        {"id": "out", "title": "Takes folder", "flag": "--out", "type": "path", "optional": true}
-      ]
+        {"id": "text", "title": "Text", "flag": "--text", "type": "string", "optional": true, "i18n": {"vi": {"title": "Văn bản"}}},
+        {"id": "lines", "title": "Lines file", "flag": "--lines", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp các câu"}}},
+        {"id": "reference", "title": "Voice to clone", "flag": "--reference", "type": "path", "optional": true, "i18n": {"vi": {"title": "Giọng cần nhân bản"}}},
+        {"id": "cloneConsent", "title": "The voice's owner agreed", "flag": "--clone-consent", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chủ giọng đã đồng ý"}}},
+        {"id": "takes", "title": "Takes", "flag": "--takes", "type": "integer", "minimum": 1, "maximum": 6, "default": 1, "i18n": {"vi": {"title": "Số bản thu"}}},
+        {"id": "rate", "title": "Syllables a second", "flag": "--rate", "type": "number", "optional": true, "i18n": {"vi": {"title": "Số âm tiết mỗi giây"}}},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "A2", "i18n": {"vi": {"title": "Track"}}},
+        {"id": "at", "title": "First line at (s)", "flag": "--at", "type": "number", "default": 0, "i18n": {"vi": {"title": "Câu đầu tại (giây)"}}},
+        {"id": "gap", "title": "Gap between lines (s)", "flag": "--gap", "type": "number", "default": 0.4, "i18n": {"vi": {"title": "Khoảng nghỉ giữa các câu (giây)"}}},
+        {"id": "out", "title": "Takes folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục bản thu"}}}
+      ],
+      "i18n": {"vi": {"title": "Lồng tiếng Việt…"}}
     }
   ],
   "models": ["vieneu-v3-turbo", "moss-audio-tokenizer-nano-onnx"],
-  "skills": ["skills/vieneu-tts/SKILL.md"]
+  "skills": ["skills/vieneu-tts/SKILL.md"],
+  "i18n": {"vi": {"name": "VieNeu TTS (tiếng Việt)", "summary": "Lồng tiếng Việt ngay trên máy này với VieNeu-TTS v3 Turbo (25 giọng có sẵn, nhân bản giọng khi được đồng ý), nhập và đặt lên track âm thanh."}}
 }

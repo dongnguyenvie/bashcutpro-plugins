@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.translate-captions",
   "name": "Translate Captions",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "summary": "Translate a sequence's captions with your own Gemini or OpenAI key (or your agent) while keeping their timing, and blur subtitles burned into the footage.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -52,7 +52,8 @@
       "default": "gemini",
       "env": ["BASHCUT_TC_SERVICE"],
       "flag": "--service",
-      "help": "Who translates. The key is sent only to this service."
+      "help": "Who translates. The key is sent only to this service.",
+      "i18n": {"vi": {"title": "Dịch vụ", "help": "Bên dịch. Khóa chỉ được gửi tới dịch vụ này."}}
     },
     {
       "id": "apiKey",
@@ -61,7 +62,8 @@
       "env": ["BASHCUT_TC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
       "flag": "--api-key",
       "optional": true,
-      "help": "Your Gemini or OpenAI key. Without a key, the agent translates the lines for you."
+      "help": "Your Gemini or OpenAI key. Without a key, the agent translates the lines for you.",
+      "i18n": {"vi": {"title": "Khóa API", "help": "Khóa Gemini hoặc OpenAI của bạn. Không có khóa thì agent sẽ dịch giúp bạn."}}
     },
     {
       "id": "model",
@@ -70,7 +72,8 @@
       "default": "auto",
       "env": ["BASHCUT_TC_MODEL"],
       "flag": "--model",
-      "help": "auto = gemini-flash-lite-latest (Gemini) or gpt-5-mini (OpenAI); or any model id of the service."
+      "help": "auto = gemini-flash-lite-latest (Gemini) or gpt-5-mini (OpenAI); or any model id of the service.",
+      "i18n": {"vi": {"title": "Mô hình", "help": "auto = gemini-flash-lite-latest (Gemini) hoặc gpt-5-mini (OpenAI); hoặc mã bất kỳ mô hình nào của dịch vụ."}}
     },
     {
       "id": "endpoint",
@@ -79,7 +82,8 @@
       "default": "",
       "env": ["BASHCUT_TC_ENDPOINT"],
       "flag": "--endpoint",
-      "help": "An OpenAI-compatible server instead of the service's own address; one on this machine needs no key."
+      "help": "An OpenAI-compatible server instead of the service's own address; one on this machine needs no key.",
+      "i18n": {"vi": {"title": "Địa chỉ máy chủ", "help": "Máy chủ tương thích OpenAI thay cho địa chỉ của dịch vụ; máy chủ trên máy này không cần khóa."}}
     }
   ],
   "actions": [
@@ -92,14 +96,15 @@
       "edits": true,
       "params": [
         {"id": "target", "title": "Language", "flag": "--target", "type": "enum", "default": "vi",
-         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
-        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true},
-        {"id": "glossary", "title": "Glossary", "flag": "--glossary", "type": "string", "default": ""},
-        {"id": "tone", "title": "Tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"},
-        {"id": "maxCps", "title": "Max characters a second", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17},
-        {"id": "brief", "title": "Brief", "flag": "--brief", "type": "string", "default": ""}
+         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"], "i18n": {"vi": {"title": "Ngôn ngữ"}}},
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true, "i18n": {"vi": {"title": "Track phụ đề"}}},
+        {"id": "glossary", "title": "Glossary", "flag": "--glossary", "type": "string", "default": "", "i18n": {"vi": {"title": "Bảng thuật ngữ"}}},
+        {"id": "tone", "title": "Tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural", "i18n": {"vi": {"title": "Giọng văn"}}},
+        {"id": "maxCps", "title": "Max characters a second", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17, "i18n": {"vi": {"title": "Số ký tự tối đa mỗi giây"}}},
+        {"id": "brief", "title": "Brief", "flag": "--brief", "type": "string", "default": "", "i18n": {"vi": {"title": "Yêu cầu thêm"}}}
       ],
-      "handoff": {"exit": 3, "then": "apply"}
+      "handoff": {"exit": 3, "then": "apply"},
+      "i18n": {"vi": {"title": "Dịch phụ đề…"}}
     },
     {
       "id": "review",
@@ -110,11 +115,12 @@
       "edits": false,
       "params": [
         {"id": "target", "title": "Language", "flag": "--target", "type": "enum", "default": "vi",
-         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
-        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true},
-        {"id": "glossary", "title": "Glossary", "flag": "--glossary", "type": "string", "default": ""},
-        {"id": "tone", "title": "Tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"}
-      ]
+         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"], "i18n": {"vi": {"title": "Ngôn ngữ"}}},
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true, "i18n": {"vi": {"title": "Track phụ đề"}}},
+        {"id": "glossary", "title": "Glossary", "flag": "--glossary", "type": "string", "default": "", "i18n": {"vi": {"title": "Bảng thuật ngữ"}}},
+        {"id": "tone", "title": "Tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural", "i18n": {"vi": {"title": "Giọng văn"}}}
+      ],
+      "i18n": {"vi": {"title": "Rà soát phụ đề…"}}
     },
     {
       "id": "export-lines",
@@ -124,10 +130,11 @@
       "edits": false,
       "params": [
         {"id": "target", "title": "Language", "flag": "--target", "type": "enum", "default": "vi",
-         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
-        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true},
-        {"id": "maxCps", "title": "Max characters a second", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17}
-      ]
+         "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"], "i18n": {"vi": {"title": "Ngôn ngữ"}}},
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true, "i18n": {"vi": {"title": "Track phụ đề"}}},
+        {"id": "maxCps", "title": "Max characters a second", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17, "i18n": {"vi": {"title": "Số ký tự tối đa mỗi giây"}}}
+      ],
+      "i18n": {"vi": {"title": "Xuất các câu cho agent"}}
     },
     {
       "id": "apply",
@@ -136,11 +143,12 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "answer", "title": "Translations file", "flag": "--answer", "type": "path"},
-        {"id": "lines", "title": "Exported lines file", "flag": "--lines", "type": "path", "optional": true},
-        {"id": "target", "title": "Language", "flag": "--target", "type": "string", "optional": true},
-        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true}
-      ]
+        {"id": "answer", "title": "Translations file", "flag": "--answer", "type": "path", "i18n": {"vi": {"title": "Tệp bản dịch"}}},
+        {"id": "lines", "title": "Exported lines file", "flag": "--lines", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp các câu đã xuất"}}},
+        {"id": "target", "title": "Language", "flag": "--target", "type": "string", "optional": true, "i18n": {"vi": {"title": "Ngôn ngữ"}}},
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true, "i18n": {"vi": {"title": "Track phụ đề"}}}
+      ],
+      "i18n": {"vi": {"title": "Áp dụng bản dịch của agent"}}
     },
     {
       "id": "cover",
@@ -149,12 +157,13 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "mode", "title": "Mode", "flag": "--mode", "type": "enum", "choices": ["blur", "mosaic", "detect"], "default": "blur"},
-        {"id": "box", "title": "Area (x,y,w,h)", "flag": "--box", "type": "string", "optional": true},
-        {"id": "where", "title": "Where to look", "flag": "--where", "type": "enum", "choices": ["bottom", "top", "any"], "default": "bottom"},
-        {"id": "seconds", "title": "Seconds to look at", "flag": "--seconds", "type": "number", "default": 30},
-        {"id": "frames", "title": "Frames per clip", "flag": "--frames", "type": "integer", "default": 8}
-      ]
+        {"id": "mode", "title": "Mode", "flag": "--mode", "type": "enum", "choices": ["blur", "mosaic", "detect"], "default": "blur", "i18n": {"vi": {"title": "Chế độ"}}},
+        {"id": "box", "title": "Area (x,y,w,h)", "flag": "--box", "type": "string", "optional": true, "i18n": {"vi": {"title": "Vùng (x,y,w,h)"}}},
+        {"id": "where", "title": "Where to look", "flag": "--where", "type": "enum", "choices": ["bottom", "top", "any"], "default": "bottom", "i18n": {"vi": {"title": "Vị trí tìm"}}},
+        {"id": "seconds", "title": "Seconds to look at", "flag": "--seconds", "type": "number", "default": 30, "i18n": {"vi": {"title": "Số giây cần xem"}}},
+        {"id": "frames", "title": "Frames per clip", "flag": "--frames", "type": "integer", "default": 8, "i18n": {"vi": {"title": "Số khung hình mỗi clip"}}}
+      ],
+      "i18n": {"vi": {"title": "Che phụ đề cứng…"}}
     },
     {
       "id": "check-key",
@@ -162,8 +171,10 @@
       "args": ["check-key"],
       "needs": "none",
       "edits": false,
-      "params": []
+      "params": [],
+      "i18n": {"vi": {"title": "Kiểm tra khóa API"}}
     }
   ],
-  "skills": ["skills/translate-captions/SKILL.md"]
+  "skills": ["skills/translate-captions/SKILL.md"],
+  "i18n": {"vi": {"name": "Dịch phụ đề", "summary": "Dịch phụ đề của sequence bằng khóa Gemini hoặc OpenAI của bạn (hoặc agent của bạn) mà vẫn giữ thời gian, và làm mờ phụ đề cứng có sẵn trong video."}}
 }

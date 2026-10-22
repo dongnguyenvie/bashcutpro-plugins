@@ -93,6 +93,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `settings` | list | `{id, title, type, default?, choices?, env: [...], flag, optional?, help}`; `type` one of string, secret, enum, integer, number, bool, path; a `secret` has no default and is passed only through `env` or `flag`; `help` is shown under the field, in the user's words (no flags, exit statuses or command names) |
 | `actions` | list | what the plugin can do: `{id, title, args, needs: "project" | "none", edits: bool, params: [{id, title, flag, type, default?, choices?, optional?}], handoff?: {exit, then}}`; a param's `title` is its label in the app's form, sentence case, in the README's words |
 | `skills` | list | agent skills (Markdown with front matter), relative paths |
+| `i18n` | object, optional | translations of the text a person sees, by language (`vi` today): on the plugin `{"vi": {"name", "summary"}}`; on a setting, an action or a param `{"vi": {"title", "help"}}`. A host shows the app's UI language and falls back to the English field; a manifest without `i18n` is fine. Once a plugin has `vi` anywhere, every name, summary, title and help on it has a `vi` one (`tools/check_registry.py`). Choice values (`choices`) are not translated |
 
 ## Registry: `registry.json`
 

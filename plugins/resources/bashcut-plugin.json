@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.resources",
   "name": "Online Resources",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them; credit lines only when asked.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -39,7 +39,8 @@
       "type": "secret",
       "env": ["PIXABAY_API_KEY"],
       "optional": true,
-      "help": "Free key from pixabay.com/api/docs: adds Pixabay photos and video to stock fetches."
+      "help": "Free key from pixabay.com/api/docs: adds Pixabay photos and video to stock fetches.",
+      "i18n": {"vi": {"title": "Khóa API Pixabay", "help": "Khóa miễn phí từ pixabay.com/api/docs: thêm ảnh và video Pixabay khi tải stock."}}
     },
     {
       "id": "pexelsKey",
@@ -47,7 +48,8 @@
       "type": "secret",
       "env": ["PEXELS_API_KEY"],
       "optional": true,
-      "help": "Free key from pexels.com/api: adds Pexels photos and video to stock fetches."
+      "help": "Free key from pexels.com/api: adds Pexels photos and video to stock fetches.",
+      "i18n": {"vi": {"title": "Khóa API Pexels", "help": "Khóa miễn phí từ pexels.com/api: thêm ảnh và video Pexels khi tải stock."}}
     },
     {
       "id": "freesoundKey",
@@ -55,7 +57,8 @@
       "type": "secret",
       "env": ["FREESOUND_API_KEY"],
       "optional": true,
-      "help": "Free key from freesound.org/apiv2/apply: sound effects come from Freesound (else from Openverse)."
+      "help": "Free key from freesound.org/apiv2/apply: sound effects come from Freesound (else from Openverse).",
+      "i18n": {"vi": {"title": "Khóa API Freesound", "help": "Khóa miễn phí từ freesound.org/apiv2/apply: hiệu ứng âm thanh lấy từ Freesound (nếu không thì từ Openverse)."}}
     }
   ],
   "actions": [
@@ -65,7 +68,8 @@
       "args": ["scripts"],
       "needs": "none",
       "edits": false,
-      "params": []
+      "params": [],
+      "i18n": {"vi": {"title": "Liệt kê các script tải"}}
     },
     {
       "id": "setup",
@@ -74,8 +78,9 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
-      ]
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chỉ hiện các bước"}}}
+      ],
+      "i18n": {"vi": {"title": "Cài các gói xử lý ảnh…"}}
     },
     {
       "id": "fetch",
@@ -85,13 +90,14 @@
       "edits": true,
       "params": [
         {"id": "script", "title": "Script", "flag": "--script", "type": "enum",
-         "choices": ["audio", "emoji", "facts", "font", "fonts", "illustrations", "logos", "lottie", "luts", "stock"], "default": "stock"},
-        {"id": "args", "title": "Script options", "flag": "--args", "type": "string", "default": ""},
-        {"id": "import", "title": "Import into the project", "flag": "--import", "type": "bool", "default": false},
-        {"id": "videoTrack", "title": "Video track", "flag": "--video-track", "type": "string", "default": "V2"},
-        {"id": "audioTrack", "title": "Audio track", "flag": "--audio-track", "type": "string", "default": "A2"},
-        {"id": "credits", "title": "Credit in project notes", "flag": "--credits", "type": "bool", "default": false}
-      ]
+         "choices": ["audio", "emoji", "facts", "font", "fonts", "illustrations", "logos", "lottie", "luts", "stock"], "default": "stock", "i18n": {"vi": {"title": "Script"}}},
+        {"id": "args", "title": "Script options", "flag": "--args", "type": "string", "default": "", "i18n": {"vi": {"title": "Tùy chọn script"}}},
+        {"id": "import", "title": "Import into the project", "flag": "--import", "type": "bool", "default": false, "i18n": {"vi": {"title": "Nhập vào dự án"}}},
+        {"id": "videoTrack", "title": "Video track", "flag": "--video-track", "type": "string", "default": "V2", "i18n": {"vi": {"title": "Track video"}}},
+        {"id": "audioTrack", "title": "Audio track", "flag": "--audio-track", "type": "string", "default": "A2", "i18n": {"vi": {"title": "Track âm thanh"}}},
+        {"id": "credits", "title": "Credit in project notes", "flag": "--credits", "type": "bool", "default": false, "i18n": {"vi": {"title": "Ghi nguồn trong ghi chú dự án"}}}
+      ],
+      "i18n": {"vi": {"title": "Tải tài nguyên…"}}
     },
     {
       "id": "import",
@@ -100,12 +106,13 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "path", "title": "Files", "flag": "--path", "type": "path", "optional": true},
-        {"id": "folder", "title": "Folder", "flag": "--folder", "type": "path", "optional": true},
-        {"id": "frame", "title": "Place at frame", "flag": "--frame", "type": "integer", "optional": true},
-        {"id": "duration", "title": "Length (frames)", "flag": "--duration", "type": "integer", "optional": true},
-        {"id": "credits", "title": "Credit in project notes", "flag": "--credits", "type": "bool", "default": false}
-      ]
+        {"id": "path", "title": "Files", "flag": "--path", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp"}}},
+        {"id": "folder", "title": "Folder", "flag": "--folder", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục"}}},
+        {"id": "frame", "title": "Place at frame", "flag": "--frame", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Đặt tại khung hình"}}},
+        {"id": "duration", "title": "Length (frames)", "flag": "--duration", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Độ dài (khung hình)"}}},
+        {"id": "credits", "title": "Credit in project notes", "flag": "--credits", "type": "bool", "default": false, "i18n": {"vi": {"title": "Ghi nguồn trong ghi chú dự án"}}}
+      ],
+      "i18n": {"vi": {"title": "Nhập các tệp đã tải"}}
     },
     {
       "id": "search",
@@ -114,11 +121,12 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
-        {"id": "query", "title": "Search for", "flag": "--query", "type": "string"},
-        {"id": "count", "title": "Results", "flag": "--count", "type": "integer", "default": 12, "minimum": 1, "maximum": 40},
-        {"id": "safeLicence", "title": "CC0 / CC BY / CC BY-SA only", "flag": "--safe-licence", "type": "bool", "default": false}
-      ]
+        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music", "i18n": {"vi": {"title": "Loại"}}},
+        {"id": "query", "title": "Search for", "flag": "--query", "type": "string", "i18n": {"vi": {"title": "Tìm"}}},
+        {"id": "count", "title": "Results", "flag": "--count", "type": "integer", "default": 12, "minimum": 1, "maximum": 40, "i18n": {"vi": {"title": "Số kết quả"}}},
+        {"id": "safeLicence", "title": "CC0 / CC BY / CC BY-SA only", "flag": "--safe-licence", "type": "bool", "default": false, "i18n": {"vi": {"title": "Chỉ CC0 / CC BY / CC BY-SA"}}}
+      ],
+      "i18n": {"vi": {"title": "Tìm tư liệu mở…"}}
     },
     {
       "id": "download",
@@ -127,13 +135,14 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music"},
-        {"id": "url", "title": "File URL", "flag": "--url", "type": "string"},
-        {"id": "title", "title": "Title", "flag": "--title", "type": "string", "default": ""},
-        {"id": "license", "title": "Licence", "flag": "--license", "type": "string", "default": ""},
-        {"id": "author", "title": "Author", "flag": "--author", "type": "string", "default": ""},
-        {"id": "source", "title": "Source page", "flag": "--source", "type": "string", "default": ""}
-      ]
+        {"id": "kind", "title": "Kind", "flag": "--kind", "type": "enum", "choices": ["music", "sfx", "photo", "video", "icon", "font"], "default": "music", "i18n": {"vi": {"title": "Loại"}}},
+        {"id": "url", "title": "File URL", "flag": "--url", "type": "string", "i18n": {"vi": {"title": "URL tệp"}}},
+        {"id": "title", "title": "Title", "flag": "--title", "type": "string", "default": "", "i18n": {"vi": {"title": "Tiêu đề"}}},
+        {"id": "license", "title": "Licence", "flag": "--license", "type": "string", "default": "", "i18n": {"vi": {"title": "Giấy phép"}}},
+        {"id": "author", "title": "Author", "flag": "--author", "type": "string", "default": "", "i18n": {"vi": {"title": "Tác giả"}}},
+        {"id": "source", "title": "Source page", "flag": "--source", "type": "string", "default": "", "i18n": {"vi": {"title": "Trang nguồn"}}}
+      ],
+      "i18n": {"vi": {"title": "Tải một kết quả tìm kiếm"}}
     },
     {
       "id": "credits",
@@ -142,10 +151,12 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "folder", "title": "Folder", "flag": "--folder", "type": "path"}
-      ]
+        {"id": "folder", "title": "Folder", "flag": "--folder", "type": "path", "i18n": {"vi": {"title": "Thư mục"}}}
+      ],
+      "i18n": {"vi": {"title": "Ghi nguồn của một thư mục"}}
     }
   ],
   "models": ["rawtherapee-haldclut"],
-  "skills": ["skills/resources/SKILL.md"]
+  "skills": ["skills/resources/SKILL.md"],
+  "i18n": {"vi": {"name": "Tài nguyên trực tuyến", "summary": "Tải nhạc, hiệu ứng âm thanh, ảnh và video stock, emoji, logo, hình minh họa, Lottie, phông chữ và LUT mở từ API chính thức, ghi giấy phép cạnh từng tệp, rồi nhập và đặt vào dự án; chỉ ghi nguồn khi được yêu cầu."}}
 }
