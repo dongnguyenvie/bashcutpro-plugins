@@ -252,7 +252,16 @@ def emit(value):
     sys.stdout.flush()
 
 
+def utf8_stdio():
+    """UTF-8 on stdin / stdout / stderr whatever the code page is (Windows pipes default to it, e.g. cp1252),
+    so Vietnamese text survives the round trip with the host and the calling agent."""
+    for stream, errors in ((sys.stdin, "strict"), (sys.stdout, "strict"), (sys.stderr, "backslashreplace")):
+        if hasattr(stream, "reconfigure"):  # not on the tests' StringIO
+            stream.reconfigure(encoding="utf-8", errors=errors)
+
+
 def main(argv=None):
+    utf8_stdio()
     args = build_parser().parse_args(argv)
     if hasattr(args, "max_cps") and not 8 <= args.max_cps <= 30:
         emit({"ok": False, "error": {"code": "bad_args", "message": "--max-cps must be between 8 and 30"}})

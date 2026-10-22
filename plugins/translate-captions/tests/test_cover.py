@@ -104,7 +104,7 @@ class CoverCommandTests(unittest.TestCase):
                 "enabled": True, "effects": [{"effect": "lumetri", "enabled": True, "masks": [], "params": {}},
                             {"effect": "motion", "enabled": True, "masks": [], "params": {}},
                             {"effect": "opacity", "enabled": True, "masks": [], "params": {}}]}
-        with open(self.project, "w") as f:
+        with open(self.project, "w", encoding="utf-8") as f:
             json.dump({"captions": {"tracks": []}, "frames": {"3": SPEC},
                        "sequence": {"video": [{"name": "V1", "items": [clip]}], "audio": []}}, f)
 
@@ -115,7 +115,7 @@ class CoverCommandTests(unittest.TestCase):
         return code, json.loads(out.getvalue())
 
     def clip(self):
-        with open(self.project) as f:
+        with open(self.project, encoding="utf-8") as f:
             return json.load(f)["sequence"]["video"][0]["items"][0]
 
     def test_cover_adds_a_masked_blur_and_a_second_run_replaces_it(self):

@@ -100,6 +100,8 @@ def main():
             return text(state["sequence"])
         return {"content": [{"type": "text", "text": "unknown tool %s" % name}], "isError": True}
 
+    for stream in (sys.stdin, sys.stdout):
+        stream.reconfigure(encoding="utf-8")  # the plugin speaks UTF-8 JSON, whatever the code page
     for line in sys.stdin:
         line = line.strip()
         if not line:

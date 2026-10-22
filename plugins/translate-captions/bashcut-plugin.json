@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.translate-captions",
   "name": "Translate Captions",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "summary": "Translate a sequence's captions with your own Gemini or OpenAI key (or your agent) while keeping their timing, and blur subtitles burned into the footage.",
   "publisher": "dongnguyenvie",
   "license": "MIT",

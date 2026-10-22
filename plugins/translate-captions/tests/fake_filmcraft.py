@@ -25,6 +25,8 @@ def main():
     if args[:1] != ["mcp"] or "--project" not in args:
         print("usage: fake_filmcraft.py mcp --project state.json", file=sys.stderr)
         return 2
+    for stream in (sys.stdin, sys.stdout):
+        stream.reconfigure(encoding="utf-8")  # the plugin speaks UTF-8 JSON, whatever the code page
     path = args[args.index("--project") + 1]
     with open(path, encoding="utf-8") as f:
         state = json.load(f)

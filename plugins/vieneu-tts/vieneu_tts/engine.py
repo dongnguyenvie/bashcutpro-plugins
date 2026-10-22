@@ -62,6 +62,8 @@ def synthesize(job):
 
 
 def main():
+    for stream in (sys.stdin, sys.stdout):  # the plugin writes and reads UTF-8, whatever the code page (Windows)
+        stream.reconfigure(encoding="utf-8")
     for line in sys.stdin:
         if not line.strip():
             continue
