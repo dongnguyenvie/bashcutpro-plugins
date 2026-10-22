@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.hyperframes",
   "name": "HyperFrames Graphics",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "Animated graphics written as HTML/CSS + GSAP (counters, charts, cards, diagrams, maps, kinetic type), rendered with HyperFrames in headless Chrome to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -41,7 +41,7 @@
       "env": ["BASHCUT_HYPERFRAMES_NODE"],
       "flag": "--node",
       "optional": true,
-      "help": "A Node.js 22.19 or newer; empty = found on this computer (PATH, Homebrew, nvm, Volta, Program Files)."
+      "help": "Node.js 22.19 or newer. Empty: the one found on this computer (PATH, Homebrew, nvm, Volta, Program Files)."
     },
     {
       "id": "chrome",
@@ -51,7 +51,7 @@
       "env": ["BASHCUT_HYPERFRAMES_CHROME", "HYPERFRAMES_BROWSER_PATH"],
       "flag": "--chrome",
       "optional": true,
-      "help": "The browser HyperFrames renders with; empty = the one `setup` installed."
+      "help": "The browser HyperFrames renders with. Empty: the one that Install HyperFrames and Chrome put in place."
     },
     {
       "id": "ffmpeg",
@@ -61,7 +61,7 @@
       "env": ["BASHCUT_HYPERFRAMES_FFMPEG"],
       "flag": "--ffmpeg",
       "optional": true,
-      "help": "Only for --format mov (ProRes 4444 with alpha); empty = PATH."
+      "help": "Only needed for mov output (ProRes 4444 with alpha). Empty: the one found on this computer."
     },
     {
       "id": "format",
@@ -71,7 +71,7 @@
       "default": "png",
       "env": ["BASHCUT_HYPERFRAMES_FORMAT"],
       "flag": "--format",
-      "help": "png: an RGBA PNG sequence imported with file.importImageSequence (no FFmpeg); mov: one ProRes 4444 movie with alpha."
+      "help": "png: a sequence of PNG pictures with transparency (no FFmpeg needed); mov: one ProRes 4444 movie with alpha (needs FFmpeg)."
     }
   ],
   "actions": [
@@ -90,7 +90,7 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
       ]
     },
     {
@@ -124,16 +124,16 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "set", "flag": "--set", "type": "string", "optional": true},
-        {"id": "variables", "flag": "--variables", "type": "string", "optional": true},
-        {"id": "brand", "flag": "--brand", "type": "path", "optional": true},
-        {"id": "fps", "flag": "--fps", "type": "integer", "minimum": 1, "maximum": 120, "default": 30},
-        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
-        {"id": "draft", "flag": "--draft", "type": "bool", "default": false},
-        {"id": "name", "flag": "--name", "type": "string", "optional": true},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true},
-        {"id": "strict", "flag": "--strict", "type": "bool", "default": false},
-        {"id": "snapshot", "flag": "--snapshot", "type": "string", "optional": true}
+        {"id": "set", "title": "Values (name=value)", "flag": "--set", "type": "string", "optional": true},
+        {"id": "variables", "title": "Variables (JSON)", "flag": "--variables", "type": "string", "optional": true},
+        {"id": "brand", "title": "Brand file", "flag": "--brand", "type": "path", "optional": true},
+        {"id": "fps", "title": "Frame rate", "flag": "--fps", "type": "integer", "minimum": 1, "maximum": 120, "default": 30},
+        {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "draft", "title": "Draft (15 fps, faster)", "flag": "--draft", "type": "bool", "default": false},
+        {"id": "name", "title": "Output name", "flag": "--name", "type": "string", "optional": true},
+        {"id": "out", "title": "Renders folder", "flag": "--out", "type": "path", "optional": true},
+        {"id": "strict", "title": "Refuse when lint finds errors", "flag": "--strict", "type": "bool", "default": false},
+        {"id": "snapshot", "title": "Snapshot at seconds only", "flag": "--snapshot", "type": "string", "optional": true}
       ]
     },
     {
@@ -143,17 +143,17 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "seconds", "flag": "--seconds", "type": "number", "optional": true},
-        {"id": "frame", "flag": "--frame", "type": "integer", "optional": true},
-        {"id": "track", "flag": "--track", "type": "string", "default": "V2"},
-        {"id": "set", "flag": "--set", "type": "string", "optional": true},
-        {"id": "variables", "flag": "--variables", "type": "string", "optional": true},
-        {"id": "brand", "flag": "--brand", "type": "path", "optional": true},
-        {"id": "fps", "flag": "--fps", "type": "integer", "optional": true},
-        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
-        {"id": "draft", "flag": "--draft", "type": "bool", "default": false},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true},
-        {"id": "strict", "flag": "--strict", "type": "bool", "default": false}
+        {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number", "optional": true},
+        {"id": "frame", "title": "Start (frame)", "flag": "--frame", "type": "integer", "optional": true},
+        {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2"},
+        {"id": "set", "title": "Values (name=value)", "flag": "--set", "type": "string", "optional": true},
+        {"id": "variables", "title": "Variables (JSON)", "flag": "--variables", "type": "string", "optional": true},
+        {"id": "brand", "title": "Brand file", "flag": "--brand", "type": "path", "optional": true},
+        {"id": "fps", "title": "Frame rate", "flag": "--fps", "type": "integer", "optional": true},
+        {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "draft", "title": "Draft (15 fps, faster)", "flag": "--draft", "type": "bool", "default": false},
+        {"id": "out", "title": "Renders folder", "flag": "--out", "type": "path", "optional": true},
+        {"id": "strict", "title": "Refuse when lint finds errors", "flag": "--strict", "type": "bool", "default": false}
       ]
     },
     {
@@ -163,10 +163,10 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "set", "flag": "--set", "type": "string", "optional": true},
-        {"id": "unset", "flag": "--unset", "type": "string", "optional": true},
-        {"id": "duration", "flag": "--duration", "type": "number", "optional": true},
-        {"id": "final", "flag": "--final", "type": "bool", "default": false}
+        {"id": "set", "title": "Values (name=value)", "flag": "--set", "type": "string", "optional": true},
+        {"id": "unset", "title": "Drop recorded values", "flag": "--unset", "type": "string", "optional": true},
+        {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true},
+        {"id": "final", "title": "Full quality", "flag": "--final", "type": "bool", "default": false}
       ]
     },
     {
@@ -176,7 +176,7 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "out", "flag": "--out", "type": "path", "optional": true}
+        {"id": "out", "title": "Renders folder", "flag": "--out", "type": "path", "optional": true}
       ]
     }
   ],

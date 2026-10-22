@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.translate-captions",
   "name": "Translate Captions",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "Translate a sequence's captions with your own Gemini or OpenAI key (or your agent) while keeping their timing, and blur subtitles burned into the footage.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -61,7 +61,7 @@
       "env": ["BASHCUT_TC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
       "flag": "--api-key",
       "optional": true,
-      "help": "Your Gemini or OpenAI key. Without one, the calling agent translates (exit status 3 hands it the lines)."
+      "help": "Your Gemini or OpenAI key. Without a key, the agent translates the lines for you."
     },
     {
       "id": "model",
@@ -91,13 +91,13 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "target", "flag": "--target", "type": "enum", "default": "vi",
+        {"id": "target", "title": "Language", "flag": "--target", "type": "enum", "default": "vi",
          "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
-        {"id": "track", "flag": "--track", "type": "string", "optional": true},
-        {"id": "glossary", "flag": "--glossary", "type": "string", "default": ""},
-        {"id": "tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"},
-        {"id": "maxCps", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17},
-        {"id": "brief", "flag": "--brief", "type": "string", "default": ""}
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true},
+        {"id": "glossary", "title": "Glossary", "flag": "--glossary", "type": "string", "default": ""},
+        {"id": "tone", "title": "Tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"},
+        {"id": "maxCps", "title": "Max characters a second", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17},
+        {"id": "brief", "title": "Brief", "flag": "--brief", "type": "string", "default": ""}
       ],
       "handoff": {"exit": 3, "then": "apply"}
     },
@@ -109,11 +109,11 @@
       "needs": "project",
       "edits": false,
       "params": [
-        {"id": "target", "flag": "--target", "type": "enum", "default": "vi",
+        {"id": "target", "title": "Language", "flag": "--target", "type": "enum", "default": "vi",
          "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
-        {"id": "track", "flag": "--track", "type": "string", "optional": true},
-        {"id": "glossary", "flag": "--glossary", "type": "string", "default": ""},
-        {"id": "tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"}
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true},
+        {"id": "glossary", "title": "Glossary", "flag": "--glossary", "type": "string", "default": ""},
+        {"id": "tone", "title": "Tone", "flag": "--tone", "type": "enum", "choices": ["natural", "casual", "formal"], "default": "natural"}
       ]
     },
     {
@@ -123,10 +123,10 @@
       "needs": "project",
       "edits": false,
       "params": [
-        {"id": "target", "flag": "--target", "type": "enum", "default": "vi",
+        {"id": "target", "title": "Language", "flag": "--target", "type": "enum", "default": "vi",
          "choices": ["vi", "en", "zh", "ja", "ko", "th", "id", "es", "fr", "de", "pt", "ru"]},
-        {"id": "track", "flag": "--track", "type": "string", "optional": true},
-        {"id": "maxCps", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17}
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true},
+        {"id": "maxCps", "title": "Max characters a second", "flag": "--max-cps", "type": "integer", "minimum": 8, "maximum": 30, "default": 17}
       ]
     },
     {
@@ -136,10 +136,10 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "answer", "flag": "--answer", "type": "path"},
-        {"id": "lines", "flag": "--lines", "type": "path", "optional": true},
-        {"id": "target", "flag": "--target", "type": "string", "optional": true},
-        {"id": "track", "flag": "--track", "type": "string", "optional": true}
+        {"id": "answer", "title": "Translations file", "flag": "--answer", "type": "path"},
+        {"id": "lines", "title": "Exported lines file", "flag": "--lines", "type": "path", "optional": true},
+        {"id": "target", "title": "Language", "flag": "--target", "type": "string", "optional": true},
+        {"id": "track", "title": "Caption track", "flag": "--track", "type": "string", "optional": true}
       ]
     },
     {
@@ -149,11 +149,11 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "mode", "flag": "--mode", "type": "enum", "choices": ["blur", "mosaic", "detect"], "default": "blur"},
-        {"id": "box", "flag": "--box", "type": "string", "optional": true},
-        {"id": "where", "flag": "--where", "type": "enum", "choices": ["bottom", "top", "any"], "default": "bottom"},
-        {"id": "seconds", "flag": "--seconds", "type": "number", "default": 30},
-        {"id": "frames", "flag": "--frames", "type": "integer", "default": 8}
+        {"id": "mode", "title": "Mode", "flag": "--mode", "type": "enum", "choices": ["blur", "mosaic", "detect"], "default": "blur"},
+        {"id": "box", "title": "Area (x,y,w,h)", "flag": "--box", "type": "string", "optional": true},
+        {"id": "where", "title": "Where to look", "flag": "--where", "type": "enum", "choices": ["bottom", "top", "any"], "default": "bottom"},
+        {"id": "seconds", "title": "Seconds to look at", "flag": "--seconds", "type": "number", "default": 30},
+        {"id": "frames", "title": "Frames per clip", "flag": "--frames", "type": "integer", "default": 8}
       ]
     },
     {

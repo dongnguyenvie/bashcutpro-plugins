@@ -70,6 +70,8 @@ def check_manifest(path):
         need(a.get("needs") in ("project", "none"), "action %s: needs is project or none" % a.get("id"))
         for p in a.get("params") or []:
             need(p.get("id") and str(p.get("flag", "")).startswith("--"), "action %s: every param has an id and a --flag" % a.get("id"))
+            need(isinstance(p.get("title"), str) and p["title"].strip(),
+                 "action %s: param %s needs a title (its label in the app's form)" % (a.get("id"), p.get("id")))
         handoff = a.get("handoff")
         if handoff:
             need(handoff.get("then") in actions or handoff.get("then") in [x.get("id") for x in m["actions"]],

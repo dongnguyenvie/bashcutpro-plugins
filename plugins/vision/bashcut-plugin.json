@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vision",
   "name": "Vision",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "Picture understanding out of process: cut out a person or object (alpha PNG sequence placed above the clip), face and person boxes per shot with face-following reframe, on-screen text with boxes, and shot descriptions by your agent.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -41,7 +41,7 @@
       "env": ["BASHCUT_VISION_PYTHON"],
       "flag": "--python",
       "optional": true,
-      "help": "A Python with onnxruntime, numpy and Pillow; default: the private environment `setup` makes."
+      "help": "A Python with onnxruntime, numpy and Pillow. Empty: the private one that Install the model packages makes."
     },
     {
       "id": "tesseract",
@@ -51,7 +51,7 @@
       "env": ["BASHCUT_VISION_TESSERACT"],
       "flag": "--tesseract",
       "optional": true,
-      "help": "Reads on-screen text locally; without it `ocr` hands the frames to the agent."
+      "help": "Reads on-screen text on this computer. Without it, the agent reads the frames for you."
     }
   ],
   "actions": [
@@ -62,8 +62,8 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "download", "flag": "--download", "type": "bool", "default": false},
-        {"id": "model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true}
+        {"id": "download", "title": "Download missing models", "flag": "--download", "type": "bool", "default": false},
+        {"id": "model", "title": "Model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true}
       ]
     },
     {
@@ -73,8 +73,8 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "python", "flag": "--python", "type": "path", "optional": true},
-        {"id": "dryRun", "flag": "--dry-run", "type": "bool", "default": false}
+        {"id": "python", "title": "Python", "flag": "--python", "type": "path", "optional": true},
+        {"id": "dryRun", "title": "Only show the steps", "flag": "--dry-run", "type": "bool", "default": false}
       ]
     },
     {
@@ -84,13 +84,13 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "kind", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto"},
-        {"id": "output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba"},
-        {"id": "smooth", "flag": "--smooth", "type": "number", "default": 0.6},
-        {"id": "maxFrames", "flag": "--max-frames", "type": "integer", "default": 900},
-        {"id": "out", "flag": "--out", "type": "path", "optional": true},
-        {"id": "noPlace", "flag": "--no-place", "type": "bool", "default": false}
+        {"id": "clip", "title": "Clip (default: the first video clip)", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "kind", "title": "Subject", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto"},
+        {"id": "output", "title": "Output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba"},
+        {"id": "smooth", "title": "Smoothing", "flag": "--smooth", "type": "number", "default": 0.6},
+        {"id": "maxFrames", "title": "Max frames", "flag": "--max-frames", "type": "integer", "default": 900},
+        {"id": "out", "title": "Frames folder", "flag": "--out", "type": "path", "optional": true},
+        {"id": "noPlace", "title": "Don't place", "flag": "--no-place", "type": "bool", "default": false}
       ]
     },
     {
@@ -100,10 +100,10 @@
       "needs": "project",
       "edits": true,
       "params": [
-        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "samples", "flag": "--samples", "type": "integer", "default": 6},
-        {"id": "sidecar", "flag": "--sidecar", "type": "path", "optional": true},
-        {"id": "reframe", "flag": "--reframe", "type": "bool", "default": false}
+        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 6},
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true},
+        {"id": "reframe", "title": "Reframe to follow the face", "flag": "--reframe", "type": "bool", "default": false}
       ]
     },
     {
@@ -113,11 +113,11 @@
       "needs": "project",
       "edits": false,
       "params": [
-        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "samples", "flag": "--samples", "type": "integer", "default": 4},
-        {"id": "sidecar", "flag": "--sidecar", "type": "path", "optional": true},
-        {"id": "tesseract", "flag": "--tesseract", "type": "path", "optional": true},
-        {"id": "languages", "flag": "--languages", "type": "string", "default": "eng"}
+        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 4},
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true},
+        {"id": "tesseract", "title": "Tesseract program", "flag": "--tesseract", "type": "path", "optional": true},
+        {"id": "languages", "title": "Languages", "flag": "--languages", "type": "string", "default": "eng"}
       ],
       "handoff": {"exit": 3, "then": "ocr-apply"}
     },
@@ -128,8 +128,8 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "sidecar", "flag": "--sidecar", "type": "path"},
-        {"id": "answer", "flag": "--answer", "type": "path"}
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path"},
+        {"id": "answer", "title": "Agent's answer file", "flag": "--answer", "type": "path"}
       ]
     },
     {
@@ -139,9 +139,9 @@
       "needs": "project",
       "edits": false,
       "params": [
-        {"id": "clip", "flag": "--clip", "type": "integer", "optional": true},
-        {"id": "samples", "flag": "--samples", "type": "integer", "default": 3},
-        {"id": "sidecar", "flag": "--sidecar", "type": "path", "optional": true}
+        {"id": "clip", "title": "Clip (default: every video clip)", "flag": "--clip", "type": "integer", "optional": true},
+        {"id": "samples", "title": "Frames per clip", "flag": "--samples", "type": "integer", "default": 3},
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path", "optional": true}
       ],
       "handoff": {"exit": 3, "then": "describe-apply"}
     },
@@ -152,8 +152,8 @@
       "needs": "none",
       "edits": false,
       "params": [
-        {"id": "sidecar", "flag": "--sidecar", "type": "path"},
-        {"id": "answer", "flag": "--answer", "type": "path"}
+        {"id": "sidecar", "title": "Results file", "flag": "--sidecar", "type": "path"},
+        {"id": "answer", "title": "Agent's answer file", "flag": "--answer", "type": "path"}
       ]
     }
   ],
