@@ -82,7 +82,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `schema` | `"bashcut-plugin/1"` | manifest format version |
 | `id` | string | `publisher.name`, lower case (`bashcut.translate-captions`); the install folder and settings folder name |
 | `name`, `summary` | string | shown in a plugin list, English |
-| `version` | `MAJOR.MINOR.PATCH` | the plugin's version |
+| `version` | `MAJOR.MINOR.PATCH` | the plugin's version; the Python package's `__version__` (what `--version` prints) is the same, and so is the registry entry's (`tools/check_registry.py`) |
 | `publisher`, `license`, `homepage`, `category` | string | metadata (`category`: captions, voice, graphics, resources…) |
 | `platforms` | `["macos", "windows", "linux"]` | where it runs |
 | `runtime` | `{type, version, packages}` | what must be installed first: `python` `>=3.9` with no packages for translate-captions; `packages` lists pip / npm packages a host would install into the plugin's own environment |
@@ -98,7 +98,9 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 ## Registry: `registry.json`
 
 The list a host or an agent reads to find plugins. Each entry repeats the manifest fields needed to choose a plugin
-without fetching it; `tools/check_registry.py` keeps them equal to the manifest.
+without fetching it; `tools/check_registry.py` keeps them equal to the manifest. `summary` is a shorter line than the
+manifest's. `i18n` (optional) is `{"vi": {"name", "summary"}}`: the name is the manifest's `i18n.vi.name`, the summary
+the registry's own short line in Vietnamese; once the manifest has a language, the entry has both in it.
 
 ```json
 {
@@ -108,7 +110,7 @@ without fetching it; `tools/check_registry.py` keeps them equal to the manifest.
   "plugins": [
     {
       "id": "bashcut.translate-captions", "name": "Translate Captions", "version": "0.1.0",
-      "summary": "…", "category": "captions", "platforms": ["macos", "windows", "linux"],
+      "summary": "…", "i18n": {"vi": {"name": "Dịch phụ đề", "summary": "…"}}, "category": "captions", "platforms": ["macos", "windows", "linux"],
       "minAppVersion": "0.9.0", "runtime": "python>=3.9",
       "path": "plugins/translate-captions",
       "manifest": "plugins/translate-captions/bashcut-plugin.json",
