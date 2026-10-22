@@ -25,6 +25,7 @@ packs/batch/                       batch presets for bashcut-batch (vietsub, pod
 tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
+tools/check_all.py                 every check and every plugin's tests in one run
 tests/                             repo-wide checks: text encoding, find_cli, manifest text, registry, shared copies…
 docs/                              design notes and reviews (docs/review-2026-10.md: duplication and the RP tickets)
 ```
@@ -32,18 +33,12 @@ docs/                              design notes and reviews (docs/review-2026-10
 Check before committing (on Windows run `py -3` where this says `python3`, which is the Store alias there):
 
 ```sh
-python3 tools/check_registry.py
-python3 tools/check_models.py
-python3 -m unittest discover -s tests
-(cd plugins/translate-captions && python3 -m unittest discover -s tests)
-(cd plugins/vieneu-tts && python3 -m unittest discover -s tests)
-(cd plugins/align && python3 -m unittest discover -s tests)
-(cd plugins/vision && python3 -m unittest discover -s tests)
-(cd plugins/resources && python3 -m unittest discover -s tests)
-(cd plugins/image-gen && python3 -m unittest discover -s tests)
-(cd plugins/hyperframes && python3 -m unittest discover -s tests)
-(cd plugins/library && python3 -m unittest discover -s tests)
+python3 tools/check_all.py
 ```
+
+`check_all.py` runs, with the same Python, `tools/check_registry.py`, `tools/check_models.py`, the repo-wide tests
+(`python3 -m unittest discover -s tests`) and every `plugins/<name>/tests` from its plugin folder; any one of them can
+also be run on its own.
 
 ### Adding a plugin
 
@@ -57,9 +52,9 @@ is copied in. Today:
    the other plugins', `tests/test_shared_copies.py`), `<package>/settings.py` (`PLUGIN_ID`), the skill.
 3. Keep `progress`, `emit`, `main` and `connection_args` in `cli.py` as they are (UTF-8 stdio, the result protocol);
    replace the commands. Write `tests/fake_filmcraft.py` for the engine calls it makes.
-4. Add the `registry.json` entry, a row to the table above and its test line to the check list; a plugin that
-   downloads lists its files in `models.json` and copies `tools/bashcut_models.py`.
-5. Run the checks above.
+4. Add the `registry.json` entry and a row to the table above; a plugin that downloads lists its files in
+   `models.json` and copies `tools/bashcut_models.py`.
+5. Run `tools/check_all.py` (it finds the new plugin's tests by itself).
 
 ## How a plugin runs
 
