@@ -25,10 +25,11 @@ packs/batch/                       batch presets for bashcut-batch (vietsub, pod
 tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
-docs/                              design notes
+tests/                             repo-wide checks: text encoding, find_cli, manifest text, registry, shared copies…
+docs/                              design notes and reviews (docs/review-2026-10.md: duplication and the RP tickets)
 ```
 
-Check before committing:
+Check before committing (on Windows run `py -3` where this says `python3`, which is the Store alias there):
 
 ```sh
 python3 tools/check_registry.py
@@ -43,6 +44,22 @@ python3 -m unittest discover -s tests
 (cd plugins/hyperframes && python3 -m unittest discover -s tests)
 (cd plugins/library && python3 -m unittest discover -s tests)
 ```
+
+### Adding a plugin
+
+There is no scaffold yet (RP4 in [docs/review-2026-10.md](docs/review-2026-10.md)). A plugin folder is installed on its
+own (the host copies `registry.json`'s `source.path`), so it must not import anything outside its folder; shared code
+is copied in. Today:
+
+1. Copy the closest plugin folder to `plugins/<name>/` and rename its package.
+2. Replace the old id everywhere it is written: `bashcut-plugin.json` (`id`, `name`, `entry`, `skills`), `plugin.py`,
+   `<package>/__init__.py`, `<package>/mcp.py` (the `clientInfo` line only: the rest of `mcp.py` must stay equal to
+   the other plugins', `tests/test_shared_copies.py`), `<package>/settings.py` (`PLUGIN_ID`), the skill.
+3. Keep `progress`, `emit`, `main` and `connection_args` in `cli.py` as they are (UTF-8 stdio, the result protocol);
+   replace the commands. Write `tests/fake_filmcraft.py` for the engine calls it makes.
+4. Add the `registry.json` entry, a row to the table above and its test line to the check list; a plugin that
+   downloads lists its files in `models.json` and copies `tools/bashcut_models.py`.
+5. Run the checks above.
 
 ## How a plugin runs
 
