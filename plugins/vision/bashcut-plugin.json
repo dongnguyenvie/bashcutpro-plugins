@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vision",
   "name": "Vision",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "summary": "Picture understanding out of process: cut out a person or object (alpha PNG sequence placed above the clip), face and person boxes per shot with face-following reframe, on-screen text with boxes, and shot descriptions by your agent.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -65,7 +65,7 @@
       "edits": false,
       "params": [
         {"id": "download", "title": "Download missing models", "flag": "--download", "type": "bool", "default": false, "i18n": {"vi": {"title": "Tải các mô hình còn thiếu"}}},
-        {"id": "model", "title": "Model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true, "i18n": {"vi": {"title": "Mô hình"}}}
+        {"id": "model", "title": "Model", "flag": "--model", "type": "enum", "choices": ["u2net-human-seg", "isnet-general-use", "yunet-face-2023mar"], "optional": true, "i18n": {"vi": {"title": "Mô hình", "choices": {"u2net-human-seg": "Tách người (U²-Net)", "isnet-general-use": "Tách vật thể (IS-Net)", "yunet-face-2023mar": "Nhận diện khuôn mặt (YuNet)"}}}}
       ],
       "i18n": {"vi": {"title": "Mô hình…"}}
     },
@@ -89,8 +89,8 @@
       "edits": true,
       "params": [
         {"id": "clip", "title": "Clip (default: the first video clip)", "flag": "--clip", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Clip (mặc định: clip video đầu tiên)"}}},
-        {"id": "kind", "title": "Subject", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto", "i18n": {"vi": {"title": "Chủ thể"}}},
-        {"id": "output", "title": "Output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba", "i18n": {"vi": {"title": "Đầu ra"}}},
+        {"id": "kind", "title": "Subject", "flag": "--kind", "type": "enum", "choices": ["auto", "person", "object"], "default": "auto", "i18n": {"vi": {"title": "Chủ thể", "choices": {"auto": "Tự động", "person": "Người", "object": "Vật thể"}}}},
+        {"id": "output", "title": "Output", "flag": "--output", "type": "enum", "choices": ["rgba", "matte"], "default": "rgba", "i18n": {"vi": {"title": "Đầu ra", "choices": {"rgba": "Ảnh có alpha", "matte": "Mặt nạ đen trắng"}}}},
         {"id": "smooth", "title": "Smoothing", "flag": "--smooth", "type": "number", "default": 0.6, "i18n": {"vi": {"title": "Làm mượt"}}},
         {"id": "maxFrames", "title": "Max frames", "flag": "--max-frames", "type": "integer", "default": 900, "i18n": {"vi": {"title": "Số khung hình tối đa"}}},
         {"id": "out", "title": "Frames folder", "flag": "--out", "type": "path", "optional": true, "i18n": {"vi": {"title": "Thư mục khung hình"}}},

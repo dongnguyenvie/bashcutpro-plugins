@@ -15,14 +15,16 @@ CONNECTIONS = {"mcp-headless", "mcp-bridge", "control"}
 SETTING_TYPES = {"string", "secret", "enum", "integer", "number", "bool", "path"}
 ID = re.compile(r"^[a-z0-9]+(\.[a-z0-9-]+)+$")
 VERSION = re.compile(r"^\d+\.\d+\.\d+$")
+PY_VERSION = re.compile(r"""^__version__\s*=\s*["']([^"']*)["']""", re.M)
 
 
 LANGS = {"vi"}
 
 
 def check_i18n(m):
-    """`i18n: {lang: {title?, help?}}` (on the plugin: `{name?, summary?}`) is optional; once a plugin has
-    a language anywhere, every name/summary/title/help on it has one in that language."""
+    """`i18n: {lang: {title?, help?}}` (on the plugin: `{name?, summary?}`; on an enum setting or param also
+    `choices: {value: label}`) is optional; once a plugin has a language anywhere, every name/summary/title/help
+    on it has one in that language. A choices map may be partial, but names only the item's own choices."""
     problems = []
     parts = [("plugin", m, ("name", "summary"))]
     parts += [("setting %s" % s.get("id"), s, ("title", "help")) for s in m.get("settings") or []]
@@ -41,8 +43,21 @@ def check_i18n(m):
             langs.add(lang)
             if lang not in LANGS:
                 problems.append("%s: i18n language %r is not one of %s" % (what, lang, sorted(LANGS)))
-            if not isinstance(text, dict) or set(text) - set(keys):
-                problems.append("%s: i18n.%s holds only %s" % (what, lang, ", ".join(keys)))
+            allowed = set(keys) | ({"choices"} if obj.get("choices") else set())
+            if not isinstance(text, dict) or set(text) - allowed:
+                problems.append("%s: i18n.%s holds only %s" % (what, lang, ", ".join(sorted(allowed))))
+                continue
+            labels = text.get("choices")
+            if labels is None:
+                continue
+            if not isinstance(labels, dict):
+                problems.append("%s: i18n.%s.choices is an object {value: label}" % (what, lang))
+                continue
+            for value, label in labels.items():
+                if value not in obj["choices"]:
+                    problems.append("%s: i18n.%s.choices labels %r, which is not one of its choices" % (what, lang, value))
+                if not (isinstance(label, str) and label.strip()):
+                    problems.append("%s: i18n.%s.choices.%s is an empty label" % (what, lang, value))
     for lang in sorted(langs):
         for what, obj, keys in parts:
             text = (obj.get("i18n") or {}).get(lang)
@@ -50,6 +65,46 @@ def check_i18n(m):
             for key in keys:
                 if isinstance(obj.get(key), str) and obj[key] and not (isinstance(text.get(key), str) and text[key].strip()):
                     problems.append("%s: %s has no i18n.%s.%s" % (what, key, lang, key))
+    return problems
+
+
+def check_python_version(base, version):
+    """Every `__version__ = "…"` in the plugin's Python (tests aside) equals the manifest `version`."""
+    problems = []
+    for folder, dirs, files in os.walk(base):
+        dirs[:] = sorted(d for d in dirs if d not in ("tests", "node_modules", "__pycache__") and not d.startswith("."))
+        for name in sorted(files):
+            if not name.endswith(".py"):
+                continue
+            path = os.path.join(folder, name)
+            with open(path, encoding="utf-8") as f:
+                for found in PY_VERSION.findall(f.read()):
+                    if found != version:
+                        problems.append("%s: __version__ is %r, the manifest says %r"
+                                        % (os.path.relpath(path, base).replace(os.sep, "/"), found, version))
+    return problems
+
+
+def check_registry_i18n(entry, manifest):
+    """A registry entry's `i18n: {lang: {name, summary}}` (optional) uses the manifest's translated name,
+    and once the manifest has a language, the entry has its name and summary in it too."""
+    problems = []
+    pid = entry.get("id")
+    i18n = entry.get("i18n")
+    if i18n is not None and not isinstance(i18n, dict):
+        return ["registry.json: %s.i18n is an object {lang: {name, summary}}" % pid]
+    i18n = i18n or {}
+    for lang, text in i18n.items():
+        if lang not in LANGS:
+            problems.append("registry.json: %s.i18n language %r is not one of %s" % (pid, lang, sorted(LANGS)))
+        if not isinstance(text, dict) or set(text) - {"name", "summary"}:
+            problems.append("registry.json: %s.i18n.%s holds only name, summary" % (pid, lang))
+    for lang, text in sorted((manifest.get("i18n") or {}).items()):
+        mine = i18n.get(lang) if isinstance(i18n.get(lang), dict) else {}
+        if isinstance(text, dict) and mine.get("name") != text.get("name"):
+            problems.append("registry.json: %s.i18n.%s.name is %r, the manifest says %r" % (pid, lang, mine.get("name"), text.get("name")))
+        if not (isinstance(mine.get("summary"), str) and mine["summary"].strip()):
+            problems.append("registry.json: %s has no i18n.%s.summary" % (pid, lang))
     return problems
 
 
@@ -113,6 +168,7 @@ def check_manifest(path):
             need(handoff.get("then") in actions or handoff.get("then") in [x.get("id") for x in m["actions"]],
                  "action %s: handoff.then names an action" % a.get("id"))
     problems += ["%s: %s" % (where, x) for x in check_i18n(m)]
+    problems += ["%s: %s" % (where, x) for x in check_python_version(base, m.get("version"))]
     for skill in m.get("skills") or []:
         need(os.path.isfile(os.path.join(base, skill)), "skill %s is missing" % skill)
     return m, problems
@@ -147,6 +203,7 @@ def check(root=ROOT):
         for key, value in expected.items():
             if entry.get(key) != value:
                 problems.append("registry.json: %s.%s is %r, the manifest says %r" % (pid, key, entry.get(key), value))
+        problems += check_registry_i18n(entry, manifest)
     plugins = os.path.join(root, "plugins")
     for name in sorted(os.listdir(plugins)) if os.path.isdir(plugins) else []:
         manifest_path = os.path.normpath(os.path.join(plugins, name, "bashcut-plugin.json"))

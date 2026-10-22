@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.hyperframes",
   "name": "HyperFrames Graphics",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "summary": "Animated graphics written as HTML/CSS + GSAP (counters, charts, cards, diagrams, maps, kinetic type), rendered with HyperFrames in headless Chrome to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -75,7 +75,7 @@
       "env": ["BASHCUT_HYPERFRAMES_FORMAT"],
       "flag": "--format",
       "help": "png: a sequence of PNG pictures with transparency (no FFmpeg needed); mov: one ProRes 4444 movie with alpha (needs FFmpeg).",
-      "i18n": {"vi": {"title": "Đầu ra", "help": "png: chuỗi ảnh PNG có nền trong suốt (không cần FFmpeg); mov: một tệp phim ProRes 4444 có alpha (cần FFmpeg)."}}
+      "i18n": {"vi": {"title": "Đầu ra", "help": "png: chuỗi ảnh PNG có nền trong suốt (không cần FFmpeg); mov: một tệp phim ProRes 4444 có alpha (cần FFmpeg).", "choices": {"png": "Chuỗi PNG", "mov": "ProRes 4444 (.mov)"}}}
     }
   ],
   "actions": [

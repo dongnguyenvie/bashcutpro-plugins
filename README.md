@@ -82,7 +82,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `schema` | `"bashcut-plugin/1"` | manifest format version |
 | `id` | string | `publisher.name`, lower case (`bashcut.translate-captions`); the install folder and settings folder name |
 | `name`, `summary` | string | shown in a plugin list, English |
-| `version` | `MAJOR.MINOR.PATCH` | the plugin's version |
+| `version` | `MAJOR.MINOR.PATCH` | the plugin's version; the Python package's `__version__` (what `--version` prints) is the same, and so is the registry entry's (`tools/check_registry.py`) |
 | `publisher`, `license`, `homepage`, `category` | string | metadata (`category`: captions, voice, graphics, resources…) |
 | `platforms` | `["macos", "windows", "linux"]` | where it runs |
 | `runtime` | `{type, version, packages}` | what must be installed first: `python` `>=3.9` with no packages for translate-captions; `packages` lists pip / npm packages a host would install into the plugin's own environment |
@@ -93,12 +93,14 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `settings` | list | `{id, title, type, default?, choices?, env: [...], flag, optional?, help}`; `type` one of string, secret, enum, integer, number, bool, path; a `secret` has no default and is passed only through `env` or `flag`; `help` is shown under the field, in the user's words (no flags, exit statuses or command names) |
 | `actions` | list | what the plugin can do: `{id, title, args, needs: "project" | "none", edits: bool, params: [{id, title, flag, type, default?, choices?, optional?}], handoff?: {exit, then}}`; a param's `title` is its label in the app's form, sentence case, in the README's words |
 | `skills` | list | agent skills (Markdown with front matter), relative paths |
-| `i18n` | object, optional | translations of the text a person sees, by language (`vi` today): on the plugin `{"vi": {"name", "summary"}}`; on a setting, an action or a param `{"vi": {"title", "help"}}`. A host shows the app's UI language and falls back to the English field; a manifest without `i18n` is fine. Once a plugin has `vi` anywhere, every name, summary, title and help on it has a `vi` one (`tools/check_registry.py`). Choice values (`choices`) are not translated |
+| `i18n` | object, optional | translations of the text a person sees, by language (`vi` today): on the plugin `{"vi": {"name", "summary"}}`; on a setting, an action or a param `{"vi": {"title", "help"}}`; on an `enum` setting or param also `"choices": {value: label}` (BashCutPro VI2), which may be partial: a value without a label shows as itself. A host shows the app's UI language and falls back to the English field; a manifest without `i18n` is fine. Once a plugin has `vi` anywhere, every name, summary, title and help on it has a `vi` one (`tools/check_registry.py`). The choice values themselves never change: the value is what is saved and passed to the plugin, and a label map names only the item's own choices |
 
 ## Registry: `registry.json`
 
 The list a host or an agent reads to find plugins. Each entry repeats the manifest fields needed to choose a plugin
-without fetching it; `tools/check_registry.py` keeps them equal to the manifest.
+without fetching it; `tools/check_registry.py` keeps them equal to the manifest. `summary` is a shorter line than the
+manifest's. `i18n` (optional) is `{"vi": {"name", "summary"}}`: the name is the manifest's `i18n.vi.name`, the summary
+the registry's own short line in Vietnamese; once the manifest has a language, the entry has both in it.
 
 ```json
 {
@@ -108,7 +110,7 @@ without fetching it; `tools/check_registry.py` keeps them equal to the manifest.
   "plugins": [
     {
       "id": "bashcut.translate-captions", "name": "Translate Captions", "version": "0.1.0",
-      "summary": "…", "category": "captions", "platforms": ["macos", "windows", "linux"],
+      "summary": "…", "i18n": {"vi": {"name": "Dịch phụ đề", "summary": "…"}}, "category": "captions", "platforms": ["macos", "windows", "linux"],
       "minAppVersion": "0.9.0", "runtime": "python>=3.9",
       "path": "plugins/translate-captions",
       "manifest": "plugins/translate-captions/bashcut-plugin.json",

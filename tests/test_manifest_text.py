@@ -56,7 +56,8 @@ class ManifestTextTests(unittest.TestCase):
             for a in m.get("actions") or []:
                 texts += [((x.get("i18n") or {}).get("vi") or {}) for x in [a] + list(a.get("params") or [])]
             for text in texts:
-                for value in text.values():
+                values = [v for k, v in text.items() if k != "choices"] + list((text.get("choices") or {}).values())
+                for value in values:
                     with self.subTest(manifest=where, text=value):
                         self.assertNotRegex(value, PROTOCOL)
 
