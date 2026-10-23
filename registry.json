@@ -48,7 +48,7 @@
     {
       "id": "bashcut.image-gen",
       "name": "Image Generation",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "summary": "AI pictures with your own Gemini or OpenAI key (or a local server): every scene in one batch, one locked style, the same character from reference pictures, imported labelled as AI-generated.",
       "i18n": {"vi": {"name": "Tạo ảnh", "summary": "Ảnh AI bằng khóa Gemini hoặc OpenAI của bạn (hoặc máy chủ trên máy): mọi cảnh trong một lượt, một phong cách cố định, cùng nhân vật từ ảnh tham chiếu, nhập vào với nhãn do AI tạo."}},
       "category": "graphics",

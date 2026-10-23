@@ -49,5 +49,5 @@ The first batch into an output folder locks its style in `<out>/style.json`; eve
 - The record is `<out>/images.json`: each picture's prompt, service, model, style and `aiGenerated: true`. Keep
   it with the project; disclosure on the platform is the upload toggle (bcp:vlog-publish).
 - Never generate a real person's likeness, a logo or a brand's product as if real; say what is AI in the report.
-- ffmpeg on `PATH` gives a smoother scale and fits JPEG / WebP answers; without it PNG is fitted in Python and
+- ffmpeg (the `ffmpeg` setting, else `PATH`) gives a smoother scale and fits JPEG / WebP answers; without it PNG is fitted in Python and
   other formats are kept as they came (`fitted: false`; FilmCraft still fits a still to the frame).

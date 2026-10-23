@@ -239,5 +239,11 @@ class ImportTests(Base):
         self.assertEqual((code, result["error"]["code"]), (2, "bad_args"))
 
 
+class DownloadTests(Base):
+    @unittest.skip("test ticket: an OpenAI picture link that does not answer fails only that scene (code network); the rest are kept and images.json is written")
+    def test_a_dead_openai_link_fails_one_scene(self):
+        pass
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -42,6 +42,7 @@ def generate_args(parser):
     parser.add_argument("--api-key", help="your key (better: BASHCUT_IMAGE_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY)")
     parser.add_argument("--model", help="auto = gemini-2.5-flash-image or gpt-image-1; or any image model id")
     parser.add_argument("--endpoint", help="an OpenAI-compatible server (/v1/images/generations) instead of the service")
+    parser.add_argument("--ffmpeg", help="ffmpeg used to fit pictures (default: PATH)")
     parser.add_argument("--no-ffmpeg", action="store_true", help="fit pictures without ffmpeg even when it is installed")
 
 
@@ -197,12 +198,14 @@ def known_picture(path):
 
 def make_pictures(args):
     scenes, file_style, width, height = read_scenes(args)
-    options = resolve({"service": args.service, "apiKey": args.api_key, "model": args.model, "endpoint": args.endpoint})
+    options = resolve({"service": args.service, "apiKey": args.api_key, "model": args.model, "endpoint": args.endpoint,
+                       "ffmpeg": args.ffmpeg})
     service = Service(options["service"], options["apiKey"], options["model"], options["endpoint"], on_wait=progress)
     folder = out_dir(args)
     style, style_path = locked_style(folder, asked_style(args, file_style), args.restyle)
     progress("%d pictures with %s, %dx%d, into %s" % (len(scenes), service.label, width, height, folder))
-    images, failed = generate_batch(scenes, style, service, width, height, folder, progress, not args.no_ffmpeg)
+    images, failed = generate_batch(scenes, style, service, width, height, folder, progress, not args.no_ffmpeg,
+                                    options["ffmpeg"])
     if not images:
         first = failed[0] if failed else {"code": "failed", "message": "No picture was made"}
         raise AppError(first.get("code", "failed"), "No picture was made: %s" % first["message"])
