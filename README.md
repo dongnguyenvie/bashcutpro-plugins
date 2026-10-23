@@ -25,6 +25,8 @@ packs/batch/                       batch presets for bashcut-batch (vietsub, pod
 tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
+tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, connection flags (copied into each plugin)
+tools/sync_shared.py               writes those copies (--check lists stale ones)
 tools/check_all.py                 every check and every plugin's tests in one run
 tests/                             repo-wide checks: text encoding, find_cli, manifest text, registry, shared copies…
 docs/                              design notes and reviews (docs/review-2026-10.md: duplication and the RP tickets)
@@ -44,16 +46,19 @@ also be run on its own.
 
 There is no scaffold yet (RP4 in [docs/review-2026-10.md](docs/review-2026-10.md)). A plugin folder is installed on its
 own (the host copies `registry.json`'s `source.path`), so it must not import anything outside its folder; shared code
-is copied in. Today:
+is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every plugin, `bashcut_models.py` into
+those with `models`), and `tests/test_shared_copies.py` fails while a copy is stale. Today:
 
 1. Copy the closest plugin folder to `plugins/<name>/` and rename its package.
 2. Replace the old id everywhere it is written: `bashcut-plugin.json` (`id`, `name`, `entry`, `skills`), `plugin.py`,
    `<package>/__init__.py`, `<package>/mcp.py` (the `clientInfo` line only: the rest of `mcp.py` must stay equal to
-   the other plugins', `tests/test_shared_copies.py`), `<package>/settings.py` (`PLUGIN_ID`), the skill.
-3. Keep `progress`, `emit`, `main` and `connection_args` in `cli.py` as they are (UTF-8 stdio, the result protocol);
-   replace the commands. Write `tests/fake_filmcraft.py` for the engine calls it makes.
+   the other plugins'), `<package>/settings.py` (`PLUGIN_ID`), the `progress` name in `cli.py`, the skill.
+3. In `cli.py`, replace the commands; keep `main()` as the others have it: `bashcut_cli.utf8_stdio()`, parse, then
+   `return bashcut_cli.run(COMMANDS[args.command], args, (AppError, …), handoff=(…))`. A command returns
+   `(message, data)` or raises an error with `code` and `message` (and `data` for a hand-off); `connection_args(p)` adds
+   the `connect` flags. Write `tests/fake_filmcraft.py` for the engine calls it makes.
 4. Add the `registry.json` entry and a row to the table above; a plugin that downloads lists its files in
-   `models.json` and copies `tools/bashcut_models.py`.
+   `models.json`. Run `tools/sync_shared.py`.
 5. Run `tools/check_all.py` (it finds the new plugin's tests by itself).
 
 ## How a plugin runs
@@ -80,7 +85,8 @@ person from a shell. The host and these runs all start a plugin the same way, fr
    2 usage error, **3 hand-off**: the plugin cannot finish alone (no API key) and `data` holds what the calling agent
    needs to finish it (then it runs the action named in `handoff.then`). stdin, stdout and stderr are UTF-8 whatever
    the system code page is (Windows pipes default to it, e.g. cp1252), so Vietnamese captions and names survive, in
-   the result and in the Runs log. Every text file a plugin reads or writes names `encoding="utf-8"`, which
+   the result and in the Runs log. All of this is `tools/bashcut_cli.py` (`utf8_stdio`, `progress`, `emit`, `run`), the
+   same in every plugin. Every text file a plugin reads or writes names `encoding="utf-8"`, which
    `tests/test_text_encoding.py` checks across `plugins/`.
 5. **Edits** are engine commands, so they are undoable in the app; in headless mode the plugin saves the project
    (`file.save`) unless told `--no-save`.
