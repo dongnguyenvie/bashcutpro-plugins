@@ -173,9 +173,10 @@ class LottieTests(unittest.TestCase):
             burst_fill = json.loads(Path(burst["file"]).read_text(encoding="utf-8"))["layers"][0]["shapes"][0]["it"][1]["c"]["k"]
         self.assertEqual(Path(check["file"]), Path(project) / "check-ua-checkmark.json")
         self.assertEqual((check["license"], check["mono"]), ("MIT", True))
-        self.assertEqual(check["place"], f"graphic place lottie --set file={check['file']}")
+        self.assertEqual(check["place"], f"hyperframes place lottie --set file={check['file']}")
         self.assertEqual((burst["author"], burst["source"]), ("maker", "lottiefiles"))
-        self.assertTrue(burst["place"].endswith("lf-77.json --at-frame 120 --duration 45"))
+        self.assertTrue(burst["place"].endswith("lf-77.json --frame 120"))
+        self.assertEqual(burst["frames"], 45)
         self.assertEqual(burst_fill, [0.2, 0.6, 1, 1])
         self.assertEqual(missing["error"], "no such candidate")
 

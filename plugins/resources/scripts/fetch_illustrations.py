@@ -35,7 +35,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import draw_sheets, get, parse_pick, place, save, slug  # noqa: E402
+from fetch_stock import bashcut, draw_sheets, get, parse_pick, place, save, shared_dir, slug  # noqa: E402
 
 SVG_NS = "http://www.w3.org/2000/svg"
 ET.register_namespace("", SVG_NS)
@@ -87,12 +87,6 @@ SYNONYMS = {
     "data": "analytics charts data", "habit": "habit calendar schedule routine", "time": "time clock schedule",
     "subscribe": "subscriber social notification", "question": "questions faq thinking",
 }
-
-
-def shared_dir():
-    root = os.environ.get("BASHCUT_SHARED_DATA") or str(
-        Path.home() / "Library/Application Support/BashCut/PluginData/_shared")
-    return Path(root) / "illustrations"
 
 
 def stem(word):
@@ -330,7 +324,7 @@ INGEST = {"page": page_items, "undraw": undraw_items, "humaaans": humaaans_items
 
 def ingest(name, refresh=False, fetch=None):
     """Fetch a set once into the shared folder; returns (index, seconds or None when it was already there)."""
-    folder = shared_dir() / name
+    folder = shared_dir("illustrations") / name
     index_path = folder / "index.json"
     if index_path.exists() and not refresh:
         return json.loads(index_path.read_text(encoding="utf-8")), None
@@ -347,7 +341,7 @@ def ingest(name, refresh=False, fetch=None):
 
 def svg_file(name, item, fetch=None):
     """The item's SVG in the shared folder, fetched now when the set fetches files on first use (unDraw)."""
-    path = shared_dir() / name / "svg" / f"{item['id']}.svg"
+    path = shared_dir("illustrations") / name / "svg" / f"{item['id']}.svg"
     if not path.exists() and item.get("url"):
         path.write_bytes((fetch or (lambda url: get(url, timeout=60)))(item["url"]))
     return path
@@ -388,7 +382,7 @@ def read_slots(path, count):
             if sep and name.strip() and not line.lstrip().startswith("#"):
                 slots.append({"slot": name.strip(), "query": query.strip()})
     for i, slot in enumerate(slots):
-        slot.setdefault("slot", slug(slot.get("query")) or f"slot{i + 1}")
+        slot.setdefault("slot", slug(slot.get("query"), "") or f"slot{i + 1}")
         slot["count"] = int(slot.get("count") or count)
     return slots
 
@@ -623,7 +617,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.sets:
         for name, meta in SETS.items():
-            index = shared_dir() / name / "index.json"
+            index = shared_dir("illustrations") / name / "index.json"
             count = len(json.loads(index.read_text(encoding="utf-8"))["items"]) if index.exists() else None
             print(json.dumps({"set": name, "license": meta["license"], "page": meta["page"], "items": count}))
         return

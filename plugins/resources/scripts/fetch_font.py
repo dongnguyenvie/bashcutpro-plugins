@@ -15,14 +15,13 @@ a–z), so they are never used. A family that is not on Google Fonts has no whol
 """
 import argparse
 import json
-import re
 import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import AGENT, get  # noqa: E402,F401  (AGENT: fetch_fonts reads single.AGENT)
+from fetch_stock import AGENT, get, slug  # noqa: E402,F401  (AGENT: fetch_fonts reads single.AGENT)
 
 API = "https://api.fontsource.org/v1/fonts"
 NAMES = {100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular", 500: "Medium", 600: "SemiBold",
@@ -51,7 +50,7 @@ def search(subset, category, query, weight, count):
 
 
 def font_id(family):
-    return re.sub(r"[^a-z0-9]+", "-", family.lower()).strip("-")
+    return slug(family, "font", None)
 
 
 def style_name(weight, italic):

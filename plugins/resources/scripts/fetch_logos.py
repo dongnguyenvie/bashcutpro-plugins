@@ -20,7 +20,6 @@ import argparse
 import difflib
 import io
 import json
-import os
 import re
 import sys
 import tarfile
@@ -30,19 +29,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch_illustrations import render_png  # noqa: E402
-from fetch_stock import draw_sheets, get, place, save as library_save  # noqa: E402
+from fetch_stock import draw_sheets, get, place, save as library_save, shared_dir  # noqa: E402
 
 REGISTRY = "https://registry.npmjs.org/simple-icons"
 ICONIFY = "https://api.iconify.design"
 LICENCE = {"simple-icons": ("CC0 1.0", "Simple Icons", "https://simpleicons.org/"),
            "iconify": ("CC0 1.0 / MIT (per set)", "Iconify logo sets", "https://icon-sets.iconify.design/")}
 BACKGROUNDS = {"dark": "#000000", "light": "#FFFFFF"}
-
-
-def shared_dir():
-    root = os.environ.get("BASHCUT_SHARED_DATA") or str(
-        Path.home() / "Library/Application Support/BashCut/PluginData/_shared")
-    return Path(root) / "logos"
 
 
 def norm(text):
@@ -52,7 +45,7 @@ def norm(text):
 
 def ingest(refresh=False, fetch=None):
     """Simple Icons' npm package (data + every SVG) into the shared folder once; returns (icons, seconds or None)."""
-    folder = shared_dir() / "simple-icons"
+    folder = shared_dir("logos") / "simple-icons"
     index = folder / "simple-icons.json"
     if index.exists() and not refresh:
         return json.loads(index.read_text(encoding="utf-8")), None
@@ -186,7 +179,7 @@ def run(args):
         print(json.dumps({"ingested": len(icons), "seconds": seconds}))
     dest = Path(args.dest)
     dest.mkdir(parents=True, exist_ok=True)
-    folder = shared_dir() / "simple-icons" / "icons"
+    folder = shared_dir("logos") / "simple-icons" / "icons"
     unsure = []
     for name, frame, duration in parse_brands(args.brands):
         icon, close = match(name, icons)
