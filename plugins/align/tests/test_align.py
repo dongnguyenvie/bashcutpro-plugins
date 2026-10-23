@@ -101,6 +101,14 @@ class AlignTests(unittest.TestCase):
         words = align(script_words(lines), heard)
         self.assertEqual(words[2999]["start"], heard[-1]["start"])
 
+    @unittest.skip("test ticket: 500 script words against 10 000 heard words align in bounded memory (tracemalloc peak)")
+    def test_short_script_against_a_long_transcript_stays_in_bounded_memory(self):
+        pass
+
+    @unittest.skip("test ticket: path() gives the same pairs as the previous dict-based table on random inputs")
+    def test_row_arrays_give_the_same_path_as_before(self):
+        pass
+
 
 class Base(unittest.TestCase):
     def setUp(self):
