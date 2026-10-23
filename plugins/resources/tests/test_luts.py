@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import unittest
 from unittest import mock
+import zipfile
 
 try:
     import numpy as np
@@ -197,14 +198,53 @@ class IngestTests(unittest.TestCase):
         self.assertEqual(out.getvalue().splitlines()[0], 'gmic: skipped (curl exit 22)')
         self.assertEqual(len(out.getvalue().splitlines()), 2)
 
-    @unittest.skip("test ticket: LUTs named 'Warm' and 'warm' (or 'Café' and 'Cafe') are both kept, with different files and IDs")
     def test_names_that_differ_only_in_case_are_both_kept(self):
-        pass
+        looks = {'Warm': lambda c: np.clip(c * [1.15, 1.0, 0.8], 0, 1), 'warm': lambda c: np.clip(c * [0.8, 1.0, 1.15], 0, 1),
+                 'Café': lambda c: np.clip(0.08 + c * 0.84, 0, 1), 'Cafe': lambda c: np.repeat(self.f.luma(c)[..., None], 3, -1)}
+        items = [(name, cube(fn).encode('utf-8'), 'cube') for name, fn in looks.items()]
+        calls = []
+        o = mock.Mock(library=True, scope='user', dedupe=0.5, log_contrast=1.8, log_clip=10.0)
+        counts = dict(added=0, duplicates=0, log=0, broken=0, known=0)
+        with mock.patch.object(self.f, 'bashcut', lambda *a, **k: calls.append(a) or {'id': 'x'}):
+            self.f.ingest(items, 'local', set(), [], counts, o)
+        self.assertEqual(counts['added'], 4, counts)
+        adds = [dict(zip(a[2::2], a[3::2])) for a in calls if a[:2] == ('library', 'add')]
+        files = [json.loads(a['--params'])['lut']['file'] for a in adds]
+        self.assertEqual(len({a['--id'] for a in adds}), 4)
+        self.assertEqual(len({f.lower() for f in files}), 4)  # apart on a case-insensitive disk too
+        self.assertTrue(all(Path(f).exists() for f in files))
+        self.assertEqual([json.loads(a['--params'])['lut']['name'] for a in adds], list(looks))
 
-    @unittest.skip("test ticket: rawtherapee with --limit reads the verified models.json zip, spread over its folders")
     def test_limit_keeps_the_verified_zip(self):
-        pass
+        folders = {'Black and White/Ilford': ['Ilford HP5 Plus 400', 'Ilford Delta 100'],
+                   'Color/Fuji': ['Fuji Velvia 50', 'Fuji Provia 100F'], 'Color/Kodak': ['Kodak Portra 160']}
+        tones = iter([[1.15, 1.0, 0.8], [0.8, 1.0, 1.15], [1.0, 0.8, 1.15], [1.0, 1.15, 0.8], [1.1, 1.1, 0.7]])
+        pack = self.tmp / 'models' / 'HaldCLUT.zip'
+        pack.parent.mkdir()
+        with zipfile.ZipFile(pack, 'w') as z:
+            for where, names in folders.items():
+                for name in names:
+                    tone = next(tones)
+                    z.writestr(f'HaldCLUT/Film Simulation/{where}/{name}.png',
+                               hald(lambda c, t=tone: np.clip(c * t, 0, 1)))
+            z.writestr('HaldCLUT/Other/identity.png', hald(lambda c: c))  # not a film simulation
+        calls = []
 
+        def fake(*argv, retry=True):
+            calls.append(argv)
+            return {'items': [], 'next': None} if argv[:2] == ('library', 'list') else {'id': 'x'}
+
+        def no_network(*args, **kwargs):
+            raise AssertionError('the mirror was asked although the verified zip is there')
+
+        out = io.StringIO()
+        with mock.patch.object(self.f, 'rt_pack', lambda: pack), mock.patch.object(self.f, 'get', no_network), \
+                mock.patch.object(self.f, 'bashcut', fake), mock.patch('sys.stdout', out):
+            self.f.main(['--source', 'rawtherapee', '--limit', '3'])
+        names = [json.loads(dict(zip(a[2::2], a[3::2]))['--params'])['lut']['name']
+                 for a in calls if a[:2] == ('library', 'add')]
+        self.assertEqual(names, ['Ilford-Ilford Delta 100', 'Fuji-Fuji Provia 100F', 'Kodak-Kodak Portra 160'])
+        self.assertTrue(out.getvalue().startswith('3 added'), out.getvalue())
 
 if __name__ == '__main__':
     unittest.main()

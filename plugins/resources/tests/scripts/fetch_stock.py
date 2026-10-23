@@ -2,6 +2,7 @@
 
     --ids a,b --dest D [--import]   writes D/<id>.jpg, prints {file, license, author, page} per file
     --pick "slot=1@12:30" --dest D  writes D/pick.png, `library add` with its licence, `library place`
+    --ids a --dest D --fail         writes D/a.jpg and asks for `media import D`, prints nothing, exits 1
 """
 
 import argparse
@@ -25,9 +26,15 @@ def main(argv=None):
     parser.add_argument("--pick")
     parser.add_argument("--dest", required=True)
     parser.add_argument("--import", dest="import_", action="store_true")
+    parser.add_argument("--fail", action="store_true")
     args = parser.parse_args(argv)
     dest = Path(args.dest)
     dest.mkdir(parents=True, exist_ok=True)
+    if args.fail:  # its files are there and queued for import, then it crashes before any line
+        for ident in (args.ids or "a").split(","):
+            (dest / f"{ident}.jpg").write_bytes(b"\xff\xd8 jpeg")
+        bashcut("media", "import", str(dest), "--base-rev", "last")
+        return 1
     if args.ids:
         for ident in args.ids.split(","):
             (dest / f"{ident}.jpg").write_bytes(b"\xff\xd8 jpeg")

@@ -4,9 +4,11 @@ its licence record. The network is faked: the fetch scripts' `get` and finders a
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -126,9 +128,27 @@ class SearchTest(unittest.TestCase):
         with self.assertRaises(AppError):
             finder.download("music", "https://elsewhere.example/missing.mp3", "x")
 
-    @unittest.skip("test ticket: download of a file over MAX_BYTES stops while downloading, raises AppError 'larger than', leaves no file")
     def test_download_over_the_cap_stops_early(self):
-        pass
+        self.stock.get_file = self.saved[1]  # the real one: curl -o <file>.part --max-filesize
+        commands = []
+
+        def curl(command, **kwargs):  # an unknown size: curl cuts the transfer at the cap (exit 56)
+            commands.append(command)
+            with open(command[command.index("-o") + 1], "wb") as f:
+                f.write(b"x" * 2048)
+            return subprocess.CompletedProcess(command, 56, b"", b"200")
+
+        folder = os.path.join(self.dir, "dest")
+        with mock.patch.object(finder, "MAX_BYTES", 2048), mock.patch.object(self.stock.subprocess, "run", curl), \
+                mock.patch.object(self.stock.time, "sleep") as sleep:
+            with self.assertRaises(AppError) as failed:
+                finder.download("video", "https://files.example/huge.mp4", "Huge", "CC0", dest=folder)
+        self.assertEqual(failed.exception.code, "failed")
+        self.assertIn("larger than", failed.exception.message)
+        self.assertEqual(len(commands), 1)  # never tried again
+        self.assertEqual(commands[0][commands[0].index("--max-filesize") + 1], "2048")
+        self.assertEqual(os.listdir(folder), [])
+        sleep.assert_not_called()
 
     def test_cli_prints_one_result_object(self):
         out, err = io.StringIO(), io.StringIO()
