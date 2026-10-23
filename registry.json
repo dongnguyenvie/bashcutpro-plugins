@@ -76,7 +76,7 @@
     {
       "id": "bashcut.align",
       "name": "Align Script to Speech",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "summary": "Put a known script, subtitles or translation on the speech with word timing; report low-confidence spans; check a script against its time.",
       "i18n": {"vi": {"name": "Khớp kịch bản với lời nói", "summary": "Khớp kịch bản, phụ đề hoặc bản dịch có sẵn vào lời nói theo từng từ; báo các đoạn kém tin cậy; kiểm tra kịch bản có vừa thời lượng không."}},
       "category": "captions",

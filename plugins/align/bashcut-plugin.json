@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.align",
   "name": "Align Script to Speech",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "summary": "Put a known script, subtitle file or translation on the speech with word timing (better captions than transcription alone), report low-confidence spans, and check a script's lines against the time they have.",
   "publisher": "dongnguyenvie",
   "license": "MIT",

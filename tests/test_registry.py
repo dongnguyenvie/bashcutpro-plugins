@@ -67,6 +67,16 @@ class RegistryTests(unittest.TestCase):
     def test_registry_layout_round_trips(self):
         pass
 
+    @unittest.skip("test ticket: in a temp git repo, a plugin changed since the merge base with an unbumped (or lower) "
+                   "manifest version fails check_version_bumps with its name and both versions; a higher one passes")
+    def test_version_bump_must_beat_the_base(self):
+        pass
+
+    @unittest.skip("test ticket: a change only in plugins/<name>/tests/, a plugin new at the base, and a missing ref "
+                   "(notice, no problems) all pass check_version_bumps")
+    def test_version_bump_skips_tests_new_plugins_and_missing_ref(self):
+        pass
+
     def test_choice_labels_name_only_the_items_choices(self):
         def manifest(labels):
             vi = {"title": "Dịch vụ"}
