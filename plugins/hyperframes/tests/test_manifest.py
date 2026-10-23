@@ -1,4 +1,5 @@
-"""The manifest describes the command line that really exists, and the runtime it pins."""
+"""The manifest's settings and the runtime it pins (the rest of the manifest ↔ CLI check is the repo's
+tests/test_manifest_cli.py)."""
 
 import json
 import os
@@ -8,7 +9,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from hyperframes_plugin import __version__, cli  # noqa: E402
+from hyperframes_plugin import cli  # noqa: E402
 from hyperframes_plugin.runtime import pinned  # noqa: E402
 from hyperframes_plugin.settings import FORMATS, SETTINGS  # noqa: E402
 
@@ -23,21 +24,7 @@ def flags(command):
 
 
 class ManifestTests(unittest.TestCase):
-    def test_version_matches_the_code(self):
-        self.assertEqual(MANIFEST["version"], __version__)
-
-    def test_every_action_and_param_is_a_real_subcommand_and_flag(self):
-        self.assertEqual({a["args"][0] for a in MANIFEST["actions"]}, set(cli.COMMANDS))
-        for action in MANIFEST["actions"]:
-            accepted = flags(action["args"][0])
-            for param in action["params"]:
-                self.assertIn(param["flag"], accepted, "%s %s" % (action["id"], param["flag"]))
-            if action["needs"] == "project":
-                for arg in MANIFEST["connect"].values():
-                    self.assertIn(arg[0], accepted)
-
-    def test_settings_match_the_resolver(self):
-        self.assertEqual({s["id"] for s in MANIFEST["settings"]}, set(SETTINGS))
+    def test_settings_env_flags_and_formats(self):
         for s in MANIFEST["settings"]:
             self.assertEqual(s["env"], SETTINGS[s["id"]][0])
             self.assertIn(s["flag"], flags("place"))

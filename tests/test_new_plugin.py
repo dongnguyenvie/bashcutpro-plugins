@@ -11,7 +11,11 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO_TESTS = ["test_shared_copies", "test_text_encoding", "test_find_cli", "test_manifest_text", "test_registry"]
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import check_registry  # noqa: E402
+
+REPO_TESTS = ["test_shared_copies", "test_text_encoding", "test_find_cli", "test_manifest_text", "test_manifest_cli",
+              "test_registry"]
 
 
 def ignore(folder, names):
@@ -29,8 +33,8 @@ class NewPlugin(unittest.TestCase):
         with open(os.path.join(ROOT, "registry.json"), encoding="utf-8") as f:
             registry = json.load(f)
         registry["plugins"] = [p for p in registry["plugins"] if p["id"] == "bashcut.align"]
-        with open(os.path.join(cls.root, "registry.json"), "w", encoding="utf-8") as f:
-            json.dump(registry, f, ensure_ascii=False, indent=2)
+        with open(os.path.join(cls.root, "registry.json"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(check_registry.dump_registry(registry))  # laid out by hand, as new_plugin.py keeps it
         cls.made = cls.python("tools/new_plugin.py", "beat-markers", "--title", "Beat Markers",
                               "--summary", "Puts markers on the beats of the music.", "--vi-title", "Đánh dấu nhịp",
                               "--vi-summary", "Đặt marker theo nhịp nhạc.", "--category", "audio")

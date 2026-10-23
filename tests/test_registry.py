@@ -1,13 +1,73 @@
 """The registry and every plugin manifest follow the format in README.md."""
 
+import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 import check_registry  # noqa: E402
+
+
+def ignore(folder, names):
+    return [n for n in names if n in ("__pycache__", "node_modules") or n.startswith(".")]
+
+
+def read(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
+
+def copy_of_align(root, only=False):
+    """`root` with a copy of plugins/align and registry.json (only align's entry when `only`, laid out as by hand)."""
+    shutil.copytree(os.path.join(ROOT, "plugins", "align"), os.path.join(root, "plugins", "align"), ignore=ignore)
+    registry = json.loads(read(os.path.join(ROOT, "registry.json")))
+    if only:
+        registry["plugins"] = [p for p in registry["plugins"] if p["id"] == "bashcut.align"]
+    write(os.path.join(root, "registry.json"), check_registry.dump_registry(registry))
+    return os.path.join(root, "plugins", "align", "bashcut-plugin.json")
+
+
+def edit_manifest(path, change):
+    manifest = json.loads(read(path))
+    change(manifest)
+    write(path, json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+
+
+class GitRepo:
+    """A throwaway git repo: `main` with plugins/demo at 0.1.0, then a branch `work` to change."""
+
+    def __init__(self, root):
+        self.root = root
+        self.git("init", "-q", "-b", "main")
+        self.manifest("demo", "0.1.0")
+        write(os.path.join(root, "plugins", "demo", "demo_plugin", "cli.py"), "VALUE = 1\n")
+        write(os.path.join(root, "plugins", "demo", "tests", "test_demo.py"), "VALUE = 1\n")
+        self.commit("base")
+        self.git("switch", "-q", "-c", "work")
+
+    def git(self, *args):
+        subprocess.run(["git", "-C", self.root, "-c", "user.name=test", "-c", "user.email=test@example.com",
+                        "-c", "commit.gpgsign=false"] + list(args), check=True, capture_output=True)
+
+    def manifest(self, name, version):
+        write(os.path.join(self.root, "plugins", name, "bashcut-plugin.json"),
+              json.dumps({"id": "bashcut." + name, "version": version}) + "\n")
+
+    def commit(self, message):
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", message)
 
 
 class RegistryTests(unittest.TestCase):
@@ -50,32 +110,113 @@ class RegistryTests(unittest.TestCase):
             run = lambda *a: subprocess.run([sys.executable, script, *a], capture_output=True, text=True).stdout.strip()
             self.assertEqual((run(), run("--keep"), run("--no-keep")), ("true", "true", "false"))
 
-    @unittest.skip("test ticket: a `--no-<name>` mention in a help string or a comment no longer satisfies the bool check")
     def test_bool_check_ignores_mentions_outside_the_parser(self):
-        pass
+        m = {"actions": [{"id": "go", "args": ["go"], "params": [
+            {"id": "keep", "flag": "--keep", "type": "bool", "default": True}]}]}
+        with tempfile.TemporaryDirectory() as base:
+            write(os.path.join(base, "pkg", "cli.py"),
+                  "import argparse\n\n# --no-keep turns it off\nNOTE = '--no-keep'\n\n\ndef build_parser():\n"
+                  "    root = argparse.ArgumentParser()\n    p = root.add_subparsers(dest='command').add_parser('go')\n"
+                  "    p.add_argument('--keep', action='store_true', help='keep the files (--no-keep to drop them)')\n"
+                  "    p.add_argument('--no-keep-cache', action='store_false', dest='cache')\n    return root\n")
+            self.assertEqual(check_registry.check_bool_defaults(base, m),
+                             ["action go: bool param keep defaults to true, so build_parser() go must accept --no-keep, "
+                              "storing false (argparse.BooleanOptionalAction)"])
+            # --no-keep on the root parser is not on the action's subcommand
+            write(os.path.join(base, "pkg", "cli.py"),
+                  "import argparse\n\n\ndef build_parser():\n    root = argparse.ArgumentParser()\n"
+                  "    root.add_argument('--no-keep', action='store_false', dest='keep')\n"
+                  "    root.add_subparsers(dest='command').add_parser('go')\n    return root\n")
+            self.assertEqual(len(check_registry.check_bool_defaults(base, m)), 1)
 
-    @unittest.skip("test ticket: --fix copies a bumped manifest version into registry.json and every __version__, "
-                   "keeps the registry layout byte for byte, and leaves summary and tests/ untouched")
     def test_fix_writes_the_derived_fields_and_python_version(self):
-        pass
+        with tempfile.TemporaryDirectory() as root:
+            manifest = copy_of_align(root)
+            registry = os.path.join(root, "registry.json")
+            before = read(registry)
+            package = os.path.join(root, "plugins", "align", "align_plugin", "__init__.py")
+            fixture = os.path.join(root, "plugins", "align", "tests", "fixture.py")
+            write(fixture, '__version__ = "0.0.1"\n')
+            version = json.loads(read(manifest))["version"]
+            bumped = "%s.%d" % (version.rsplit(".", 1)[0], int(version.rsplit(".", 1)[1]) + 1)
+            edit_manifest(manifest, lambda m: m.update(version=bumped, summary="Something else entirely."))
 
-    @unittest.skip("test ticket: --fix copies the manifest's i18n.<lang>.name into the entry and check() then passes")
+            changed = check_registry.fix(root)
+            self.assertEqual(changed, ["registry.json: bashcut.align.version %r -> %r" % (version, bumped),
+                                       "plugins/align/align_plugin/__init__.py: __version__ -> %r" % bumped])
+            old_line = '      "id": "bashcut.align",\n      "name": "Align Script to Speech",\n      "version": "%s",\n'
+            self.assertIn(old_line % version, before)
+            self.assertEqual(read(registry).encode("utf-8"), before.replace(old_line % version, old_line % bumped).encode("utf-8"))
+            self.assertIn('__version__ = "%s"' % bumped, read(package))
+            self.assertEqual(read(fixture), '__version__ = "0.0.1"\n')
+            # the summary is the registry's own line, not the manifest's
+            entry = [p for p in json.loads(read(registry))["plugins"] if p["id"] == "bashcut.align"][0]
+            self.assertNotEqual(entry["summary"], "Something else entirely.")
+            self.assertEqual(check_registry.fix(root), [])
+
     def test_fix_copies_the_translated_name(self):
-        pass
+        with tempfile.TemporaryDirectory() as root:
+            manifest = copy_of_align(root, only=True)
+            self.assertEqual(check_registry.check(root), [])
+            edit_manifest(manifest, lambda m: m["i18n"]["vi"].update(name="Khớp lời"))
+            self.assertEqual(len(check_registry.check(root)), 1)
+            self.assertEqual(check_registry.fix(root),
+                             ["registry.json: bashcut.align.i18n.vi.name 'Khớp kịch bản với lời nói' -> 'Khớp lời'"])
+            self.assertEqual(check_registry.check(root), [])
+            entry = json.loads(read(os.path.join(root, "registry.json")))["plugins"][0]
+            self.assertEqual(entry["i18n"]["vi"]["name"], "Khớp lời")
+            self.assertTrue(entry["i18n"]["vi"]["summary"])
 
-    @unittest.skip("test ticket: dump_registry(json.loads(text)) == text for the real registry.json")
     def test_registry_layout_round_trips(self):
-        pass
+        with open(os.path.join(ROOT, "registry.json"), encoding="utf-8") as f:
+            text = f.read()
+        self.assertEqual(check_registry.dump_registry(json.loads(text)), text)
 
-    @unittest.skip("test ticket: in a temp git repo, a plugin changed since the merge base with an unbumped (or lower) "
-                   "manifest version fails check_version_bumps with its name and both versions; a higher one passes")
+    @unittest.skipUnless(shutil.which("git"), "needs git")
     def test_version_bump_must_beat_the_base(self):
-        pass
+        with tempfile.TemporaryDirectory() as root:
+            repo = GitRepo(root)
+            write(os.path.join(root, "plugins", "demo", "demo_plugin", "cli.py"), "VALUE = 2\n")
+            for version in ("0.1.0", "0.0.9"):
+                repo.manifest("demo", version)
+                problems, notice = check_registry.check_version_bumps(root, "main")
+                self.assertIsNone(notice)
+                self.assertEqual(problems, ["plugins/demo: version %s must be greater than 0.1.0 on main (its files "
+                                            "changed; bump the manifest's version, then --fix)" % version])
+            repo.commit("unbumped")  # committed or not, the same
+            self.assertEqual(len(check_registry.check_version_bumps(root, "main")[0]), 1)
+            for version in ("0.1.1", "0.2.0", "1.0.0"):
+                repo.manifest("demo", version)
+                self.assertEqual(check_registry.check_version_bumps(root, "main"), ([], None))
+            # the base's tip counts: a bump merged there first must be beaten
+            repo.commit("bumped")
+            repo.git("switch", "-q", "main")
+            repo.manifest("demo", "0.1.1")
+            repo.commit("bump on main")
+            repo.git("switch", "-q", "work")
+            repo.manifest("demo", "0.1.1")
+            self.assertEqual(len(check_registry.check_version_bumps(root, "main")[0]), 1)
 
-    @unittest.skip("test ticket: a change only in plugins/<name>/tests/, a plugin new at the base, and a missing ref "
-                   "(notice, no problems) all pass check_version_bumps")
+    @unittest.skipUnless(shutil.which("git"), "needs git")
     def test_version_bump_skips_tests_new_plugins_and_missing_ref(self):
-        pass
+        with tempfile.TemporaryDirectory() as root:
+            repo = GitRepo(root)
+            write(os.path.join(root, "plugins", "demo", "tests", "test_demo.py"), "VALUE = 2\n")
+            write(os.path.join(root, "plugins", "demo", "tests", "test_new.py"), "VALUE = 3\n")
+            self.assertEqual(check_registry.changed_plugins(root, "main"), [])
+            self.assertEqual(check_registry.check_version_bumps(root, "main"), ([], None))
+
+            repo.manifest("fresh", "0.1.0")
+            write(os.path.join(root, "plugins", "fresh", "fresh_plugin", "cli.py"), "VALUE = 1\n")
+            self.assertEqual(check_registry.changed_plugins(root, "main"), ["fresh"])
+            self.assertEqual(check_registry.check_version_bumps(root, "main"), ([], None))
+            repo.commit("new plugin")
+            self.assertEqual(check_registry.check_version_bumps(root, "main"), ([], None))
+
+            write(os.path.join(root, "plugins", "demo", "demo_plugin", "cli.py"), "VALUE = 2\n")
+            problems, notice = check_registry.check_version_bumps(root, "origin/main")
+            self.assertEqual(problems, [])
+            self.assertIn("origin/main is not available", notice)
 
     def test_choice_labels_name_only_the_items_choices(self):
         def manifest(labels):
