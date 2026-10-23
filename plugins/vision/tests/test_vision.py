@@ -19,6 +19,7 @@ from bashcut_images import Image, png_size  # noqa: E402
 from vision_plugin.backends import FakeBackend, nms  # noqa: E402
 from vision_plugin.ocr import parse_tsv  # noqa: E402
 from vision_plugin.timeline import reframe_steps  # noqa: E402
+from bashcut_fake_engine import data_dir_env  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
@@ -54,8 +55,8 @@ class Base(unittest.TestCase):
         full = [sys.executable, os.path.join(PLUGIN, "plugin.py")] + list(args)
         if project:
             full += ["--project", self.state, "--cli", FAKE]
-        environment = dict(os.environ, VISION_FAKE="1", PATH="/nonexistent", BASHCUT_MODELS_DIR=os.path.join(self.dir, "models"),
-                           FILMCRAFT_DATA_DIR=os.path.join(self.dir, "data"))
+        environment = dict(data_dir_env(os.path.join(self.dir, "data")), VISION_FAKE="1", PATH="/nonexistent",
+                           BASHCUT_MODELS_DIR=os.path.join(self.dir, "models"))
         environment.update(env or {})
         out = subprocess.run(full, capture_output=True, env=environment)
         return out.returncode, json.loads(out.stdout.decode("utf-8"))
@@ -293,7 +294,7 @@ class ModelsTests(Base):
         python = self.script("python", 'echo "fake python $*"\n'
                                        'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
         full = [sys.executable, os.path.join(PLUGIN, "plugin.py"), "setup", "--python", python]
-        env = dict(os.environ, FILMCRAFT_DATA_DIR=os.path.join(self.dir, "data"))
+        env = data_dir_env(os.path.join(self.dir, "data"))
         out = subprocess.run(full, capture_output=True, env=env, timeout=60)
         stdout, stderr = out.stdout.decode("utf-8"), out.stderr.decode("utf-8")
         self.assertEqual(out.returncode, 0, stdout + stderr)

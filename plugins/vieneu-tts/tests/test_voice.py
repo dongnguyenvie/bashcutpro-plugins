@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 from vieneu_tts import cli  # noqa: E402
 from vieneu_tts.mcp import AppError  # noqa: E402
 from vieneu_tts.synth import pick_take, read_lines, syllables  # noqa: E402
+from bashcut_fake_engine import use_data_dir  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
@@ -40,7 +41,7 @@ class Base(unittest.TestCase):
         for k in ENV_KEYS:
             os.environ.pop(k, None)
         os.environ["VIENEU_FAKE"] = "1"
-        os.environ["FILMCRAFT_DATA_DIR"] = self.dir  # no settings file or venv from the real machine
+        use_data_dir(self.dir)  # no settings file or venv from the real machine
 
     def tearDown(self):
         for k, v in self.env.items():

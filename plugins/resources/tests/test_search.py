@@ -21,6 +21,7 @@ from resources_plugin import cli  # noqa: E402
 from resources_plugin import search as finder  # noqa: E402
 from resources_plugin.licences import read_sidecar  # noqa: E402
 from resources_plugin.mcp import AppError  # noqa: E402
+from bashcut_fake_engine import DATA_DIRS, use_data_dir  # noqa: E402
 from test_fetch_assets import file_from_get  # noqa: E402
 
 with open(os.path.join(ROOT, "bashcut-plugin.json"), encoding="utf-8") as f:
@@ -35,10 +36,10 @@ ICONIFY = {"icons": ["mdi:home", "tabler:home"],
 class SearchTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
-        self.env = {k: os.environ.get(k) for k in ("FILMCRAFT_DATA_DIR", "PIXABAY_API_KEY", "PEXELS_API_KEY", "FREESOUND_API_KEY")}
+        self.env = {k: os.environ.get(k) for k in DATA_DIRS + ("PIXABAY_API_KEY", "PEXELS_API_KEY", "FREESOUND_API_KEY")}
         for k in self.env:
             os.environ.pop(k, None)
-        os.environ["FILMCRAFT_DATA_DIR"] = self.dir
+        use_data_dir(self.dir)
         # the real scripts (another test may have loaded its stand-in fetch_stock)
         for name in ("fetch_stock", "fetch_audio", "fetch_font"):
             sys.modules.pop(name, None)

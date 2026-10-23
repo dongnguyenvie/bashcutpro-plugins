@@ -19,6 +19,7 @@ from image_gen import cli  # noqa: E402
 from image_gen.picture import decode_png  # noqa: E402
 from image_gen.service import ImageError, Service, Style, nearest, safe_name  # noqa: E402
 from image_gen.settings import resolve  # noqa: E402
+from bashcut_fake_engine import use_data_dir  # noqa: E402
 from fake_service import FakeService  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
@@ -36,7 +37,7 @@ class Base(unittest.TestCase):
         self.env = {k: os.environ.get(k) for k in ENV_KEYS}
         for k in ENV_KEYS:
             os.environ.pop(k, None)
-        os.environ["FILMCRAFT_DATA_DIR"] = self.dir  # no settings file from the real machine
+        use_data_dir(self.dir)  # no settings file from the real machine
         self.fake = FakeService()
         self.ref = os.path.join(self.dir, "mascot.png")
         with open(self.ref, "wb") as f:

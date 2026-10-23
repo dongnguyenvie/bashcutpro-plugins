@@ -13,6 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
+from bashcut_fake_engine import DATA_DIRS, use_data_dir  # noqa: E402
 from test_translate import MockOpenAI  # noqa: E402
 from translate_captions import cli  # noqa: E402
 from translate_captions.captions import (  # noqa: E402
@@ -76,10 +77,10 @@ class RoundTripTests(unittest.TestCase):
         self.project = os.path.join(self.dir, "state.json")
         with open(self.project, "w", encoding="utf-8") as f:
             json.dump({"captions": listing(), "sequence": {"video": [], "audio": []}}, f)
-        self.env = {k: os.environ.get(k) for k in ("BASHCUT_TC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "FILMCRAFT_DATA_DIR")}
+        self.env = {k: os.environ.get(k) for k in ("BASHCUT_TC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY") + DATA_DIRS}
         for k in self.env:
             os.environ.pop(k, None)
-        os.environ["FILMCRAFT_DATA_DIR"] = self.dir  # no settings file from the real machine
+        use_data_dir(self.dir)  # no settings file from the real machine
 
     def tearDown(self):
         for k, v in self.env.items():

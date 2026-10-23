@@ -20,6 +20,7 @@ from hyperframes_plugin import composition as comp  # noqa: E402
 from hyperframes_plugin import render as rendering  # noqa: E402
 from hyperframes_plugin.mcp import AppError  # noqa: E402
 from hyperframes_plugin.runtime import find_node, parse_version, paths, pinned, status  # noqa: E402
+from bashcut_fake_engine import use_data_dir  # noqa: E402
 
 FAKE_APP = os.path.join(HERE, "fake_filmcraft.py")
 FAKE_NODE = os.path.join(HERE, "fake_node.py")
@@ -58,7 +59,7 @@ class Base(unittest.TestCase):
         for k in ENV_KEYS:
             os.environ.pop(k, None)
         self.addCleanup(self.restore)
-        os.environ["FILMCRAFT_DATA_DIR"] = self.dir  # no settings, runtime or Chrome from the real machine
+        use_data_dir(self.dir)  # no settings, runtime or Chrome from the real machine
         os.environ["BASHCUT_HYPERFRAMES_NODE"] = FAKE_NODE
         os.environ["BASHCUT_HYPERFRAMES_FFMPEG"] = os.path.join(self.dir, "no-ffmpeg")
         os.environ["FAKE_HF_LOG"] = os.path.join(self.dir, "hf.log")
@@ -338,7 +339,7 @@ class RenderTests(Base):
         self.assertTrue(again["data"]["reused"])  # the same render either way
 
     def test_the_runtime_is_looked_for_in_bashcutpros_data_dir_first(self):
-        os.environ["BASHCUTPRO_DATA_DIR"] = os.path.join(self.dir, "bashcutpro")  # wins over FILMCRAFT_DATA_DIR
+        os.environ["BASHCUTPRO_DATA_DIR"] = os.path.join(self.dir, "bashcutpro")  # wins over FILMCRAFT_DATA_DIR (self.dir)
         self.assertEqual(paths()["runtime"], os.path.join(self.dir, "bashcutpro", "bashcut-plugins", "bashcut.hyperframes", "runtime"))
         code, out = self.run_cli("render", self.composition, "--out", self.dir)
         self.assertEqual(code, 1)
