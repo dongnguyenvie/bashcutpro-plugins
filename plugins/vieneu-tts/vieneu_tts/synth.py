@@ -7,6 +7,8 @@ import subprocess
 import sys
 import wave
 
+import bashcut_cli
+
 from .mcp import AppError
 
 ENGINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine.py")
@@ -26,11 +28,10 @@ def wav_seconds(path):
 def read_lines(texts=None, path=None):
     """[{id, text, seconds?}] from repeated --text, or a JSON file: {"lines": [...]} or a list of lines or strings."""
     if path:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
+        data = bashcut_cli.read_json(path)
         raw = data.get("lines") if isinstance(data, dict) else data
         if not isinstance(raw, list):
-            raise ValueError("%s: expected {\"lines\": [{\"text\": …}]}" % path)
+            raise AppError("bad_args", "%s: expected {\"lines\": [{\"text\": …}]}" % path)
     else:
         raw = list(texts or [])
     lines = []
@@ -38,15 +39,18 @@ def read_lines(texts=None, path=None):
         entry = {"text": entry} if isinstance(entry, str) else dict(entry)
         text = " ".join(str(entry.get("text") or "").split())
         if not text:
-            raise ValueError("line %d has no text" % n)
+            raise AppError("bad_args", "line %d has no text" % n)
         line = {"id": str(entry.get("id") or "l%d" % n), "text": text}
         if entry.get("seconds") is not None:
-            line["seconds"] = float(entry["seconds"])
+            try:
+                line["seconds"] = float(entry["seconds"])
+            except (TypeError, ValueError):
+                raise AppError("bad_args", "line %d: seconds is not a number" % n)
         lines.append(line)
     if not lines:
         raise AppError("bad_args", "give the lines: --text \"…\" (repeatable) or --lines lines.json")
     if len({l["id"] for l in lines}) != len(lines):
-        raise ValueError("line ids must be unique")
+        raise AppError("bad_args", "line ids must be unique")
     return lines
 
 

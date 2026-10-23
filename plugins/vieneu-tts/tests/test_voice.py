@@ -13,6 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 from vieneu_tts import cli  # noqa: E402
+from vieneu_tts.mcp import AppError  # noqa: E402
 from vieneu_tts.synth import pick_take, read_lines, syllables  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
@@ -69,8 +70,13 @@ class LineTests(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"lines": [{"id": "intro", "text": "Chào", "seconds": 2}, "Tạm biệt"]}, f, ensure_ascii=False)
         self.assertEqual(read_lines(path=path), [{"id": "intro", "text": "Chào", "seconds": 2.0}, {"id": "l2", "text": "Tạm biệt"}])
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AppError):
             read_lines(["ok", "  "])
+
+    @unittest.skip("test ticket: speak/synthesize with a line without text, duplicate ids, a non-number seconds, a lines file "
+                   "that is not JSON or not {lines: [...]} each exit 2 with bad_args")
+    def test_bad_lines_are_usage_errors(self):
+        pass
 
     def test_pick_take_closest_to_rate(self):
         entry = {"takes": [{"take": 1, "syllablesPerSecond": 3.0}, {"take": 2, "syllablesPerSecond": 4.6}]}

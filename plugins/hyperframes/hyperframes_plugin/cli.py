@@ -8,7 +8,6 @@ usage error.
 
 import argparse
 import glob
-import json
 import os
 import subprocess
 import sys
@@ -122,10 +121,7 @@ def out_dir(args):
 def json_arg(text, flag):
     if not text:
         return None
-    try:
-        value = json.loads(text)
-    except ValueError as error:
-        raise AppError("bad_args", "%s is not JSON: %s" % (flag, error))
+    value = bashcut_cli.parse_json(text, flag)
     if not isinstance(value, dict):
         raise AppError("bad_args", "%s must be a JSON object" % flag)
     return value
@@ -335,4 +331,4 @@ def main(argv=None):
         args = split_passthrough(argv)
     else:
         args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TimelineError))
+    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))

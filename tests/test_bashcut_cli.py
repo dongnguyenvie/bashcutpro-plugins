@@ -114,6 +114,16 @@ class Result(unittest.TestCase):
     def test_run_steps_output_on_stderr_and_failed_step(self):
         pass
 
+    @unittest.skip("test ticket: run() reports a PluginError (or a subclass) without being given it: bad_args exits 2, "
+                   "a handoff code 3, others 1, and its data lands in the result")
+    def test_run_catches_plugin_errors(self):
+        pass
+
+    @unittest.skip("test ticket: read_json reads a file or stdin for -; a missing file, non-UTF-8 bytes or text that is "
+                   "not JSON raise PluginError bad_args naming the file; parse_json names the flag")
+    def test_read_json_errors_are_bad_args(self):
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

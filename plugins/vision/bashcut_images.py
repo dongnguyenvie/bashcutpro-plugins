@@ -14,17 +14,16 @@ import struct
 import zlib
 from collections import namedtuple
 
+import bashcut_cli
+
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PNG_COLOR = {1: 0, 3: 2, 4: 6}  # channels -> PNG colour type
 
 Image = namedtuple("Image", "width height pixels")
 
 
-class PictureError(ValueError):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+class PictureError(bashcut_cli.PluginError, ValueError):  # a ValueError too: readers that catch ValueError skip it
+    pass
 
 
 def bmp_layout(data):
