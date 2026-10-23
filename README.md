@@ -28,6 +28,7 @@ tools/bashcut_models.py            the downloader (copied into each plugin that 
 tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, connection flags (copied into each plugin)
 tools/bashcut_settings.py          data dir, plugin folder, flag → env → file → default (copied into plugins that use it)
 tools/sync_shared.py               writes those copies (--check lists stale ones)
+tools/new_plugin.py                starts a new plugin from tools/plugin_template/ (see Adding a plugin)
 tools/check_all.py                 every check and every plugin's tests in one run
 tests/                             repo-wide checks: text encoding, find_cli, manifest text, registry, shared copies…
 docs/                              design notes and reviews (docs/review-2026-10.md: duplication and the RP tickets)
@@ -45,23 +46,24 @@ also be run on its own.
 
 ### Adding a plugin
 
-There is no scaffold yet (RP4 in [docs/review-2026-10.md](docs/review-2026-10.md)). A plugin folder is installed on its
-own (the host copies `registry.json`'s `source.path`), so it must not import anything outside its folder; shared code
-is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every plugin, `bashcut_settings.py` into
-those that import it, `bashcut_models.py` into those with `models`), and `tests/test_shared_copies.py` fails while a copy is stale. Today:
+```sh
+python3 tools/new_plugin.py beat-markers --title "Beat Markers" --summary "Puts markers on the beats of the music."     --vi-title "Đánh dấu nhịp" --vi-summary "Đặt marker theo nhịp nhạc." --category audio
+```
 
-1. Copy the closest plugin folder to `plugins/<name>/` and rename its package.
-2. Replace the old id everywhere it is written: `bashcut-plugin.json` (`id`, `name`, `entry`, `skills`), `plugin.py`,
-   `<package>/__init__.py`, `<package>/mcp.py` (the `clientInfo` line only: the rest of `mcp.py` must stay equal to
-   the other plugins'), `<package>/settings.py` (`PLUGIN_ID` and its `SETTINGS` table:
-   `{id: ([env vars], default, secret?)}`, resolved by `bashcut_settings.resolve`), the `progress` name in `cli.py`, the skill.
-3. In `cli.py`, replace the commands; keep `main()` as the others have it: `bashcut_cli.utf8_stdio()`, parse, then
-   `return bashcut_cli.run(COMMANDS[args.command], args, (AppError, …), handoff=(…))`. A command returns
-   `(message, data)` or raises an error with `code` and `message` (and `data` for a hand-off); `connection_args(p)` adds
-   the `connect` flags. Write `tests/fake_filmcraft.py` for the engine calls it makes.
-4. Add the `registry.json` entry and a row to the table above; a plugin that downloads lists its files in
-   `models.json`. Run `tools/sync_shared.py`.
-5. Run `tools/check_all.py` (it finds the new plugin's tests by itself).
+makes `plugins/beat-markers/` from `tools/plugin_template/` (manifest with `i18n.vi`, `plugin.py`, the
+`beat_markers_plugin` package with `cli.py` and the shared `mcp.py`, the skill, a README, `tests/` with a fake engine)
+and its `registry.json` entry; every check passes on it as made (`tests/test_new_plugin.py`). Then replace the example
+`clips` action with the plugin's own: its manifest action and params (English and Vietnamese), a `cmd_<action>` in
+`cli.py` that returns `(message, data)` or raises an error with `code` and `message`, the skill and tests; add a row
+to the table above; run `tools/check_all.py` (it finds the new plugin's tests by itself).
+
+A plugin folder is installed on its own (the host copies `registry.json`'s `source.path`), so it imports nothing
+outside its folder: shared code is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every
+plugin, `bashcut_settings.py` into those that import it, `bashcut_models.py` into those with `models`), and
+`tests/test_shared_copies.py` fails while a copy is stale. Fix shared code in `tools/`, then run `sync_shared.py`. A
+plugin with settings writes a `settings.py` with its `SETTINGS` table (`{id: ([env vars], default, secret?)}`) and
+`bashcut_settings.resolve` (translate-captions shows a secret API key); one that downloads lists its files in
+`models.json` and names them in its manifest's `models`.
 
 ## How a plugin runs
 
