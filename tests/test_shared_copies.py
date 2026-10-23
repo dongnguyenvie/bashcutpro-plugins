@@ -1,26 +1,22 @@
 """Code every plugin vendors stays the same everywhere (RV3 D1, D2): a plugin folder is installed on its own, so
-shared code is copied into each plugin, and a fix made in one copy has to reach the others. `bashcut_cli.py` and
-`bashcut_models.py` are byte copies of `tools/` (`tools/sync_shared.py` writes them); the MCP client (`mcp.py`) may
-differ only in its `clientInfo` line, which names the plugin."""
+shared code is copied into each plugin, and a fix made in one copy has to reach the others. The `bashcut_*.py`
+modules (the MCP client `bashcut_mcp.py` among them) are byte copies of `tools/` (`tools/sync_shared.py` writes
+them); each plugin's `mcp.py` is the template's, which differs only in the plugin id it hands the handshake (RP1)."""
 
 import glob
 import os
-import re
 import sys
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import sync_shared  # noqa: E402
-CLIENT_INFO = re.compile(r'^\s*"clientInfo": \{.*\},\n', re.MULTILINE)
-VERSION_IMPORT = "from . import __version__\n\n"
+TEMPLATE_MCP = os.path.join(ROOT, "tools", "plugin_template", "__PACKAGE__", "mcp.py")
 
 
-def normalised(path):
-    """The file's text without the plugin's own `clientInfo` line (and the `__version__` import it may use)."""
+def read(path):
     with open(path, encoding="utf-8") as f:
-        text = f.read()
-    return CLIENT_INFO.sub("", text.replace(VERSION_IMPORT, "", 1))
+        return f.read()
 
 
 class SharedCopies(unittest.TestCase):
@@ -37,20 +33,14 @@ class SharedCopies(unittest.TestCase):
             for local in ("def emit(", "def utf8_stdio(", "def connection_args(", "def save("):
                 self.assertNotIn(local, text, "%s: use bashcut_cli" % os.path.relpath(path, ROOT))
 
-    def test_mcp_clients_are_the_same(self):
+    def test_every_mcp_py_is_the_template_with_its_plugin_id(self):
         paths = sorted(glob.glob(os.path.join(ROOT, "plugins", "*", "*", "mcp.py")))
         self.assertTrue(paths)
-        reference = normalised(paths[0])
-        for path in paths[1:]:
-            self.assertEqual(normalised(path), reference, "%s differs from %s beyond its clientInfo line"
-                             % (os.path.relpath(path, ROOT), os.path.relpath(paths[0], ROOT)))
-
-    def test_every_client_names_its_plugin(self):
-        for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "*", "*", "mcp.py"))):
+        template = read(TEMPLATE_MCP)
+        for path in paths:
             plugin = os.path.basename(os.path.dirname(os.path.dirname(path)))
-            with open(path, encoding="utf-8") as f:
-                text = f.read()
-            self.assertIn('"clientInfo": {"name": "bashcut.%s"' % plugin, text, os.path.relpath(path, ROOT))
+            self.assertEqual(read(path), template.replace("__ID__", "bashcut." + plugin),
+                             "%s differs from the template's mcp.py" % os.path.relpath(path, ROOT))
 
 
 if __name__ == "__main__":

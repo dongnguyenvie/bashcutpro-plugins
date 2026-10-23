@@ -18,7 +18,6 @@ from bashcut_cli import Handoff, connection_args, save
 from bashcut_frames import footage_items, sample_times, sequence_time
 from bashcut_images import png_size
 from bashcut_models import ModelError, Models
-from bashcut_timeline import TimelineError
 
 from . import __version__
 from .backends import MODELS, backend
@@ -358,4 +357,4 @@ def main(argv=None):
         code = relaunch(argv)
         if code is not None:
             return code
-    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))
+    return bashcut_cli.run(COMMANDS[args.command], args)

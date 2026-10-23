@@ -11,7 +11,6 @@ skill, tests), add its row to the README's plugin table, and run `tools/check_al
 """
 
 import argparse
-import glob
 import json
 import os
 import re
@@ -23,7 +22,6 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import sync_shared  # noqa: E402
 
 NAME = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
-CLIENT_INFO = re.compile(r'"clientInfo": \{"name": "[^"]*", "version": [^}]*\}')
 
 
 def tokens(name, title, summary, category, vi_title="", vi_summary=""):
@@ -49,19 +47,6 @@ def copy_template(root, folder, values):
                 text = fill(f.read(), values)
             with open(os.path.join(target, fill(name, values)), "w", encoding="utf-8", newline="\n") as f:
                 f.write(text)
-
-
-def copy_mcp(root, folder, values):
-    """The MCP client every plugin shares (tests/test_shared_copies.py), with this plugin's `clientInfo`."""
-    others = sorted(glob.glob(os.path.join(root, "plugins", "*", "*", "mcp.py")))
-    if not others:
-        raise SystemExit("no plugin with an mcp.py to copy the MCP client from")
-    with open(others[0], encoding="utf-8") as f:
-        text = f.read()
-    info = '"clientInfo": {"name": "%s", "version": "0.1.0"}' % values["__ID__"]
-    text = CLIENT_INFO.sub(info, text, count=1).replace("from . import __version__\n\n", "", 1)
-    with open(os.path.join(folder, values["__PACKAGE__"], "mcp.py"), "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
 
 
 def register(root, name, values):
@@ -96,7 +81,6 @@ def create(root, name, title, summary, vi_title, vi_summary, category="other"):
         raise SystemExit("plugins/%s already exists" % name)
     values = tokens(name, title, summary.rstrip(), category, vi_title, vi_summary.rstrip())
     copy_template(root, folder, values)
-    copy_mcp(root, folder, values)
     for src, dst in sync_shared.stale(root):
         if os.path.dirname(dst) == folder:
             shutil.copyfile(src, dst)

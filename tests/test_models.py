@@ -131,6 +131,13 @@ class DownloadTests(unittest.TestCase):
             self.assertEqual(f.read(), "a" * 40)
 
 
+class ErrorTests(unittest.TestCase):
+    @unittest.skip("test ticket: ModelError is a bashcut_cli.PluginError, so a download_failed raised inside a command "
+                   "is printed by bashcut_cli.run as {ok: false} with exit 1 instead of a traceback")
+    def test_model_error_is_a_plugin_error(self):
+        pass
+
+
 class CheckTests(unittest.TestCase):
     def test_repository_models_are_fine(self):
         self.assertEqual(check_models.check(), [])

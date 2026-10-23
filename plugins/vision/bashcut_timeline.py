@@ -14,17 +14,14 @@ identical copy next to its `plugin.py`; `python3 tools/sync_shared.py` writes th
 import os
 import re
 
+import bashcut_cli
+
 TPS = 254016000000  # ticks per second
 KINDS = {"video": "V", "audio": "A"}
 
 
-class TimelineError(Exception):
+class TimelineError(bashcut_cli.PluginError):
     """A bad track name or a failed import; `code` and `message` as in the result protocol."""
-
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
 
 
 def ticks(seconds):

@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vieneu-tts",
   "name": "VieNeu TTS (Vietnamese)",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "summary": "Vietnamese voiceover on this computer with VieNeu-TTS v3 Turbo (25 preset voices, voice cloning with consent), imported and placed on an audio track.",
   "publisher": "dongnguyenvie",
   "license": "MIT",

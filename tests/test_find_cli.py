@@ -1,4 +1,4 @@
-"""Every plugin's `mcp.find_cli` (BashCutPro#154): `bashcutpro` first, else `filmcraft-cli`; BASHCUTPRO_CLI, then FILMCRAFT_CLI."""
+"""The shared MCP client's `find_cli` (`bashcut_mcp`, every plugin's `mcp.py` uses it; BashCutPro#154): `bashcutpro` first, else `filmcraft-cli`; BASHCUTPRO_CLI, then FILMCRAFT_CLI."""
 
 import glob
 import importlib
@@ -15,16 +15,24 @@ EXE = ".exe" if sys.platform == "win32" else ""
 
 
 def plugin_modules():
-    """(plugin, its mcp module) for every plugin that ships an MCP client."""
-    out = []
+    """(where, the module defining find_cli) for the shared client in `tools/` and the copy each plugin's `mcp.py`
+    resolves (one module per name in a process; `tests/test_shared_copies.py` keeps the copies byte-equal)."""
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    try:
+        out = [("tools", importlib.import_module("bashcut_mcp"))]
+    finally:
+        sys.path.remove(os.path.join(ROOT, "tools"))
     for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "*", "*", "mcp.py"))):
         package_dir = os.path.dirname(path)
         plugin_dir = os.path.dirname(package_dir)
         sys.path.insert(0, plugin_dir)
         try:
-            out.append((os.path.basename(plugin_dir), importlib.import_module(os.path.basename(package_dir) + ".mcp")))
+            mod = importlib.import_module(os.path.basename(package_dir) + ".mcp")
         finally:
             sys.path.remove(plugin_dir)
+        shared = sys.modules[mod.find_cli.__module__]
+        if all(shared is not m for _, m in out):
+            out.append((os.path.basename(plugin_dir), shared))
     return out
 
 
