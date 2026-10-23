@@ -1,0 +1,51 @@
+{
+  "schema": "bashcut-plugin/1",
+  "id": "__ID__",
+  "name": "__TITLE__",
+  "version": "0.1.0",
+  "summary": "__SUMMARY__",
+  "i18n": {"vi": {"name": "__VI_TITLE__", "summary": "__VI_SUMMARY__"}},
+  "publisher": "dongnguyenvie",
+  "license": "MIT",
+  "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/__NAME__",
+  "category": "__CATEGORY__",
+  "platforms": ["macos", "windows", "linux"],
+  "runtime": {
+    "type": "python",
+    "version": ">=3.9",
+    "packages": []
+  },
+  "entry": {
+    "command": ["python3", "plugin.py"],
+    "windows": ["py", "-3", "plugin.py"]
+  },
+  "connect": {
+    "project": ["--project", "{project}"],
+    "bridge": ["--bridge", "{address}"],
+    "cli": ["--cli", "{cli}"]
+  },
+  "output": "bashcut-result/1",
+  "app": {
+    "minVersion": "0.9.0",
+    "connections": ["mcp-headless", "mcp-bridge"],
+    "tools": ["sequence_inspect"],
+    "commands": [],
+    "effects": []
+  },
+  "settings": [],
+  "actions": [
+    {
+      "id": "clips",
+      "title": "Count the clips",
+      "args": ["clips"],
+      "needs": "project",
+      "edits": false,
+      "params": [
+        {"id": "kind", "title": "Tracks", "flag": "--kind", "type": "enum", "choices": ["all", "video", "audio"], "default": "all",
+         "i18n": {"vi": {"title": "Track", "choices": {"all": "Tất cả", "video": "Hình", "audio": "Âm thanh"}}}}
+      ],
+      "i18n": {"vi": {"title": "Đếm số clip"}}
+    }
+  ],
+  "skills": ["skills/__NAME__/SKILL.md"]
+}
