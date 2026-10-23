@@ -137,6 +137,13 @@ python3 tools/check_registry.py --fix
 `i18n.<lang>.name`) and every `__version__` in the plugin's Python (tests aside), keeps the file's layout, prints
 each change and then runs the check. The `summary` lines and a new plugin's entry stay hand-written.
 
+Parallel branches can bump a plugin to the same number. So the check also compares each plugin whose files changed
+since the merge base with `origin/main` (committed, staged or not, untracked; a change only in its `tests/` aside)
+with that plugin's version on the tip of `origin/main`: the manifest's must be greater, or the check fails with the
+plugin and both versions. Right before merging: `git fetch`, rebase, run the check, bump again (manifest + `--fix`)
+if `main` got there first. `--base <ref>` (or `BASHCUT_VERSION_BASE`) picks another ref, `--base ""` skips it, and
+without git or the ref it prints a notice and skips; `tools/check_all.py --base <ref>` passes it on.
+
 ```json
 {
   "schema": "bashcut-registry/1",

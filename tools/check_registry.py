@@ -3,10 +3,14 @@
 
     python3 tools/check_registry.py          # prints problems, exit 1 when there are any
     python3 tools/check_registry.py --fix    # first copies the manifests into registry.json and `__version__`
+    python3 tools/check_registry.py --base origin/main   # the base ref of the version-bump check ("" skips it)
 
 A version bump is one edit (the manifest's `version`) and `--fix`: it writes the registry entry's derived fields
 (`name`, `version`, `category`, `platforms`, `minAppVersion`, `path`, `i18n.<lang>.name`) and every `__version__`
 in the plugin's Python. The registry's own `summary` lines, and a plugin missing from it, stay hand-written.
+
+A plugin whose files (its `tests/` aside) differ from the base ref (default `origin/main`, or `BASHCUT_VERSION_BASE`)
+must have a manifest version greater than the base's, so two branches that bump to the same number do not both merge.
 """
 
 import argparse
@@ -357,15 +361,80 @@ def fix_python_version(base, version, root=ROOT):
     return changed
 
 
+def version_key(version):
+    return tuple(int(n) for n in version.split(".")) if isinstance(version, str) and VERSION.match(version) else None
+
+
+def git(root, *args):
+    """stdout of a git command in `root`, or None when git is missing or the command fails."""
+    try:
+        run = subprocess.run(["git", "-C", root] + list(args), capture_output=True, text=True, encoding="utf-8")
+    except OSError:
+        return None
+    return run.stdout if run.returncode == 0 else None
+
+
+def changed_plugins(root, base):
+    """Plugin folders with files changed since the merge base with `base` (committed, staged, unstaged or
+    untracked), a change only in the plugin's `tests/` aside; None when git or the ref is unavailable."""
+    if git(root, "rev-parse", "--verify", "--quiet", base + "^{commit}") is None:
+        return None
+    fork = (git(root, "merge-base", base, "HEAD") or "").strip()
+    if not fork:
+        return None
+    files = (git(root, "diff", "--name-only", fork, "--", "plugins") or "").splitlines()
+    files += (git(root, "ls-files", "--others", "--exclude-standard", "--", "plugins") or "").splitlines()
+    names = set()
+    for f in files:
+        parts = f.split("/")
+        if len(parts) > 2 and parts[0] == "plugins" and parts[2] != "tests":
+            names.add(parts[1])
+    return sorted(names)
+
+
+def check_version_bumps(root=ROOT, base="origin/main"):
+    """(problems, notice): a changed plugin's manifest version must be greater than the version at `base` (the tip,
+    not the merge base, so a bump another branch merged first counts); a plugin new at `base` has nothing to beat."""
+    names = changed_plugins(root, base)
+    if names is None:
+        return [], "version-bump check skipped: git or the ref %s is not available" % base
+    problems = []
+    for name in names:
+        path = os.path.join(root, "plugins", name, "bashcut-plugin.json")
+        old = git(root, "show", "%s:plugins/%s/bashcut-plugin.json" % (base, name))
+        if old is None or not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                mine = json.load(f).get("version")
+            theirs = json.loads(old).get("version")
+        except (OSError, ValueError, AttributeError):
+            continue
+        if version_key(mine) is None or version_key(theirs) is None:
+            continue
+        if version_key(mine) <= version_key(theirs):
+            problems.append("plugins/%s: version %s must be greater than %s on %s (its files changed; bump the "
+                            "manifest's version, then --fix)" % (name, mine, theirs, base))
+    return problems, None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Check registry.json and every plugin manifest.")
     parser.add_argument("--fix", action="store_true",
                         help="first copy the manifests into registry.json's derived fields and every __version__")
+    parser.add_argument("--base", default=os.environ.get("BASHCUT_VERSION_BASE", "origin/main"),
+                        help="git ref a changed plugin's version must be greater than (default origin/main, or "
+                             "BASHCUT_VERSION_BASE); an empty value skips the check")
     args = parser.parse_args(argv)
     if args.fix:
         for line in fix():
             print("fixed " + line)
     problems = check()
+    if args.base:
+        bumps, notice = check_version_bumps(ROOT, args.base)
+        if notice:
+            print(notice)
+        problems += bumps
     for p in problems:
         print(p)
     if not problems:
