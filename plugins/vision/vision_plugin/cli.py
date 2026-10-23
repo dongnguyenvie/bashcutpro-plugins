@@ -249,6 +249,8 @@ def cmd_subjects(args):
 
 
 def agent_frames(app, clips, count, folder):
+    """Stills for the agent (or Tesseract) in `folder`, emptied first so frames of earlier runs do not pile up."""
+    shutil.rmtree(folder, ignore_errors=True)
     os.makedirs(folder, exist_ok=True)
     frames = []
     for clip in clips:
@@ -272,13 +274,27 @@ def cmd_ocr(args):
             "frames": frames, "sidecar": path, "then": "ocr-apply",
             "answer": {"frames": [{"clip": "<id>", "time": "<ticks>", "text": [{"text": "…", "x": 0.1, "y": 0.8, "w": 0.8, "h": 0.08}]}]}})
     lines = 0
-    for frame in frames:
-        width, height = read_png_size(frame["path"])
-        frame["text"] = read_text(tesseract, frame["path"], width, height, args.languages)
-        lines += len(frame["text"])
+    try:
+        for frame in frames:
+            width, height = read_png_size(frame["path"])
+            frame["text"] = read_text(tesseract, frame.pop("path"), width, height, args.languages)
+            lines += len(frame["text"])
+    finally:
+        shutil.rmtree(os.path.join(os.path.dirname(path), "vision-frames"), ignore_errors=True)
     store_text(sidecar, clips, frames)
     save_sidecar(path, sidecar)
     return "Read %d lines of text on %d frames (sidecar %s)" % (lines, len(frames), path), {"sidecar": path, "frames": frames}
+
+
+def ticks(value):
+    """A frame time as int ticks: an agent may answer "120" or 120.0 where the sidecar stores 120."""
+    try:
+        try:
+            return int(value or 0)
+        except ValueError:
+            return int(float(value))
+    except (TypeError, ValueError, OverflowError):
+        raise AppError("bad_args", "a frame time must be a number of ticks, not %r" % (value,))
 
 
 def store_text(sidecar, clips, frames):
@@ -286,9 +302,18 @@ def store_text(sidecar, clips, frames):
     for frame in frames:
         clip = by_clip.get(frame["clip"]) or {"clip": frame["clip"]}
         entry = clip_entry(sidecar, clip) if frame["clip"] in by_clip else sidecar["clips"].setdefault(str(frame["clip"]), {})
-        texts = [t for t in entry.get("text") or [] if t.get("time") != frame.get("time")]
-        texts.append({"time": frame.get("time"), "lines": frame.get("text") or []})
-        entry["text"] = sorted(texts, key=lambda t: t.get("time") or 0)
+        time = ticks(frame.get("time"))
+        # entries stored before times were ints: kept as ints, dropped when their time is unreadable
+        texts = []
+        for t in entry.get("text") or []:
+            try:
+                stored = ticks(t.get("time"))
+            except AppError:
+                continue
+            if stored != time:
+                texts.append(dict(t, time=stored))
+        texts.append({"time": time, "lines": frame.get("text") or []})
+        entry["text"] = sorted(texts, key=lambda t: t["time"])
 
 
 def cmd_ocr_apply(args):

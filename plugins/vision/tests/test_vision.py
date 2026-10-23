@@ -176,6 +176,22 @@ class TextAndDescriptionTests(Base):
         self.assertEqual((lines[0]["x"], lines[0]["y"], lines[0]["w"]), (0.1, 0.9, 0.18))
 
 
+    @unittest.skip("test ticket: a Tesseract that runs past the timeout ends ocr with ocr_failed JSON, not a traceback")
+    def test_tesseract_timeout_is_an_ocr_failed_error(self):
+        pass
+
+    @unittest.skip("test ticket: ocr-apply with string and float times next to stored int times stores ints, sorted")
+    def test_ocr_apply_turns_the_agent_times_into_ticks(self):
+        pass
+
+    @unittest.skip("test ticket: ocr-apply with a time that is not a number exits 2 (bad_args) and saves nothing")
+    def test_ocr_apply_refuses_a_time_that_is_not_a_number(self):
+        pass
+
+    @unittest.skip("test ticket: a second ocr/describe run leaves only its own frames in vision-frames; ocr with Tesseract removes the folder")
+    def test_agent_frames_do_not_pile_up(self):
+        pass
+
 class ModelsTests(Base):
     def test_models_are_listed_from_models_json(self):
         code, result = self.run_cli("models", project=False)

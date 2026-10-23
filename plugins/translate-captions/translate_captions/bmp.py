@@ -9,7 +9,7 @@ import struct
 def read_gray(data, max_width=320):
     """(grid, width, height): the green channel (close to luma) of a 24- or 32-bit BMP, downsampled to at
     most `max_width` columns by taking every n-th pixel and row. `width`/`height` are the full size."""
-    if data[:2] != b"BM":
+    if data[:2] != b"BM" or len(data) < 54:
         raise ValueError("not a BMP file")
     offset = struct.unpack_from("<I", data, 10)[0]
     width, height = struct.unpack_from("<ii", data, 18)
@@ -21,6 +21,8 @@ def read_gray(data, max_width=320):
     height = abs(height)
     channels = bits // 8
     stride = (width * channels + 3) & ~3
+    if width <= 0 or height == 0 or offset < 54 or offset + stride * (height - 1) + width * channels > len(data):
+        raise ValueError("truncated or damaged BMP (%dx%d, %d bytes)" % (width, height, len(data)))
     step = max(1, -(-width // max_width))
     grid = []
     for y in range(0, height, step):
