@@ -116,11 +116,7 @@ def connect(args):
 
 
 def out_dir(args):
-    if getattr(args, "out", None):
-        return os.path.abspath(args.out)
-    if getattr(args, "project", None):
-        return os.path.join(os.path.dirname(os.path.abspath(args.project)), "graphics", "renders")
-    return os.path.abspath("hyperframes-renders")
+    return bashcut_cli.out_dir(args, os.path.join("graphics", "renders"), "hyperframes-renders")
 
 
 def json_arg(text, flag):

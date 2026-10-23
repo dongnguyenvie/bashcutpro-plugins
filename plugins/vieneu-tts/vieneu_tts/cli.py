@@ -137,11 +137,7 @@ def voice_options(args):
 
 
 def out_dir(args):
-    if args.out:
-        return os.path.abspath(args.out)
-    if getattr(args, "project", None):
-        return os.path.join(os.path.dirname(os.path.abspath(args.project)), "voiceover", "vieneu")
-    return os.path.abspath("vieneu-takes")
+    return bashcut_cli.out_dir(args, os.path.join("voiceover", "vieneu"), "vieneu-takes")
 
 
 def voice_lines(args):

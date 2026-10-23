@@ -10,6 +10,8 @@ from bashcut_timeline import TPS
 from .translate import Line, max_chars
 
 LINES_FORMAT = "bashcut.translate-captions.lines/1"
+# What `apply --answer` reads: a translation per exported line, named by its caption id
+ANSWER = {"lines": [{"caption": "<caption>", "text": "<translation>"}]}
 
 
 def caption_tracks(listing, track=None):
@@ -55,14 +57,16 @@ def set_text_steps(lines, translated):
 
 
 def export_lines(lines, target, max_cps):
-    """What an agent gets when there is no key: the lines with their budgets, and how to answer."""
+    """What an agent gets when there is no key: the lines with their budgets, the command to run (`then`) and a
+    template of its answer (`answer`, one entry per line)."""
     return {
         "format": LINES_FORMAT,
         "target": target,
         "maxCps": max_cps,
         "lines": [{"id": l.id, "caption": l.caption, "seconds": round(l.seconds, 2),
                    "maxChars": max_chars(l.seconds, max_cps), "text": l.text} for l in lines],
-        "answer": 'Write {"lines": [{"caption": <caption>, "text": "<translation>"}]} for every line, then run `apply`.',
+        "then": "apply",
+        "answer": ANSWER,
     }
 
 

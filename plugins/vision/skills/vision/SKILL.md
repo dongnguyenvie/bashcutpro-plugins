@@ -7,7 +7,8 @@ description: Picture understanding for a BashCutPro project with the bashcut.vis
 
 `VS` means `python3 <plugin dir>/plugin.py` (`py -3 …` on Windows). Commands on the project take `--bridge
 127.0.0.1:<port>` (the open app; then also `--sidecar <file.json>`) or `--project <file.fcproj>` (headless, saved
-unless `--no-save`). Every command prints one JSON object; exit 3 is a hand-off to you.
+unless `--no-save`). Every command prints one JSON object; exit 3 is a hand-off to you: do the work, write your
+answer in the shape of `data.answer` and run the command in `data.then` with it.
 
 ## Once
 

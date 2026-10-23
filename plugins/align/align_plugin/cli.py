@@ -79,11 +79,7 @@ def known_lines(args):
 
 
 def out_dir(args):
-    if args.out:
-        return os.path.abspath(args.out)
-    if args.project:
-        return os.path.join(os.path.dirname(os.path.abspath(args.project)), "align")
-    return os.path.abspath("align-out")
+    return bashcut_cli.out_dir(args, "align", "align-out")
 
 
 def engine_words(app):

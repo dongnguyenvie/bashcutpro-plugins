@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.vision",
   "name": "Vision",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "summary": "Picture understanding out of process: cut out a person or object (alpha PNG sequence placed above the clip), face and person boxes per shot with face-following reframe, on-screen text with boxes, and shot descriptions by your agent.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
