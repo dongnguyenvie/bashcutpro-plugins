@@ -582,26 +582,96 @@ class FontTests(unittest.TestCase):
 
 
 class SharedHelperTests(unittest.TestCase):
-    @unittest.skip("test ticket: fetch_stock.slug caps at limit (None: no cap), strips a trailing '-', returns the fallback when nothing is left")
+    def setUp(self):
+        self.stock = load('stock-images/fetch_stock.py')
+
     def test_slug_limit_and_fallback(self):
-        pass
+        slug = self.stock.slug
+        self.assertEqual(slug('Clay pot, Hà Nội!'), 'clay-pot-h-n-i')
+        self.assertEqual(len(slug('word ' * 20)), 39)  # 40, then the trailing '-' goes
+        self.assertEqual(slug('ab cd', limit=3), 'ab')
+        self.assertEqual(slug('x' * 60, limit=None), 'x' * 60)
+        self.assertEqual(slug('!!!'), 'stock')
+        self.assertEqual(slug('', 'lut'), 'lut')
+        self.assertEqual(slug(None, ''), '')
 
-    @unittest.skip("test ticket: shared_dir uses BASHCUT_SHARED_DATA / BASHCUT_SHARED_CACHE, else <plugin data dir>/shared or /cache (no ~/Library off macOS)")
     def test_shared_dir_env_then_plugin_folder(self):
-        pass
+        with tempfile.TemporaryDirectory() as folder:
+            with mock.patch.dict(os.environ, {'BASHCUT_SHARED_DATA': os.path.join(folder, 'd'),
+                                              'BASHCUT_SHARED_CACHE': os.path.join(folder, 'c')}, clear=True):
+                self.assertEqual(self.stock.shared_dir('emoji'), Path(folder) / 'd' / 'emoji')
+                self.assertEqual(self.stock.shared_dir('luts', 'cache'), Path(folder) / 'c' / 'luts')
+            plugin = Path(folder) / 'bashcut-plugins' / 'bashcut.resources'
+            with mock.patch.dict(os.environ, {'FILMCRAFT_DATA_DIR': folder}, clear=True):
+                self.assertEqual(self.stock.shared_dir('fonts'), plugin / 'shared' / 'fonts')
+                self.assertEqual(self.stock.shared_dir('fonts', 'cache'), plugin / 'cache' / 'fonts')
+            with mock.patch.dict(os.environ, {'HOME': folder}, clear=True), mock.patch('sys.platform', 'linux'):
+                self.assertEqual(self.stock.shared_dir('luts'),
+                                 Path(folder) / '.local' / 'share' / 'filmcraft' / 'bashcut-plugins' / 'bashcut.resources'
+                                 / 'shared' / 'luts')
 
-    @unittest.skip("test ticket: an Openverse pdm photo is 'Public Domain Mark' in fetch_stock as in fetch_audio")
     def test_openverse_photo_licence_matches_audio(self):
-        pass
+        audio = load('audio-mix/fetch_audio.py')
+        photo = {'id': 'pd-1', 'url': 'https://live.staticflickr.com/1.jpg', 'license': 'pdm', 'creator': 'Library'}
+        self.assertEqual(self.stock.openverse_row(photo, 'photo', 1080)['license'], 'Public Domain Mark')
+        web = FakeWeb([('https://api.openverse.org/v1/audio/', {'results': [openverse_hit(1, 'pdm', '1.0')]})])
+        with mock.patch.object(audio, 'get', web):
+            rows = audio.music_candidates('old march', 1, 30)
+        self.assertEqual(rows[0]['license'], 'Public Domain Mark')
+        for code, version in (('cc0', '1.0'), ('by-sa', '4.0'), ('pdm', None)):
+            hit = {'license': code, 'license_version': version}
+            self.assertEqual(self.stock.openverse_licence(hit), audio.openverse_licence(hit))
 
-    @unittest.skip("test ticket: a --slots query with no letters or digits gets slot<n>, not 'stock'")
     def test_empty_query_slot_name(self):
-        pass
+        with tempfile.TemporaryDirectory() as folder:
+            slots = Path(folder) / 'slots.json'
+            slots.write_text(json.dumps([{'query': '!!!'}, {'query': 'Clay pot'}, {'query': '…'}]), encoding='utf-8')
+            args = mock.Mock(slots=str(slots), query=None, kind='photo', orientation='portrait', candidates=4)
+            read = self.stock.read_slots(args)
+        self.assertEqual([s['slot'] for s in read], ['slot1', 'clay-pot', 'slot3'])
+        self.assertEqual({s['count'] for s in read}, {4})
 
-    @unittest.skip("test ticket: label_font takes the first LABEL_FONTS entry that loads (Windows %WINDIR%\\Fonts, Linux DejaVu/Noto), and its glyphs cover 'Phở Hà Nội'")
+    @unittest.skipIf(PIL is None, 'Pillow not installed')
     def test_label_font_has_vietnamese_on_windows_and_linux(self):
-        pass
+        from PIL import ImageFont
+        real = ImageFont.truetype
+        source = next((p for p in self.stock.LABEL_FONTS if os.path.isabs(p) and covers(p, 'Phở Hà Nội')), None)
+        if source is None:
+            self.skipTest('no font with Vietnamese on this machine')
+        with tempfile.TemporaryDirectory() as windir, mock.patch.dict(os.environ, {'WINDIR': windir}):
+            stock = load('stock-images/fetch_stock.py')  # WINDOWS_FONTS is read on import
+            fonts = Path(windir) / 'Fonts'
+            self.assertIn(str(fonts / 'segoeui.ttf'), stock.LABEL_FONTS)
+            for system, there in (('windows', str(fonts / 'arial.ttf')),
+                                  ('linux', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+                                  ('linux', '/usr/share/fonts/noto/NotoSans-Regular.ttf')):
+                asked = []
 
+                def truetype(path, size, *args, **kwargs):
+                    asked.append(path)
+                    if path != there:  # only that one font is installed
+                        raise OSError('cannot open resource')
+                    return real(source, size)
+
+                with mock.patch.object(ImageFont, 'truetype', truetype):
+                    font = stock.label_font(18)
+                self.assertEqual(asked[-1], there, system)
+                self.assertEqual(asked, list(stock.LABEL_FONTS[:stock.LABEL_FONTS.index(there) + 1]), system)
+                self.assertIsInstance(font, ImageFont.FreeTypeFont, system)
+                self.assertTrue(covers(font.path, 'Phở Hà Nội'), system)
+
+
+def covers(path, text):
+    """True when the font file at path has a glyph for every letter of text."""
+    try:
+        from fontTools.ttLib import TTFont, TTCollection
+        font = TTFont(path, fontNumber=0) if not path.lower().endswith('.ttc') else TTCollection(path).fonts[0]
+    except ImportError:
+        return os.path.isfile(path)  # without fontTools: only that it is there
+    except Exception:
+        return False
+    cmap = font.getBestCmap() or {}
+    return all(ord(c) in cmap for c in text if not c.isspace())
 
 if __name__ == '__main__':
     unittest.main()

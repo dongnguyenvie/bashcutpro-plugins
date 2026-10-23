@@ -178,14 +178,38 @@ class FetchTests(Base):
         code, out = self.run_cli("credits", "--folder", self.dest, project=False)
         self.assertEqual(out["data"]["credits"], ["- pot.jpg, by Ann Ó, CC BY 4.0, https://commons.wikimedia.org/wiki/File:pot.jpg"])
 
-    @unittest.skip("test ticket: setup with a step that prints to stdout (fake python/uv): stdout is exactly one JSON object, the step output is on stderr")
+    @unittest.skipIf(sys.platform == "win32", "the fake Python is a shell script")
     def test_setup_stdout_is_one_json_object(self):
-        pass
+        fake = os.path.join(self.dir, "fake-python")
+        with open(fake, "w", encoding="utf-8") as f:  # a Python (and later the venv's) that talks on stdout
+            f.write('#!/bin/sh\necho "step output on stdout: $*"\n'
+                    'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
+        os.chmod(fake, 0o755)
+        env = dict(os.environ, FILMCRAFT_DATA_DIR=self.dir)
+        done = subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "plugin.py"), "setup", "--python", fake],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        result = json.loads(done.stdout.decode("utf-8"))  # the whole of stdout is one object
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(result["data"]["steps"]), 2)
+        self.assertNotIn(b"step output", done.stdout)
+        err = done.stderr.decode("utf-8")
+        self.assertIn("step output on stdout: -m venv", err)
+        self.assertIn("step output on stdout: -m pip install", err)
 
-
-    @unittest.skip("test ticket: a script that exits non-zero with no lines after its files were imported reports success with a note")
     def test_fetch_succeeds_when_files_were_imported_before_the_script_failed(self):
-        pass
+        code, out = self.run_cli("fetch", "--script", "stock", "--import", "--args",
+                                 json.dumps(["--ids", "pot", "--dest", self.dest, "--fail"]))
+        self.assertEqual(code, 0, out)
+        self.assertTrue(out["ok"])
+        data = out["data"]
+        self.assertEqual((data["exit"], data["lines"]), (1, []))
+        self.assertEqual([os.path.basename(i["path"]) for i in data["imported"]], ["pot.jpg"])
+        self.assertIn("fetch_stock exited 1 after its files were imported", out["message"])
+        code, out = self.run_cli("fetch", "--script", "stock", "--args",
+                                 json.dumps(["--ids", "pot", "--dest", self.dest, "--fail"]), project=False)
+        self.assertEqual((code, out["error"]["code"]), (1, "script_failed"))  # nothing imported: a failure
+
 
 class OutputTests(unittest.TestCase):
     def test_the_result_is_utf8_whatever_the_console_code_page(self):
