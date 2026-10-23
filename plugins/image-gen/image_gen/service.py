@@ -7,7 +7,6 @@ inline images, OpenAI `images/edits`), with a line asking to keep their characte
 """
 
 import base64
-import json
 import math
 import os
 import re
@@ -17,6 +16,9 @@ import urllib.error
 import urllib.request
 import uuid
 
+import bashcut_ai
+from bashcut_ai import is_local
+
 from .picture import PictureError, fit
 
 DEFAULT_MODELS = {"gemini": "gemini-2.5-flash-image", "openai": "gpt-image-1"}
@@ -24,15 +26,8 @@ GEMINI_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"
 OPENAI_SIZES = {"1:1": "1024x1024", "2:3": "1024x1536", "3:2": "1536x1024"}
 
 
-class ImageError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-
-
-def is_local(endpoint):
-    return bool(re.match(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(/|$)", endpoint or ""))
+class ImageError(bashcut_ai.AIError):
+    pass
 
 
 def safe_name(ident):
@@ -91,34 +86,20 @@ def nearest(width, height, ratios):
     return min(ratios, key=lambda r: abs(math.log(value(r) / wanted)))
 
 
-class Service:
-    """Gemini or OpenAI (or an OpenAI-compatible server) with the user's key, model and endpoint."""
+class Service(bashcut_ai.Client):
+    """Gemini or OpenAI (or an OpenAI-compatible server) with the user's key, model and endpoint (the shared
+    `bashcut_ai.Client`: key, model and endpoint checks, retries)."""
+
+    error = ImageError
+    default_models = DEFAULT_MODELS
+    timeout = 240
 
     def __init__(self, service="gemini", api_key="", model="", endpoint="", sleep=time.sleep, on_wait=None):
-        if service not in ("gemini", "openai"):
-            raise ImageError("bad_service", "service must be gemini or openai, not %s" % service)
-        self.kind = service
-        self.key = (api_key or "").strip()
-        base = (endpoint or "").strip().rstrip("/")
-        if not self.key and not (service == "openai" and is_local(base)):
-            raise ImageError("no_key", "No %s API key: pass --api-key or set BASHCUT_IMAGE_API_KEY or %s (a local "
-                             "OpenAI-compatible server needs none: --service openai --endpoint http://127.0.0.1:<port>)"
-                             % (self.name, "GEMINI_API_KEY" if service == "gemini" else "OPENAI_API_KEY"))
-        chosen = (model or "").strip()
-        self.model = DEFAULT_MODELS[service] if chosen in ("", "auto") else chosen
-        self.endpoint = base or ("https://generativelanguage.googleapis.com" if service == "gemini" else "https://api.openai.com")
-        if not (self.endpoint.startswith("https://") or is_local(self.endpoint)):
-            raise ImageError("bad_endpoint", "The endpoint must be an https address (or a server on this machine)")
-        self.sleep = sleep
-        self.on_wait = on_wait or (lambda message: None)
+        super().__init__(service, api_key, model, endpoint, on_wait=on_wait, sleep=sleep)
 
-    @property
-    def name(self):
-        return "Gemini" if self.kind == "gemini" else "OpenAI"
-
-    @property
-    def label(self):
-        return "%s (%s)" % (self.name, self.model)
+    def no_key_message(self):
+        return ("No %s API key: pass --api-key or set BASHCUT_IMAGE_API_KEY or %s (a local OpenAI-compatible server "
+                "needs none: --service openai --endpoint http://127.0.0.1:<port>)" % (self.name, bashcut_ai.KEY_ENV[self.kind]))
 
     def generate(self, prompt, style, width, height):
         """The picture's encoded bytes (PNG, JPEG or WebP)."""
@@ -132,25 +113,20 @@ class Service:
         config = {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": nearest(width, height, GEMINI_RATIOS)}}
         if style.seed is not None:
             config["seed"] = style.seed
-        body = json.dumps({"contents": [{"role": "user", "parts": parts}], "generationConfig": config}).encode("utf-8")
-        answer = self._send("/v1beta/models/%s:generateContent" % self.model, body,
-                            {"Content-Type": "application/json", "x-goog-api-key": self.key})
-        candidates = answer.get("candidates") or []
-        for candidate in candidates:
+        answer = self.send("/v1beta/models/%s:generateContent" % self.model,
+                           {"contents": [{"role": "user", "parts": parts}], "generationConfig": config})
+        for candidate in answer.get("candidates") or []:
             for part in (candidate.get("content") or {}).get("parts") or []:
                 inline = part.get("inlineData") or part.get("inline_data") or {}
                 if inline.get("data"):
                     return base64.b64decode(inline["data"])
-        reason = (candidates[0].get("finishReason") if candidates else None) or (answer.get("promptFeedback") or {}).get("blockReason")
+        reason = bashcut_ai.finish_reason(answer)
         raise ImageError("no_image", "Gemini returned no picture" + (" (%s)" % reason if reason else ""))
 
     def _openai(self, prompt, style, width, height):
         size = OPENAI_SIZES[nearest(width, height, list(OPENAI_SIZES))]
-        headers = {"Authorization": "Bearer " + self.key} if self.key else {}
         if not style.references:
-            body = json.dumps({"model": self.model, "prompt": prompt, "size": size, "n": 1}).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-            answer = self._send("/v1/images/generations", body, headers)
+            answer = self.send("/v1/images/generations", {"model": self.model, "prompt": prompt, "size": size, "n": 1})
         else:
             form = Multipart()
             form.field("model", self.model)
@@ -158,8 +134,9 @@ class Service:
             form.field("size", size)
             for path in style.references:
                 form.file("image[]", path, mime_type(path))
+            headers = self.headers()
             headers["Content-Type"] = "multipart/form-data; boundary=" + form.boundary
-            answer = self._send("/v1/images/edits", form.finished(), headers)
+            answer = self.send("/v1/images/edits", form.finished(), headers)
         first = (answer.get("data") or [{}])[0]
         if first.get("b64_json"):
             return base64.b64decode(first["b64_json"])
@@ -173,36 +150,6 @@ class Service:
             except (urllib.error.URLError, socket.timeout, ConnectionError) as error:
                 raise ImageError("network", "The OpenAI picture link did not answer: %s" % getattr(error, "reason", error))
         raise ImageError("no_image", "OpenAI returned no picture")
-
-    def _send(self, path, body, headers):
-        """One call: a refused key raises `auth` (stops the batch); 429 and 5xx are tried again a few times."""
-        last = None
-        for attempt in range(4):
-            request = urllib.request.Request(self.endpoint + path, data=body, headers=headers, method="POST")
-            try:
-                with urllib.request.urlopen(request, timeout=240) as response:
-                    return json.loads(response.read().decode("utf-8") or "{}")
-            except urllib.error.HTTPError as error:
-                status = error.code
-                try:
-                    payload = json.loads(error.read().decode("utf-8") or "{}")
-                except ValueError:
-                    payload = {}
-            except (urllib.error.URLError, socket.timeout, ConnectionError) as error:
-                raise ImageError("network", "%s did not answer: %s" % (self.name, getattr(error, "reason", error)))
-            detail = payload.get("error") if isinstance(payload.get("error"), dict) else {}
-            message = detail.get("message") or "HTTP %d" % status
-            if status in (401, 403) or (status == 400 and "api key" in message.lower()):
-                raise ImageError("auth", "%s refused the key: %s" % (self.name, message))
-            if status == 429 or status >= 500:
-                last = ImageError("quota" if status == 429 else "busy", "%s: %s" % (self.name, message))
-                if attempt < 3:
-                    delay = [5, 15, 30][attempt]
-                    self.on_wait("%s answered %d: trying again in %d s" % (self.name, status, delay))
-                    self.sleep(delay)
-                continue
-            raise ImageError("http_%d" % status, message)
-        raise last
 
 
 class Multipart:
