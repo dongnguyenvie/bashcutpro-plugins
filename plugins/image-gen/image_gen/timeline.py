@@ -1,4 +1,5 @@
-"""Bring pictures into the project, label them and put them on the timeline, with engine commands only.
+"""Bring pictures into the project, label them and put them on the timeline, with engine commands only (the shared
+helpers are in `bashcut_timeline`).
 
 `media_import {paths}` answers `{"items": [id…], "errors": […]}`; `metadata.set {item, fields}` writes the
 item's Description and Comment; `timeline.place` with a video track as `track` places the still and answers
@@ -6,21 +7,8 @@ item's Description and Comment; `timeline.place` with a video track as `track` p
 `end` in ticks).
 """
 
-import os
-import re
-
-from .mcp import AppError
-
-TPS = 254016000000  # ticks per second
-
-
-def import_files(app, paths):
-    result = app.tool("media_import", {"paths": [os.path.abspath(p) for p in paths]}) or {}
-    errors = result.get("errors") or []
-    items = result.get("items") or []
-    if errors or len(items) != len(paths):
-        raise AppError("import_failed", "media_import: %s" % (errors or "%d of %d files imported" % (len(items), len(paths))))
-    return items
+import bashcut_timeline
+from bashcut_timeline import import_files  # noqa: F401 (part of this module's interface)
 
 
 def label(app, item, picture):
@@ -33,35 +21,18 @@ def label(app, item, picture):
 
 
 def video_track_index(name):
-    match = re.fullmatch(r"[vV](\d+)", str(name))
-    if not match or int(match.group(1)) < 1:
-        raise AppError("bad_args", "--track must name a video track: V1, V2…")
-    return int(match.group(1))
+    return bashcut_timeline.track_index(name, "video", "--track must name a video track: V1, V2…")
 
 
 def ensure_video_track(app, name):
     """Add video tracks on top until track `name` (V2…) exists; the number added."""
-    index = video_track_index(name)
-    tracks = (app.tool("sequence_inspect") or {}).get("video") or []
-    missing = index - len(tracks)
-    if missing > 0:
-        app.run("sequence.addTracks", {"video": missing, "audio": 0})
-    return max(missing, 0)
+    return bashcut_timeline.ensure_track(app, "video", video_track_index(name))
 
 
 def overlaps(app, name, start, end):
     """Clips already on video track `name` that the range [start, end) seconds would cover."""
-    tracks = (app.tool("sequence_inspect") or {}).get("video") or []
-    index = video_track_index(name) - 1
-    if index >= len(tracks) or end is None:
-        return []
-    a, b = int(start * TPS), int(end * TPS)
-    return [i["clip"] for i in tracks[index].get("items") or [] if i["start"] < b and i["end"] > a]
+    return bashcut_timeline.overlaps(app, "video", video_track_index(name), start, end)
 
 
 def place_still(app, item, seconds, track, duration=None):
-    params = {"item": item, "track": track, "seconds": round(float(seconds), 6), "insert": False}
-    if duration:
-        params["duration"] = int(round(float(duration) * TPS))
-    placed = app.run("timeline.place", params) or {}
-    return placed.get("clips") or []
+    return bashcut_timeline.place(app, item, track, seconds, duration=bashcut_timeline.ticks(duration) if duration else None)

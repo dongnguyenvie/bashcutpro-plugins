@@ -17,6 +17,7 @@ import tempfile
 import bashcut_cli
 from bashcut_cli import connection_args, save
 from bashcut_models import ModelError, Models
+from bashcut_timeline import TimelineError
 
 from . import __version__
 from .backends import MODELS, backend
@@ -25,8 +26,8 @@ from .mcp import AppError, McpClient
 from .ocr import find_tesseract, read_text
 from .settings import PACKAGES, resolve, venv_python
 from .timeline import (clip_entry, every_frame, export_still, footage_items, fps_text, import_sequence, import_still,
-                       load_sidecar, reframe_steps, sample_times, save_sidecar, sequence_time, settings, sidecar_path,
-                       video_clips, ensure_video_track)
+                       load_sidecar, place, reframe_steps, sample_times, save_sidecar, sequence_time, settings,
+                       sidecar_path, video_clips, ensure_video_track)
 
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_COMMANDS = ("cutout", "subjects")
@@ -200,9 +201,7 @@ def cmd_cutout(args):
             item = import_sequence(app, frames[0], fps_text(sequence))
         track = clip["trackIndex"] + 1
         ensure_video_track(app, sequence, track)
-        placed = app.run("timeline.place", {"item": item, "track": "V%d" % track, "time": int(clip.get("start") or 0),
-                                            "duration": int(clip.get("duration") or 0), "insert": False, "audio": False}) or {}
-        data.update({"item": item, "track": "V%d" % track, "clips": placed.get("clips") or []})
+        data.update({"item": item, "track": "V%d" % track, "clips": place(app, item, track, clip)})
         data["saved"] = save(app, args)
     return "Cut out the %s of clip %s (%d frames) and placed it on V%d" % (kind, clip["clip"], len(frames), track), data
 
@@ -361,4 +360,4 @@ def main(argv=None):
         code = relaunch(argv)
         if code is not None:
             return code
-    return bashcut_cli.run(COMMANDS[args.command], args, (Handoff, AppError), handoff=("handoff",))
+    return bashcut_cli.run(COMMANDS[args.command], args, (Handoff, AppError, TimelineError), handoff=("handoff",))

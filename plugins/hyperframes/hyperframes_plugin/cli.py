@@ -15,6 +15,7 @@ import sys
 
 import bashcut_cli
 from bashcut_cli import connection_args, save
+from bashcut_timeline import TimelineError
 
 from . import __version__
 from . import composition as comp
@@ -338,4 +339,4 @@ def main(argv=None):
         args = split_passthrough(argv)
     else:
         args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError,))
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TimelineError))

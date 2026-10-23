@@ -4,15 +4,14 @@ A PNG sequence comes in with `file.importImageSequence {path}` (its first frame)
 tool (`{"items": [id…], "errors": […]}`). `timeline.place {item, track, seconds, insert: false, audio: false}` lays
 it over what is below; `sequence_inspect` lists `video` tracks bottom to top, each with its `items` (`clip`,
 `start`, `end` in ticks). `media.replaceFootage {item, path}` points a media item (and every clip using it) at a new
-render.
+render. The shared helpers are in `bashcut_timeline`.
 """
 
 import os
-import re
+
+import bashcut_timeline
 
 from .mcp import AppError
-
-TPS = 254016000000  # ticks per second
 
 
 def item_ids(result):
@@ -43,40 +42,25 @@ def import_media(app, path, fmt):
 
 
 def video_track_index(name):
-    match = re.fullmatch(r"[vV](\d+)", str(name))
-    if not match or int(match.group(1)) < 1:
-        raise AppError("bad_args", "--track must name a video track (V2, V3…) or be `new`")
-    return int(match.group(1))
+    return bashcut_timeline.track_index(name, "video", "--track must name a video track (V2, V3…) or be `new`")
 
 
 def ensure_video_track(app, name):
     """Add video tracks on top until `name` (V2…) exists; the number added. `new` is left to timeline.place."""
     if name == "new":
         return 0
-    index = video_track_index(name)
-    tracks = (app.tool("sequence_inspect") or {}).get("video") or []
-    missing = index - len(tracks)
-    if missing > 0:
-        app.run("sequence.addTracks", {"video": missing, "audio": 0})
-    return max(missing, 0)
+    return bashcut_timeline.ensure_track(app, "video", video_track_index(name))
 
 
 def overlaps(app, name, start, end):
     """Clips already on video track `name` that [start, end) seconds would cover."""
     if name == "new":
         return []
-    tracks = (app.tool("sequence_inspect") or {}).get("video") or []
-    index = video_track_index(name) - 1
-    if index >= len(tracks):
-        return []
-    a, b = int(start * TPS), int(end * TPS)
-    return [i["clip"] for i in tracks[index].get("items") or [] if i["start"] < b and i["end"] > a]
+    return bashcut_timeline.overlaps(app, "video", video_track_index(name), start, end)
 
 
 def place(app, item, seconds, track):
-    placed = app.run("timeline.place", {"item": item, "track": track, "seconds": round(float(seconds), 6),
-                                        "insert": False, "audio": False}) or {}
-    return placed.get("clips") or []
+    return bashcut_timeline.place(app, item, track, seconds, audio=False)
 
 
 def replace(app, item, path):

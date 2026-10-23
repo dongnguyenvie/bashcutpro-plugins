@@ -10,7 +10,7 @@ import json
 import re
 import unicodedata
 
-TPS = 254016000000  # ticks per second
+from bashcut_timeline import TPS
 CUE_TIME = re.compile(r"(?:(\d+):)?(\d{1,2}):(\d{2})[.,](\d{1,3})")
 ARROW = re.compile(r"^\s*(\S+)\s*-->\s*(\S+)")
 TAG = re.compile(r"<[^>]*>|\{\\[^}]*\}")

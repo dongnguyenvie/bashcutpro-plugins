@@ -5,7 +5,7 @@ words on the media item's clock. `sequence_inspect` lists every track's `items` 
 `end`, `sourceIn` and `speed` (ticks), which is enough to go both ways: source = sourceIn + (time - start) × speed.
 """
 
-TPS = 254016000000  # ticks per second
+from bashcut_timeline import TPS
 
 
 def clips_of(sequence):

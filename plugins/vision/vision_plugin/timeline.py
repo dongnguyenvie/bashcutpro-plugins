@@ -5,15 +5,18 @@ writes a still of a clip's source at a source time; `file.import {paths, imageSe
 sequence (`items`), at the frame rate of the `media.indeterminateTimebase` preference (`prefs.get` / `prefs.set`);
 `timeline.place` and `sequence.addTracks` place it; `effects.setParam {clip, effect: "motion", param, value, time,
 keyframe}` writes Motion keyframes (position in sequence pixels, the clip centred at width/2, height/2).
-`sequence_inspect` items carry `clip`, `item`, `start`, `duration`, `sourceIn`, `sourceOut`, `speed`.
+`sequence_inspect` items carry `clip`, `item`, `start`, `duration`, `sourceIn`, `sourceOut`, `speed`. The shared
+helpers are in `bashcut_timeline`.
 """
 
 import json
 import os
 
+import bashcut_timeline
+from bashcut_timeline import frame_ticks
+
 from .mcp import AppError
 
-TPS = 254016000000  # ticks per second
 SIDECAR_SCHEMA = "bashcut-vision/1"
 
 
@@ -22,11 +25,6 @@ def settings(sequence):
     rate = s.get("frame_rate") or {"num": 30, "den": 1}
     return {"width": int(s.get("width") or 1920), "height": int(s.get("height") or 1080),
             "num": int(rate.get("num", 30)), "den": int(rate.get("den", 1))}
-
-
-def frame_ticks(sequence):
-    s = settings(sequence)
-    return TPS * s["den"] // s["num"]
 
 
 def video_clips(sequence, wanted=None, footage=None):
@@ -114,9 +112,7 @@ def export_still(app, clip, time, path, fmt="bmp"):
 
 def ensure_video_track(app, sequence, index):
     """Add video tracks until V<index> exists; the sequence as it is afterwards."""
-    missing = index - len(sequence.get("video") or [])
-    if missing > 0:
-        app.run("sequence.addTracks", {"video": missing, "audio": 0})
+    if bashcut_timeline.ensure_track(app, "video", index, sequence):
         sequence = app.tool("sequence_inspect") or {}
     return sequence
 
@@ -147,11 +143,13 @@ def import_sequence(app, first_frame, fps):
 
 
 def import_still(app, path):
-    result = app.tool("media_import", {"paths": [os.path.abspath(path)]}) or {}
-    items = result.get("items") or []
-    if not items:
-        raise AppError("import_failed", "media_import: %s" % (result.get("errors") or "nothing imported"))
-    return items[0]
+    return bashcut_timeline.import_files(app, [path])[0]
+
+
+def place(app, item, track, clip):
+    """Place `item` on V<track> over `clip`'s exact range (its ticks); the clips made."""
+    return bashcut_timeline.place(app, item, "V%d" % track, time=int(clip.get("start") or 0),
+                                  duration=int(clip.get("duration") or 0), audio=False)
 
 
 def fps_text(sequence):
