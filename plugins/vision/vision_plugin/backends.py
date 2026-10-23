@@ -14,7 +14,9 @@ model: red pixels are a person, blue an object, yellow a face. Tests and CI use 
 
 import os
 
-from .images import cutout_rows, read_bmp, write_png
+from bashcut_images import read_bmp, write_png
+
+from .images import cutout_rows
 from .mcp import AppError
 
 PERSON_MODEL = "u2net-human-seg"

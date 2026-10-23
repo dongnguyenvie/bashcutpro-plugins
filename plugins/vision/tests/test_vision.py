@@ -12,8 +12,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.dirname(HERE)
 sys.path.insert(0, PLUGIN)
 
+from bashcut_images import Image, png_size  # noqa: E402
 from vision_plugin.backends import FakeBackend, nms  # noqa: E402
-from vision_plugin.images import Image, read_png_size  # noqa: E402
 from vision_plugin.ocr import parse_tsv  # noqa: E402
 from vision_plugin.timeline import reframe_steps  # noqa: E402
 
@@ -69,7 +69,7 @@ class CutoutTests(Base):
         self.assertEqual((data["kind"], data["frames"], data["track"]), ("person", 5, "V2"))
         frames = sorted(os.listdir(data["folder"]))
         self.assertEqual(frames[0], "cutout_00001.png")
-        self.assertEqual(read_png_size(os.path.join(data["folder"], frames[0])), (48, 27))
+        self.assertEqual(png_size(os.path.join(data["folder"], frames[0])), (48, 27))
         with open(os.path.join(data["folder"], frames[0]), "rb") as f:
             self.assertEqual(f.read()[25], 6)  # colour type RGBA
         state = self.read_state()

@@ -9,7 +9,10 @@ so shared code is vendored).
 - `bashcut_settings.py` (data dir, plugin folder, settings resolution): every plugin whose code imports it;
 - `bashcut_ai.py` (the Gemini / OpenAI client: key and endpoint checks, `send()` with retries): every plugin whose
   code imports it;
-- `bashcut_timeline.py` (the ticks constant, import, tracks, overlaps, `timeline.place`): every plugin whose code imports it;
+- `bashcut_timeline.py` (the ticks constant, import, tracks, overlaps, `timeline.place`): every plugin whose code imports it
+  or `bashcut_frames`;
+- `bashcut_images.py` (BMP stills, PNG read and write): every plugin whose code imports it;
+- `bashcut_frames.py` (clips with frames to look at, speed-aware source sample times): every plugin whose code imports it;
 - `bashcut_models.py` (the downloader): every plugin whose manifest has a `models` list (`check_models.py` checks it too).
 
 Edit the copy in `tools/`, then run this; `tests/test_shared_copies.py` fails while a copy differs.
@@ -53,8 +56,13 @@ def copies(root=ROOT):
             yield os.path.join(root, "tools", "bashcut_settings.py"), os.path.join(root, "plugins", name, "bashcut_settings.py")
         if imports(root, name, "bashcut_ai"):
             yield os.path.join(root, "tools", "bashcut_ai.py"), os.path.join(root, "plugins", name, "bashcut_ai.py")
-        if imports(root, name, "bashcut_timeline"):
+        frames = imports(root, name, "bashcut_frames")
+        if frames or imports(root, name, "bashcut_timeline"):  # bashcut_frames imports bashcut_timeline
             yield os.path.join(root, "tools", "bashcut_timeline.py"), os.path.join(root, "plugins", name, "bashcut_timeline.py")
+        if imports(root, name, "bashcut_images"):
+            yield os.path.join(root, "tools", "bashcut_images.py"), os.path.join(root, "plugins", name, "bashcut_images.py")
+        if frames:
+            yield os.path.join(root, "tools", "bashcut_frames.py"), os.path.join(root, "plugins", name, "bashcut_frames.py")
         if uses_models(root, name):
             yield os.path.join(root, "tools", "bashcut_models.py"), os.path.join(root, "plugins", name, "bashcut_models.py")
 

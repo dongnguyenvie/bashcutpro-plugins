@@ -1,7 +1,8 @@
 """Finding subtitles burned into the picture and covering them with a masked blur.
 
 Finding: frames of each video clip's source (`file.exportFrame target=source`, so coordinates are the
-clip's own pixels, the space masks use) are sampled over the first seconds. Subtitle rows are rows with
+clip's own pixels, the space masks use) are sampled over its first seconds on the timeline (a sped-up clip
+shows more of its source in them; `bashcut_frames.sample_times`). Subtitle rows are rows with
 many bright, sharp-edged strokes (light text on an outline or shadow) in the middle of the width, in the
 lower (or upper) part of the frame, on enough of the frames; their text changes from frame to frame.
 Rows that look the same in every frame are fixed text (a channel name, a logo) and are reported, not
@@ -15,9 +16,8 @@ import os
 import shutil
 import tempfile
 
-from bashcut_timeline import TPS
-
-from .bmp import read_gray
+from bashcut_frames import footage_items, sample_times, video_clips  # noqa: F401 (cli takes the clip helpers from here)
+from bashcut_images import read_gray
 
 COVER_MASK_NAME = "BashCut subtitle cover"
 EDGE_STEP = 48        # grey-level jump that counts as a stroke edge
@@ -175,59 +175,12 @@ def parse_box(text):
     return {"x": x, "y": y, "w": round(min(w, 1 - x), 4), "h": round(min(h, 1 - y), 4), "lineHeight": h / 2, "frames": 0}
 
 
-def video_clips(sequence, footage=None):
-    """Clips on the video tracks that come from a media item, bottom track (V1) first. With `footage` (from
-    `footage_items`), only clips of those items: a title or graphic has no source frame to export."""
-    clips = []
-    for index, track in enumerate(sequence.get("video") or []):
-        for item in track.get("items") or []:
-            if footage is not None and item.get("item") not in footage:
-                continue
-            if item.get("enabled", True) and item.get("item") is not None:
-                clips.append(dict(item, track=track.get("name") or "V%d" % (index + 1)))
-    return clips
-
-
-FOOTAGE_TYPES = ("Movie", "Still", "ImageSequence")
-
-
-def footage_items(app):
-    """Ids of the project's media items that have pictures to look at (`project_inspect` types Movie, Still,
-    ImageSequence): graphics, captions turned into titles, nested sequences and synthetic media are left out.
-    None when the project tree cannot be read (then nothing is left out)."""
-    try:
-        tree = app.tool("project_inspect") or {}
-    except Exception:  # an older engine without the tool: do not filter
-        return None
-    found, stack = set(), [tree.get("root") or {}]
-    while stack:
-        node = stack.pop()
-        if not isinstance(node, dict):
-            continue
-        if node.get("type") in FOOTAGE_TYPES and node.get("item") is not None:
-            found.add(node["item"])
-        stack.extend(node.get("children") or [])
-    return found
-
-
-def sample_times(clip, seconds=30.0, count=8):
-    """Source times (ticks) to look at: `count` frames spread over the clip's first `seconds`."""
-    start = clip.get("sourceIn", 0)
-    end = clip.get("sourceOut", start + clip.get("duration", 0))
-    if end < start:
-        start, end = end, start
-    span = min(end - start, int(seconds * TPS))
-    if span <= 0:
-        return [start]
-    return [start + int(span * (i + 0.5) / count) for i in range(count)]
-
-
 def detect_clip(app, clip, seconds=30.0, count=8, where="bottom", folder=None):
     """Export sample frames of `clip`'s source and look for subtitles; result with the frame size."""
     scratch = None if folder else tempfile.mkdtemp(prefix="bashcut-cover-")
     frames, size = [], None
     try:
-        for i, t in enumerate(sample_times(clip, seconds, count)):
+        for i, t in enumerate(sample_times(clip, count, seconds)):
             path = os.path.join(folder or scratch, "clip%s-%02d.bmp" % (clip["clip"], i))
             app.run("file.exportFrame", {"target": "source", "item": clip["item"], "time": t, "format": "bmp", "path": path})
             try:

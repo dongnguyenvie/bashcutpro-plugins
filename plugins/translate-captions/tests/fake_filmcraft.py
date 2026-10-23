@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from frames import draw_frame  # noqa: E402
-from translate_captions.bmp import write_bmp  # noqa: E402
+from bashcut_images import write_bmp  # noqa: E402
 
 TPS = 254016000000
 

@@ -6,13 +6,15 @@ sequence (`items`), at the frame rate of the `media.indeterminateTimebase` prefe
 `timeline.place` and `sequence.addTracks` place it; `effects.setParam {clip, effect: "motion", param, value, time,
 keyframe}` writes Motion keyframes (position in sequence pixels, the clip centred at width/2, height/2).
 `sequence_inspect` items carry `clip`, `item`, `start`, `duration`, `sourceIn`, `sourceOut`, `speed`. The shared
-helpers are in `bashcut_timeline`.
+helpers are in `bashcut_timeline` and `bashcut_frames` (clips with frames, sample times).
 """
 
 import json
 import os
 
+import bashcut_frames
 import bashcut_timeline
+from bashcut_frames import sequence_time, source_range
 from bashcut_timeline import frame_ticks
 
 from .mcp import AppError
@@ -28,69 +30,13 @@ def settings(sequence):
 
 
 def video_clips(sequence, wanted=None, footage=None):
-    """Clips from media items on the video tracks, bottom track first, with their track index (1 = V1). With
-    `footage` (from `footage_items`), only clips of those items: a title or graphic has no source frame to export."""
-    clips = []
-    for index, track in enumerate(sequence.get("video") or []):
-        for item in track.get("items") or []:
-            if item.get("item") is None or not item.get("enabled", True):
-                continue
-            if footage is not None and item.get("item") not in footage:
-                continue
-            if wanted and item.get("clip") not in wanted:
-                continue
-            clips.append(dict(item, trackIndex=index + 1))
+    """`bashcut_frames.video_clips` (bottom track first, `trackIndex` 1 = V1); `no_clips` when none is left."""
+    clips = bashcut_frames.video_clips(sequence, footage, wanted)
     if wanted and not clips:
         raise AppError("no_clips", "no video clip with id %s in the active sequence" % ", ".join(str(w) for w in wanted))
     if not clips:
         raise AppError("no_clips", "the active sequence has no video clips")
     return clips
-
-
-FOOTAGE_TYPES = ("Movie", "Still", "ImageSequence")
-
-
-def footage_items(app):
-    """Ids of the project's media items that have pictures to look at (`project_inspect` types Movie, Still,
-    ImageSequence): graphics, captions turned into titles, nested sequences and synthetic media are left out.
-    None when the project tree cannot be read (then nothing is left out)."""
-    try:
-        tree = app.tool("project_inspect") or {}
-    except Exception:  # an older engine without the tool: do not filter
-        return None
-    found, stack = set(), [tree.get("root") or {}]
-    while stack:
-        node = stack.pop()
-        if not isinstance(node, dict):
-            continue
-        if node.get("type") in FOOTAGE_TYPES and node.get("item") is not None:
-            found.add(node["item"])
-        stack.extend(node.get("children") or [])
-    return found
-
-
-def source_range(clip):
-    start = int(clip.get("sourceIn") or 0)
-    end = clip.get("sourceOut")
-    speed = float(clip.get("speed") or 1.0) or 1.0
-    if end is None:
-        end = start + int((clip.get("duration") or 0) * abs(speed))
-    return min(start, int(end)), max(start, int(end)), speed
-
-
-def sequence_time(clip, source_time):
-    """Where a source time of the clip falls on the timeline (ticks)."""
-    start, _, speed = source_range(clip)
-    return int(clip.get("start") or 0) + int((source_time - start) / abs(speed))
-
-
-def sample_times(clip, count):
-    """`count` source times spread over the clip (the middle of each equal part)."""
-    start, end, _ = source_range(clip)
-    span = end - start
-    if span <= 0 or count <= 1:
-        return [start + span // 2]
-    return [start + int(span * (i + 0.5) / count) for i in range(count)]
 
 
 def every_frame(clip, sequence, limit):
