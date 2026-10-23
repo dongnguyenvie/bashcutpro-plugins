@@ -12,7 +12,7 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from resources_plugin import __version__, cli, shim  # noqa: E402
+from resources_plugin import cli, shim  # noqa: E402
 from resources_plugin.licences import credit_line, merge_notes, read_sidecar, write_sidecar  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
@@ -224,21 +224,8 @@ class OutputTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
-    def flags(self, command):
-        parser = cli.build_parser()
-        sub = next(a for a in parser._actions if a.dest == "command").choices[command]
-        return {o for a in sub._actions for o in a.option_strings}
-
-    def test_manifest_matches_the_command_line(self):
-        self.assertEqual(MANIFEST["version"], __version__)
-        self.assertEqual({a["args"][0] for a in MANIFEST["actions"]}, set(cli.COMMANDS))
-        for action in MANIFEST["actions"]:
-            accepted = self.flags(action["args"][0])
-            for param in action["params"]:
-                self.assertIn(param["flag"], accepted, "%s %s" % (action["id"], param["flag"]))
-            if action["needs"] == "project":
-                for arg in MANIFEST["connect"].values():
-                    self.assertIn(arg[0], accepted)
+    # the rest of the manifest <-> CLI check is the repo's tests/test_manifest_cli.py
+    def test_script_choices_are_the_scripts(self):
         fetch = next(a for a in MANIFEST["actions"] if a["id"] == "fetch")
         script = next(p for p in fetch["params"] if p["id"] == "script")
         self.assertEqual(sorted(script["choices"]), sorted(cli.SCRIPTS))

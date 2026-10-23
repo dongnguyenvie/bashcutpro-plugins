@@ -16,7 +16,7 @@ from unittest import mock
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from library_plugin import __version__, cli  # noqa: E402
+from library_plugin import cli  # noqa: E402
 from library_plugin import library  # noqa: E402
 from library_plugin.library import KINDS, PACK_INDEX, PACK_SCHEMA, Library, LibraryError  # noqa: E402
 
@@ -260,12 +260,8 @@ class IndexLockTests(Base):
         self.assertTrue(Library().get(item["id"])["favourite"])
 
 class ManifestTests(unittest.TestCase):
-    def test_manifest_matches_the_cli(self):
-        self.assertEqual(MANIFEST["version"], __version__)
-        parser = cli.build_parser()
-        commands = set(parser._subparsers._group_actions[0].choices)
-        for action in MANIFEST["actions"]:
-            self.assertIn(action["args"][0], commands)
+    # the rest of the manifest <-> CLI check is the repo's tests/test_manifest_cli.py
+    def test_kind_choices_are_the_kinds(self):
         self.assertEqual(set(MANIFEST["actions"][1]["params"][0]["choices"]), set(KINDS))
 
     def test_engine_commands_are_listed(self):

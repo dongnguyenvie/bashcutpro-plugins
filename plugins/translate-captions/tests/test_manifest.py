@@ -1,4 +1,5 @@
-"""The manifest describes the command line that really exists."""
+"""Which subcommands take the manifest's settings (the rest of the manifest ↔ CLI check is the repo's
+tests/test_manifest_cli.py)."""
 
 import json
 import os
@@ -8,8 +9,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from translate_captions import __version__, cli  # noqa: E402
-from translate_captions.settings import SETTINGS  # noqa: E402
+from translate_captions import cli  # noqa: E402
 
 with open(os.path.join(os.path.dirname(HERE), "bashcut-plugin.json"), encoding="utf-8") as f:
     MANIFEST = json.load(f)
@@ -22,24 +22,8 @@ def flags(command):
 
 
 class ManifestTests(unittest.TestCase):
-    def test_version_matches_the_code(self):
-        self.assertEqual(MANIFEST["version"], __version__)
-
-    def test_every_action_and_param_is_a_real_subcommand_and_flag(self):
-        for action in MANIFEST["actions"]:
-            command = action["args"][0]
-            self.assertIn(command, cli.COMMANDS)
-            accepted = flags(command)
-            for param in action["params"]:
-                self.assertIn(param["flag"], accepted, "%s %s" % (command, param["flag"]))
-            if action["needs"] == "project":
-                for arg in MANIFEST["connect"].values():
-                    self.assertIn(arg[0], accepted)
-
-    def test_settings_match_the_resolver(self):
-        self.assertEqual({s["id"] for s in MANIFEST["settings"]}, set(SETTINGS))
+    def test_settings_are_flags_of_their_subcommands(self):
         for s in MANIFEST["settings"]:
-            self.assertEqual(s["env"][0], SETTINGS[s["id"]][0][0])
             self.assertIn(s["flag"], flags("translate"))
 
 

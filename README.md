@@ -36,7 +36,7 @@ tools/bashcut_fake_engine.py       the test fake engine's core: JSON-RPC, comman
 tools/sync_shared.py               writes those copies (--check lists stale ones)
 tools/new_plugin.py                starts a new plugin from tools/plugin_template/ (see Adding a plugin)
 tools/check_all.py                 every check and every plugin's tests in one run
-tests/                             repo-wide checks: text encoding, find_cli, manifest text, registry, shared copies…
+tests/                             repo-wide checks: text encoding, find_cli, manifest text, manifest ↔ CLI, registry, shared copies…
 docs/                              design notes and reviews (docs/review-2026-10.md: duplication and the RP tickets)
 ```
 

@@ -1,7 +1,9 @@
 """models.json, tools/check_models.py and the downloader (tools/bashcut_models.py) against a local HTTP server."""
 
+import contextlib
 import hashlib
 import http.server
+import io
 import json
 import os
 import shutil
@@ -12,6 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 
+import bashcut_cli  # noqa: E402
 import bashcut_models  # noqa: E402
 import check_models  # noqa: E402
 
@@ -132,10 +135,28 @@ class DownloadTests(unittest.TestCase):
 
 
 class ErrorTests(unittest.TestCase):
-    @unittest.skip("test ticket: ModelError is a bashcut_cli.PluginError, so a download_failed raised inside a command "
-                   "is printed by bashcut_cli.run as {ok: false} with exit 1 instead of a traceback")
     def test_model_error_is_a_plugin_error(self):
-        pass
+        self.assertTrue(issubclass(bashcut_models.ModelError, bashcut_cli.PluginError))
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        url = "http://127.0.0.1:%d/bad" % server.server_address[1]
+        manifest = {"schema": "bashcut-models/1", "models": [{"id": "demo", "license": "MIT", "files": [
+            {"path": "model.bin", "size": len(BODY), "sha256": SHA, "url": url}]}]}
+
+        def command(args):
+            bashcut_models.Models(manifest, root=root, log=lambda message: None).fetch("demo")
+            return "fetched", {}
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(bashcut_cli.run(command, None), 1)
+        result = json.loads(out.getvalue())
+        self.assertEqual((result["ok"], result["error"]["code"]), (False, "download_failed"))
+        self.assertIn("SHA-256", result["error"]["message"])
 
 
 class CheckTests(unittest.TestCase):
