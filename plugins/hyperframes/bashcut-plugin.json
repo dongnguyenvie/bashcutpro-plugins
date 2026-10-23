@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.hyperframes",
   "name": "HyperFrames Graphics",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "summary": "Animated graphics written as HTML/CSS + GSAP (counters, charts, cards, diagrams, maps, kinetic type), rendered with HyperFrames in headless Chrome to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
   "publisher": "dongnguyenvie",
   "license": "MIT",

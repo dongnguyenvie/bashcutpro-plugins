@@ -195,6 +195,18 @@ class RenderTests(Base):
         self.assertEqual(code, 0, out)
         self.assertTrue(out["data"]["ready"])
 
+    @unittest.skip("test ticket: png and mov renders of one graphic get separate outputs and records (RP14)")
+    def test_png_and_mov_keep_separate_records(self):
+        pass
+
+    @unittest.skip("test ticket: a name with a dot (a.b) gets its own record, not a.graphic.json (RP14)")
+    def test_a_dotted_name_keeps_its_own_record(self):
+        pass
+
+    @unittest.skip("test ticket: reused / lint / warnings never land in the .graphic.json record (RP14)")
+    def test_the_record_holds_no_transient_keys(self):
+        pass
+
     def test_render_then_reuse(self):
         out_dir = os.path.join(self.dir, "renders")
         code, out = self.run_cli("render", self.composition, "--set", "title=Hi", "--out", out_dir)
@@ -263,6 +275,11 @@ class PlaceTests(Base):
         self.assertTrue(data["record"].startswith(os.path.join(self.dir, "graphics", "renders")))
         with open(data["record"], encoding="utf-8") as f:
             self.assertEqual(json.load(f)["placed"][0]["item"], data["item"])
+
+    @unittest.skip("test ticket: on a 25 fps sequence (fake settings.frame_rate 25/1) --frame 50 places at 2 s "
+                   "and renders at 25 fps (RP14)")
+    def test_place_follows_the_sequence_frame_rate(self):
+        pass
 
     def test_place_needs_a_start(self):
         code, out = self.run_cli("place", self.composition, project=True)

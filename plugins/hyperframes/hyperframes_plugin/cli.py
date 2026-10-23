@@ -145,12 +145,12 @@ def brand_of(args):
 
 
 def sequence_fps(app):
-    """The sequence's frame rate when sequence_inspect reports one."""
-    info = app.tool("sequence_inspect") or {}
-    for key in ("fps", "frameRate", "timebase"):
-        value = info.get(key) if isinstance(info, dict) else None
-        if isinstance(value, (int, float)) and value > 0:
-            return value
+    """The sequence's frame rate (`settings.frame_rate {num, den}` of sequence_inspect), or None."""
+    info = app.tool("sequence_inspect")
+    rate = ((info.get("settings") or {}).get("frame_rate") or {}) if isinstance(info, dict) else {}
+    num, den = rate.get("num"), rate.get("den") or 1
+    if isinstance(num, (int, float)) and isinstance(den, (int, float)) and num > 0 and den > 0:
+        return num / float(den)
     return None
 
 
@@ -236,7 +236,9 @@ def cmd_place(args):
     with connect(args) as app:
         fps = args.fps or sequence_fps(app) or 30
         seconds = start_seconds(args, fps)
-        record = render(options, args.composition, out_dir(args), args.name, **render_kwargs(args, options, fps=fps))
+        # --frame counts at the exact rate (29.97); the frames render at the nearest whole rate HyperFrames takes.
+        record = render(options, args.composition, out_dir(args), args.name,
+                        **render_kwargs(args, options, fps=int(round(fps))))
         length = record["frames"] / float(record["renderFps"])
         added = ensure_video_track(app, args.track)
         covered = overlaps(app, args.track, seconds, seconds + length)

@@ -3,8 +3,8 @@
 
 It speaks the same newline-delimited JSON-RPC and answers the tools and commands the plugin uses, with the
 shapes FilmCraft's engine returns: `media_import` -> `{"items", "errors"}` (crates/automation/src/server.rs),
-`timeline.place` -> `{"clips"}` and `sequence_inspect` -> `{"video", "audio": [{"id", "items": [{"clip",
-"item", "start", "end"}]}]}` (crates/engine/src/commands.rs). State is a JSON file (the `--project` path);
+`timeline.place` -> `{"clips"}` and `sequence_inspect` -> `{"settings": {"frame_rate": {"num", "den"}}, "video",
+"audio": [{"id", "items": [{"clip", "item", "start", "end"}]}]}` (crates/engine/src/commands.rs). State is a JSON file (the `--project` path);
 every call saves it so a test can read it back.
 """
 
@@ -34,7 +34,8 @@ def main():
         state = json.load(f)
     state.setdefault("log", [])
     state.setdefault("items", [])
-    state.setdefault("sequence", {"video": [{"id": 1, "items": []}], "audio": [{"id": 2, "items": []}]})
+    state.setdefault("sequence", {"settings": {"frame_rate": {"num": 30, "den": 1}},
+                                  "video": [{"id": 1, "items": []}], "audio": [{"id": 2, "items": []}]})
     state.setdefault("next", 100)
 
     def store():
@@ -72,7 +73,8 @@ def main():
             if not os.path.isfile(p["path"]):
                 raise ValueError("no image at %s" % p["path"])
             frames = len(glob.glob(os.path.join(os.path.dirname(p["path"]), "*.png")))
-            item = {"id": new_id(), "path": p["path"], "seconds": frames / 30.0, "sequence": True}
+            rate = state["sequence"].get("settings", {}).get("frame_rate") or {"num": 30, "den": 1}
+            item = {"id": new_id(), "path": p["path"], "seconds": frames * rate["den"] / float(rate["num"]), "sequence": True}
             state["items"].append(item)
             return {"items": [item["id"]]}
         if cmd == "sequence.addTracks":
