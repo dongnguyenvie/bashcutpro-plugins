@@ -1,8 +1,8 @@
 """The library index and its files: add, search, favourite, remove, uses, stats, packs and brand kits.
 
-Everything lives in `<data dir>/bashcut/library/` (data dir: `FILMCRAFT_DATA_DIR`, else
-`~/Library/Application Support/FilmCraft`, `%APPDATA%\\FilmCraft`, `$XDG_DATA_HOME/filmcraft` or
-`~/.local/share/filmcraft`): `index.json` (`bashcut-library/1`) and `items/<id>/` with each item's files, copied in
+Everything lives in `<data dir>/bashcut/library/` (data dir: `BASHCUTPRO_DATA_DIR`, else `FILMCRAFT_DATA_DIR`, else
+`~/Library/Application Support/BashCutPro`, `%APPDATA%\\BashCutPro`, `$XDG_DATA_HOME/bashcutpro` or
+`~/.local/share/bashcutpro`): `index.json` (`bashcut-library/1`) and `items/<id>/` with each item's files, copied in
 so the library keeps working when the originals move. A pack is a zip of `library-pack.json`
 (`bashcut-library-pack/1`, the items' index entries) and `items/<id>/…`.
 """

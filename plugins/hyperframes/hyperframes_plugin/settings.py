@@ -1,8 +1,9 @@
 """Plugin settings: command-line flag, then environment variable, then the settings file, then the default.
 
 The settings file is `<data dir>/bashcut-plugins/bashcut.hyperframes/settings.json`, where the data dir is
-BashCutPro's (`FILMCRAFT_DATA_DIR`, else `~/Library/Application Support/FilmCraft`, `%APPDATA%\\FilmCraft`,
-`$XDG_DATA_HOME/filmcraft` or `~/.local/share/filmcraft`). The same folder holds what `setup` installs: the pinned
+BashCutPro's (`BASHCUTPRO_DATA_DIR`, else `FILMCRAFT_DATA_DIR`, else
+`~/Library/Application Support/BashCutPro`, `%APPDATA%\\BashCutPro`, `$XDG_DATA_HOME/bashcutpro` or
+`~/.local/share/bashcutpro`). The same folder holds what `setup` installs: the pinned
 HyperFrames runtime (`runtime/`), Chrome headless shell (`chrome/`) and the osm-map cache (`cache/`).
 """
 

@@ -13,11 +13,13 @@ import tempfile
 import threading
 import unittest
 import warnings
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 
 import bashcut_cli  # noqa: E402
 import bashcut_models  # noqa: E402
+import bashcut_settings  # noqa: E402
 import check_models  # noqa: E402
 
 BODY = bytes(range(256)) * 4096  # 1 MB
@@ -143,6 +145,64 @@ class DownloadTests(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(snapshot, "sub", "model.bin")))
         with open(os.path.join(hf_home, "hub", "models--org--name", "refs", "main")) as f:
             self.assertEqual(f.read(), "a" * 40)
+
+
+class DataDirTests(unittest.TestCase):
+    """The cache follows BashCutPro's data dir (SB1); FilmCraft's old cache is only linked from."""
+
+    def manifest(self):
+        return {"schema": "bashcut-models/1", "models": [{"id": "demo", "license": "MIT", "files": [
+            {"path": "sub/model.bin", "size": len(BODY), "sha256": SHA, "url": "http://127.0.0.1:9/never"}]}]}
+
+    def no_network(self, request, timeout=None):
+        raise AssertionError("downloaded %s" % request.full_url)
+
+    def test_data_dir_is_bashcut_settings_rule(self):
+        envs = [{"HOME": "/h", "APPDATA": "C:/AppData", "XDG_DATA_HOME": "/x"}, {"HOME": "/h"},
+                {"HOME": "/h", "FILMCRAFT_DATA_DIR": "/d"}, {"BASHCUTPRO_DATA_DIR": "/b", "FILMCRAFT_DATA_DIR": "/d"}]
+        for platform in ("darwin", "win32", "linux"):
+            with mock.patch.object(sys, "platform", platform):
+                for env in envs:
+                    self.assertEqual(bashcut_models.data_dir(env), bashcut_settings.data_dir(env), (platform, env))
+        with mock.patch.object(sys, "platform", "win32"):
+            self.assertEqual(bashcut_models.cache_dir({"APPDATA": "C:/A"}), os.path.join("C:/A", "BashCutPro", "bashcut-models"))
+
+    def test_legacy_cache_only_without_an_override(self):
+        with mock.patch.object(sys, "platform", "darwin"):
+            self.assertEqual(bashcut_models.legacy_cache_dir({"HOME": "/h"}),
+                             os.path.join("/h", "Library", "Application Support", "FilmCraft", "bashcut-models"))
+            for name in ("BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR", "BASHCUT_MODELS_DIR"):
+                self.assertIsNone(bashcut_models.legacy_cache_dir({"HOME": "/h", name: "/o"}), name)
+
+    def test_existing_install_links_filmcrafts_files_instead_of_downloading(self):
+        home = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, home)
+        old = os.path.join(home, "filmcraft", "bashcut-models", "demo", "sub", "model.bin")
+        os.makedirs(os.path.dirname(old))
+        with open(old, "wb") as f:
+            f.write(BODY)
+        env = {"HOME": home, "XDG_DATA_HOME": home}
+        with mock.patch.object(sys, "platform", "linux"), mock.patch.dict(os.environ, env, clear=True):
+            models = bashcut_models.Models(self.manifest(), opener=self.no_network, log=lambda message: None)
+            self.assertEqual(models.root, os.path.join(home, "bashcutpro", "bashcut-models"))
+            self.assertEqual(models.missing("demo"), [])
+            folder = models.fetch("demo")
+        with open(os.path.join(folder, "sub", "model.bin"), "rb") as f:
+            self.assertEqual(f.read(), BODY)
+        self.assertTrue(os.path.isfile(old))  # FilmCraft's file stays where it was
+
+    def test_a_file_the_old_cache_lacks_is_still_missing(self):
+        root, legacy = tempfile.mkdtemp(), tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, legacy)
+        models = bashcut_models.Models(self.manifest(), root=root, legacy=legacy, opener=self.no_network)
+        self.assertEqual([f["path"] for f in models.missing("demo")], ["sub/model.bin"])
+        self.assertFalse(os.path.exists(os.path.join(root, "demo")))
+
+    def test_a_given_root_reads_no_old_cache(self):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        self.assertIsNone(bashcut_models.Models(self.manifest(), root=root).legacy)
 
 
 class ErrorTests(unittest.TestCase):

@@ -8,8 +8,12 @@ equal.
     folder = Models.find(__file__).fetch("vieneu-v3-turbo")      # every file of the model, verified
 
 - A file without a SHA-256 in the manifest is refused before anything is downloaded.
-- Files are cached in `<data dir>/bashcut-models/<model id>/` (`BASHCUT_MODELS_DIR` overrides). A finished file is
-  only ever renamed into place after its hash matched, so a file in the cache is a verified file.
+- Files are cached in `<data dir>/bashcut-models/<model id>/` (`BASHCUT_MODELS_DIR` overrides; the data dir is
+  BashCutPro's, the rule of `bashcut_settings.data_dir`). A finished file is only ever renamed into place after its
+  hash matched, so a file in the cache is a verified file.
+- Existing installs: a file the cache lacks that upstream FilmCraft's folder has (`bashcut-models/` there, where
+  downloads went before SB1; only when no override is set) is hard-linked in (a symlink when that fails, never a
+  copy), so the same gigabytes are not downloaded twice. That folder is only read.
 - An interrupted download keeps `<file>.part` and resumes with an HTTP Range request; a server that ignores the range
   starts over. A wrong hash deletes the part and tries the mirror, then fails.
 - Progress lines go to stderr, in UTF-8 whatever the code page.
@@ -32,6 +36,8 @@ MANIFEST = "models.json"
 AGENT = "bashcutpro-plugins"
 CHUNK = 1 << 20
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+# The environment variables that pick the data dir, first set wins (as in bashcut_settings).
+OVERRIDES = ("BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR")
 
 
 class ModelError(bashcut_cli.PluginError):
@@ -40,21 +46,36 @@ class ModelError(bashcut_cli.PluginError):
 
 def data_dir(env=None):
     env = os.environ if env is None else env
-    if env.get("FILMCRAFT_DATA_DIR"):
-        return env["FILMCRAFT_DATA_DIR"]
+    for name in OVERRIDES:
+        if env.get(name):
+            return env[name]
+    return per_user(("BashCutPro", "bashcutpro"), env)
+
+
+def per_user(names, env):
+    """`names` (macOS / Windows folder, XDG folder) under this user's data folder."""
     home = env.get("HOME") or os.path.expanduser("~")
     if sys.platform == "darwin":
-        return os.path.join(home, "Library", "Application Support", "FilmCraft")
+        return os.path.join(home, "Library", "Application Support", names[0])
     if sys.platform == "win32":
-        return os.path.join(env.get("APPDATA") or home, "FilmCraft")
+        return os.path.join(env.get("APPDATA") or home, names[0])
     if env.get("XDG_DATA_HOME"):
-        return os.path.join(env["XDG_DATA_HOME"], "filmcraft")
-    return os.path.join(home, ".local", "share", "filmcraft")
+        return os.path.join(env["XDG_DATA_HOME"], names[1])
+    return os.path.join(home, ".local", "share", names[1])
 
 
 def cache_dir(env=None):
     env = os.environ if env is None else env
     return env.get("BASHCUT_MODELS_DIR") or os.path.join(data_dir(env), "bashcut-models")
+
+
+def legacy_cache_dir(env=None):
+    """Upstream FilmCraft's `bashcut-models/`, where downloads went before SB1; None when an override picks the folder
+    (then there is nothing of FilmCraft's to share)."""
+    env = os.environ if env is None else env
+    if any(env.get(name) for name in OVERRIDES + ("BASHCUT_MODELS_DIR",)):
+        return None
+    return os.path.join(per_user(("FilmCraft", "filmcraft"), env), "bashcut-models")
 
 
 def progress(message):
@@ -87,11 +108,13 @@ def manifest_paths(start, env=None):
 
 
 class Models:
-    def __init__(self, manifest, root=None, opener=None, log=progress):
+    def __init__(self, manifest, root=None, opener=None, log=progress, legacy=None):
+        """`legacy`: the old cache to link files from (default: FilmCraft's, only when `root` is not given)."""
         if manifest.get("schema") != SCHEMA:
             raise ModelError("bad_manifest", "models.json: schema must be %s" % SCHEMA)
         self.models = {m.get("id"): m for m in manifest.get("models") or []}
         self.root = root or cache_dir()
+        self.legacy = legacy if root or legacy else legacy_cache_dir()
         self.opener = opener or urllib.request.urlopen
         self.log = log
 
@@ -125,10 +148,29 @@ class Models:
         return os.path.join(self.root, model_id)
 
     def missing(self, model_id):
-        """Files of the model not in the cache yet."""
+        """Files of the model not in the cache yet (after linking in what the old cache has)."""
         model = self.model(model_id)
         folder = self.folder(model_id)
+        self.adopt(model_id)
         return [f for f in model["files"] if not os.path.isfile(os.path.join(folder, f["path"]))]
+
+    def adopt(self, model_id):
+        """Link each file of the model the old cache has and ours lacks; one that cannot be linked is downloaded."""
+        if not self.legacy or os.path.abspath(self.legacy) == os.path.abspath(self.root):
+            return
+        for f in self.model(model_id)["files"]:
+            source = os.path.join(self.legacy, model_id, f["path"])
+            target = os.path.join(self.folder(model_id), f["path"])
+            if not os.path.isfile(source) or os.path.lexists(target):
+                continue
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            try:
+                os.link(source, target)
+            except OSError:
+                try:
+                    os.symlink(source, target)
+                except OSError:
+                    pass
 
     def fetch(self, model_id):
         """Download what is missing, verify each file, return the model's folder."""

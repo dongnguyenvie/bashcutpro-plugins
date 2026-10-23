@@ -1,8 +1,10 @@
 """Where a BashCutPro plugin keeps its files, and its settings: flag, then environment variable, then the settings
 file, then the default.
 
-The data dir is BashCutPro's (`FILMCRAFT_DATA_DIR`, else `~/Library/Application Support/FilmCraft`,
-`%APPDATA%\\FilmCraft`, `$XDG_DATA_HOME/filmcraft` or `~/.local/share/filmcraft`); a plugin's folder is
+The data dir is BashCutPro's, in the order of its `bashcut-dirs` crate (SB1): `BASHCUTPRO_DATA_DIR`, else
+`FILMCRAFT_DATA_DIR`, else `~/Library/Application Support/BashCutPro`, `%APPDATA%\\BashCutPro`,
+`$XDG_DATA_HOME/bashcutpro` or `~/.local/share/bashcutpro`. Upstream FilmCraft's folder is not read: the app copies
+its `bashcut-plugins/` over once, when it makes BashCutPro's folder. A plugin's folder is
 `<data dir>/bashcut-plugins/<plugin id>/`, with its `settings.json` (non-secret settings only) and the private Python
 environment `venv/` some plugins make in `setup`. A secret (an API key) is never read from that file: it comes from a
 flag or the environment, where a host puts a key it keeps in the OS key store.
@@ -16,19 +18,28 @@ import json
 import os
 import sys
 
+# The environment variables that pick the data dir, first set wins.
+OVERRIDES = ("BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR")
+
 
 def data_dir(env=None):
     env = os.environ if env is None else env
-    if env.get("FILMCRAFT_DATA_DIR"):
-        return env["FILMCRAFT_DATA_DIR"]
+    for name in OVERRIDES:
+        if env.get(name):
+            return env[name]
+    return per_user(("BashCutPro", "bashcutpro"), env)
+
+
+def per_user(names, env):
+    """`names` (macOS / Windows folder, XDG folder) under this user's data folder."""
     home = env.get("HOME") or os.path.expanduser("~")
     if sys.platform == "darwin":
-        return os.path.join(home, "Library", "Application Support", "FilmCraft")
+        return os.path.join(home, "Library", "Application Support", names[0])
     if sys.platform == "win32":
-        return os.path.join(env.get("APPDATA") or home, "FilmCraft")
+        return os.path.join(env.get("APPDATA") or home, names[0])
     if env.get("XDG_DATA_HOME"):
-        return os.path.join(env["XDG_DATA_HOME"], "filmcraft")
-    return os.path.join(home, ".local", "share", "filmcraft")
+        return os.path.join(env["XDG_DATA_HOME"], names[1])
+    return os.path.join(home, ".local", "share", names[1])
 
 
 def plugin_dir(plugin_id, env=None):

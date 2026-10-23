@@ -25,7 +25,7 @@ FAKE_APP = os.path.join(HERE, "fake_filmcraft.py")
 FAKE_NODE = os.path.join(HERE, "fake_node.py")
 REAL_NODE = shutil.which("node")
 TPS = 254016000000
-ENV_KEYS = ("FILMCRAFT_DATA_DIR", "BASHCUT_HYPERFRAMES_NODE", "BASHCUT_HYPERFRAMES_CHROME", "HYPERFRAMES_BROWSER_PATH",
+ENV_KEYS = ("BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR", "BASHCUT_HYPERFRAMES_NODE", "BASHCUT_HYPERFRAMES_CHROME", "HYPERFRAMES_BROWSER_PATH",
             "BASHCUT_HYPERFRAMES_FFMPEG", "BASHCUT_HYPERFRAMES_FORMAT", "FAKE_HF_LOG", "FAKE_CHROME", "FAKE_NODE_VERSION")
 PAGE = """<!doctype html>
 <html data-composition-variables='[{"id":"title","type":"string","default":"Hello"},{"id":"count","type":"number","default":1},{"id":"accent","type":"color","default":"#ffffff"}]'>
@@ -327,6 +327,22 @@ class RenderTests(Base):
         code, again = self.run_cli("render", self.composition, "--set", "title=Hi", "--out", out_dir)
         self.assertTrue(again["data"]["reused"])
         self.assertEqual(len(self.hf_calls("render")), 1)
+
+    def test_render_as_the_app_runs_it(self):
+        # bashcut.plugins.run passes the action's args and the params' flags: the composition comes as --composition
+        out_dir = os.path.join(self.dir, "renders")
+        code, out = self.run_cli("render", "--composition", self.composition, "--out", out_dir)
+        self.assertEqual(code, 0, out)
+        self.assertTrue(os.path.isfile(out["data"]["media"]))
+        code, again = self.run_cli("render", self.composition, "--out", out_dir)
+        self.assertTrue(again["data"]["reused"])  # the same render either way
+
+    def test_the_runtime_is_looked_for_in_bashcutpros_data_dir_first(self):
+        os.environ["BASHCUTPRO_DATA_DIR"] = os.path.join(self.dir, "bashcutpro")  # wins over FILMCRAFT_DATA_DIR
+        self.assertEqual(paths()["runtime"], os.path.join(self.dir, "bashcutpro", "bashcut-plugins", "bashcut.hyperframes", "runtime"))
+        code, out = self.run_cli("render", self.composition, "--out", self.dir)
+        self.assertEqual(code, 1)
+        self.assertIn("setup", out["error"]["message"])
 
     def test_draft_and_duration(self):
         code, out = self.run_cli("render", self.composition, "--draft", "--duration", "2", "--out", self.dir)

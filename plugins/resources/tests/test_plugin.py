@@ -17,7 +17,7 @@ from resources_plugin.licences import credit_line, merge_notes, read_sidecar, wr
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
-ENV_KEYS = ("FILMCRAFT_DATA_DIR", "BASHCUT_RESOURCES_SCRIPTS", "BASHCUT_RESOURCES_PENDING", "BASHCUT_RESOURCES_PYTHON")
+ENV_KEYS = ("BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR", "BASHCUT_RESOURCES_SCRIPTS", "BASHCUT_RESOURCES_PENDING", "BASHCUT_RESOURCES_PYTHON")
 
 with open(os.path.join(os.path.dirname(HERE), "bashcut-plugin.json"), encoding="utf-8") as f:
     MANIFEST = json.load(f)

@@ -1,8 +1,8 @@
 """Where the plugin keeps its files, its settings, and the Python that runs the models.
 
-Data folder: `<data dir>/bashcut-plugins/bashcut.vision/` (data dir: `FILMCRAFT_DATA_DIR`, else
-`~/Library/Application Support/FilmCraft`, `%APPDATA%\\FilmCraft`, `$XDG_DATA_HOME/filmcraft` or
-`~/.local/share/filmcraft`): `venv/` (made by `setup`, with onnxruntime, numpy and Pillow) and `settings.json`
+Data folder: `<data dir>/bashcut-plugins/bashcut.vision/` (data dir: `BASHCUTPRO_DATA_DIR`, else `FILMCRAFT_DATA_DIR`, else
+`~/Library/Application Support/BashCutPro`, `%APPDATA%\\BashCutPro`, `$XDG_DATA_HOME/bashcutpro` or
+`~/.local/share/bashcutpro`): `venv/` (made by `setup`, with onnxruntime, numpy and Pillow) and `settings.json`
 (non-secret settings). Models are cached by the downloader in `<data dir>/bashcut-models/`.
 """
 

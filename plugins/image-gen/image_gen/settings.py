@@ -1,8 +1,9 @@
 """Plugin settings: command-line flag, then environment variable, then the settings file.
 
 The settings file is `<data dir>/bashcut-plugins/bashcut.image-gen/settings.json`, where the data dir is
-BashCutPro's (`FILMCRAFT_DATA_DIR`, else `~/Library/Application Support/FilmCraft`, `%APPDATA%\\FilmCraft`,
-`$XDG_DATA_HOME/filmcraft` or `~/.local/share/filmcraft`). Secrets (the API key) are never read from or written
+BashCutPro's (`BASHCUTPRO_DATA_DIR`, else `FILMCRAFT_DATA_DIR`, else
+`~/Library/Application Support/BashCutPro`, `%APPDATA%\\BashCutPro`, `$XDG_DATA_HOME/bashcutpro` or
+`~/.local/share/bashcutpro`). Secrets (the API key) are never read from or written
 to that file: they come from a flag or the environment, which is where a host (BashCutPro's plugin host, an
 agent, a shell profile) puts a key it keeps in the OS key store.
 """
