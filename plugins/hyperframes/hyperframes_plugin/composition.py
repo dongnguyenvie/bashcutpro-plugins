@@ -148,7 +148,7 @@ def values(decl, sets=(), variables=None, brand=None, unset=(), base=None):
     return out, warnings
 
 
-def digest(source, page, vals, fps, seconds, draft):
+def digest(source, page, vals, fps, seconds, draft, fmt="png"):
     """A short hash of everything a render depends on: the files of the folder and the inputs."""
     h = hashlib.sha256()
     for folder, dirs, files in os.walk(source):
@@ -158,7 +158,7 @@ def digest(source, page, vals, fps, seconds, draft):
             h.update(os.path.relpath(path, source).encode("utf-8"))
             with open(path, "rb") as f:
                 h.update(hashlib.sha256(f.read()).digest())
-    h.update(json.dumps([page, vals, fps, seconds, draft], sort_keys=True, ensure_ascii=False).encode("utf-8"))
+    h.update(json.dumps([page, vals, fps, seconds, draft, fmt], sort_keys=True, ensure_ascii=False).encode("utf-8"))
     return h.hexdigest()[:10]
 
 

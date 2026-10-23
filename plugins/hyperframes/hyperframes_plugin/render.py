@@ -46,9 +46,15 @@ def lint(node, chrome, folder):
                          for f in (report.get("findings") or [])[:12]]}
 
 
+TRANSIENT = ("reused", "lint", "warnings")
+
+
 def record_path(output):
-    """`renders/x-ab12/` (frames) or `renders/x-ab12.mov` → `renders/x-ab12.graphic.json`."""
-    return os.path.splitext(output.rstrip("/\\"))[0] + ".graphic.json"
+    """`renders/x-ab12/` (frames) or `renders/x-ab12.mov` → `renders/x-ab12.graphic.json` (a dot in the name stays)."""
+    output = output.rstrip("/\\")
+    if output.lower().endswith(".mov"):
+        output = output[:-len(".mov")]
+    return output + ".graphic.json"
 
 
 def read_record(path):
@@ -63,8 +69,9 @@ def read_record(path):
 
 
 def write_record(record):
+    """Saves the inputs and placements; what only this run reported (`TRANSIENT`) stays out."""
     with open(record_path(record["output"]), "w", encoding="utf-8") as f:
-        json.dump(record, f, ensure_ascii=False, indent=1)
+        json.dump({k: v for k, v in record.items() if k not in TRANSIENT}, f, ensure_ascii=False, indent=1)
     return record_path(record["output"])
 
 
@@ -109,14 +116,14 @@ def render(options, given, out, name=None, sets=(), variables=None, brand=None, 
             raise AppError("dependency_missing", "--format mov needs FFmpeg (PATH or --ffmpeg); --format png needs none")
     rate = render_fps(fps, draft)
     base_name = name or (given if given in comp.example_names() else os.path.basename(source))
-    output = os.path.join(out, "%s-%s" % (base_name, comp.digest(source, page, vals, rate, seconds, draft)))
+    output = os.path.join(out, "%s-%s" % (base_name, comp.digest(source, page, vals, rate, seconds, draft, fmt)))
     if fmt == "mov":
         output += ".mov"
     record = {"schema": SCHEMA, "composition": given if given in comp.example_names() else source, "page": page,
               "values": vals, "fps": fps, "renderFps": rate, "seconds": seconds, "draft": draft, "format": fmt,
               "name": base_name, "output": output}
     if os.path.exists(record_path(output)) and os.path.exists(media_path(record)):
-        old = read_record(record_path(output))
+        old = {k: v for k, v in read_record(record_path(output)).items() if k not in TRANSIENT}
         old.update(reused=True, warnings=warnings)
         return old
 
