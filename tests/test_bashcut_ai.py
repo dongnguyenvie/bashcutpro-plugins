@@ -2,12 +2,14 @@
 classification and retries (against a local mock server, no network)."""
 
 import http.server
+import gc
 import json
 import os
 import sys
 import threading
 import unittest
 import urllib.error
+import warnings
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
@@ -126,6 +128,15 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(self.send_error(answer), code, answer)
             self.assertEqual(len(Handler.requests), 1, answer)
         self.assertEqual(self.sleeps, [])
+
+    def test_http_error_leaves_no_open_response(self):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", ResourceWarning)
+            self.assertEqual(self.send_error((401, error_body("bad key"))), "auth")
+            Handler.answers = [(503, error_body("overloaded")), (200, {"ok": 1})]
+            self.assertEqual(self.client().send("/v1/x", {}), {"ok": 1})
+            gc.collect()
+        self.assertEqual([str(w.message) for w in caught if issubclass(w.category, ResourceWarning)], [])
 
     def test_send_retries(self):
         busy = (503, error_body("overloaded"))

@@ -108,10 +108,11 @@ class Client:
                     return json.loads(response.read().decode("utf-8") or "{}")
             except urllib.error.HTTPError as error:
                 status = error.code
-                try:
-                    payload = json.loads(error.read().decode("utf-8") or "{}")
-                except ValueError:
-                    payload = {}
+                with error:  # the error is the response: close it, or its socket is left open
+                    try:
+                        payload = json.loads(error.read().decode("utf-8") or "{}")
+                    except ValueError:
+                        payload = {}
             except (urllib.error.URLError, socket.timeout, ConnectionError) as error:
                 busy += 1
                 last = self.error("network", "%s did not answer: %s" % (self.name, getattr(error, "reason", error)))

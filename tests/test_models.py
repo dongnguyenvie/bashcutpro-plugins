@@ -1,6 +1,7 @@
 """models.json, tools/check_models.py and the downloader (tools/bashcut_models.py) against a local HTTP server."""
 
 import contextlib
+import gc
 import hashlib
 import http.server
 import io
@@ -11,6 +12,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import warnings
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 
@@ -97,6 +99,15 @@ class DownloadTests(unittest.TestCase):
         self.models("/missing", mirror="/good").fetch("demo")
         self.assertTrue(os.path.isfile(self.target()))
         self.assertEqual([p for p, _ in Handler.requests], ["/missing", "/good"])
+
+    def test_http_error_leaves_no_open_response(self):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", ResourceWarning)
+            with self.assertRaises(bashcut_models.ModelError):
+                self.models("/missing").fetch("demo")
+            self.models("/missing", mirror="/good").fetch("demo")
+            gc.collect()
+        self.assertEqual([str(w.message) for w in caught if issubclass(w.category, ResourceWarning)], [])
 
     def test_resume_asks_for_the_rest_only(self):
         os.makedirs(os.path.dirname(self.target()))

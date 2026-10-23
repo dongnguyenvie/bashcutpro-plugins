@@ -173,6 +173,7 @@ class Models:
         try:
             response = self.opener(request, timeout=60)
         except urllib.error.HTTPError as error:
+            error.close()  # the error is the response: close it, or its socket is left open
             if error.code == 416 and have:  # the part is already whole
                 return
             raise
