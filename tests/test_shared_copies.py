@@ -34,7 +34,7 @@ class SharedCopies(unittest.TestCase):
                 text = f.read()
             self.assertIn("bashcut_cli.run(", text, os.path.relpath(path, ROOT))
             self.assertIn("bashcut_cli.utf8_stdio()", text, os.path.relpath(path, ROOT))
-            for local in ("def emit(", "def utf8_stdio(", "def connection_args("):
+            for local in ("def emit(", "def utf8_stdio(", "def connection_args(", "def save("):
                 self.assertNotIn(local, text, "%s: use bashcut_cli" % os.path.relpath(path, ROOT))
 
     def test_mcp_clients_are_the_same(self):

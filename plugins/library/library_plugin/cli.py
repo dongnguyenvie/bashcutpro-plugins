@@ -12,7 +12,7 @@ import json
 import os
 
 import bashcut_cli
-from bashcut_cli import connection_args
+from bashcut_cli import connection_args, save
 
 from . import __version__
 from .engine import apply_brand, apply_item, save_selection
@@ -140,13 +140,6 @@ def connect(args):
     return McpClient.connect(cli=args.cli, project=args.project, bridge=args.bridge)
 
 
-def save_project(app, args):
-    if args.project and not args.no_save:
-        app.run("file.save", {"path": args.project})
-        return True
-    return False
-
-
 def json_arg(text, name):
     if not text:
         return None
@@ -191,7 +184,7 @@ def cmd_apply(args):
         result = apply_item(app, lib, item, clips=args.clip, seconds=args.seconds, track=args.track,
                             values=json_arg(args.values, "--values"), out=args.out)
         lib.used(item["id"], project_key(args))
-        result["saved"] = save_project(app, args)
+        result["saved"] = save(app, args)
     return "Applied %s (%s)" % (item["id"], item["kind"]), dict(result, id=item["id"])
 
 
@@ -262,7 +255,7 @@ def cmd_brand(args):
         result = apply_brand(app, lib, item, args.part, seconds=args.seconds, track=args.track,
                              values=json_arg(args.values, "--values"), caption_track=args.caption_track)
         lib.used(item["id"], project_key(args))
-        result["saved"] = save_project(app, args)
+        result["saved"] = save(app, args)
     return "Applied the %s of %s" % (args.part, item["id"]), result
 
 

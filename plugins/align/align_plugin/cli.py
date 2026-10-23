@@ -10,7 +10,7 @@ import json
 import os
 
 import bashcut_cli
-from bashcut_cli import connection_args
+from bashcut_cli import connection_args, save
 
 from . import __version__
 from .align import LOW, align, cues, low_spans
@@ -62,13 +62,6 @@ def build_parser():
 
 def connect(args):
     return McpClient.connect(cli=args.cli, project=args.project, bridge=args.bridge)
-
-
-def save(app, args):
-    if args.project and not args.no_save:
-        app.run("file.save", {"path": args.project})
-        return True
-    return False
 
 
 def known_lines(args):

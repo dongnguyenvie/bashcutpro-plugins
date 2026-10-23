@@ -85,6 +85,19 @@ class Result(unittest.TestCase):
         args = parser.parse_args(["--project", "a.fcproj", "--bridge", "127.0.0.1:9876", "--cli", "x", "--no-save"])
         self.assertEqual((args.project, args.bridge, args.cli, args.no_save), ("a.fcproj", "127.0.0.1:9876", "x", True))
 
+    def test_save_only_a_headless_project(self):
+        class App:
+            def __init__(self):
+                self.calls = []
+
+            def run(self, command, params):
+                self.calls.append((command, params))
+
+        for project, no_save, saved in (("a.fcproj", False, True), ("a.fcproj", True, False), (None, False, False)):
+            app = App()
+            self.assertEqual(bashcut_cli.save(app, argparse.Namespace(project=project, no_save=no_save)), saved)
+            self.assertEqual(app.calls, [("file.save", {"path": project})] if saved else [])
+
 
 if __name__ == "__main__":
     unittest.main()

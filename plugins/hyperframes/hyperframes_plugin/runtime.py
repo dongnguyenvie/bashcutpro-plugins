@@ -23,7 +23,6 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE = os.path.join(HERE, "runtime", "package.template.json")
 LOCK = os.path.join(HERE, "runtime", "package-lock.template.json")
 MIN_NODE = (22, 19)
-EXE = ".exe" if sys.platform == "win32" else ""
 # Telemetry off and no skills check against GitHub in every HyperFrames run.
 QUIET = {"HYPERFRAMES_NO_TELEMETRY": "1", "DO_NOT_TRACK": "1", "HF_CLI_TELEMETRY_DISABLED": "1", "HYPERFRAMES_SKIP_SKILLS": "1"}
 
