@@ -4,7 +4,8 @@
 It speaks the same newline-delimited JSON-RPC and answers the tools and commands the plugin uses, with
 the shapes FilmCraft's engine returns (crates/engine/src/captions.rs, masks.rs, commands.rs). State is a
 JSON file (the `--project` path); every command saves it so a test can read it back. `file.exportFrame`
-writes BMP frames drawn by `frames.py` from the state's `frames` description.
+writes BMP frames drawn by `frames.py` from the state's `frames` description; a description with
+`"export": "truncated"` writes a BMP cut short, `"export": "missing"` answers without writing a file.
 """
 
 import json
@@ -73,7 +74,12 @@ def main():
             assert p["target"] == "source" and p["format"] == "bmp"
             spec = state["frames"][str(p["item"])]
             index = int(p["time"] * 10 // TPS)  # one picture per 0.1 s of source time
+            if spec.get("export") == "missing":
+                return {"path": p["path"]}
             write_bmp(p["path"], draw_frame(spec, index))
+            if spec.get("export") == "truncated":
+                with open(p["path"], "r+b") as f:
+                    f.truncate(os.path.getsize(p["path"]) // 2)
             return {"path": p["path"]}
         if cmd == "effects.apply":
             for cid in p["clips"]:

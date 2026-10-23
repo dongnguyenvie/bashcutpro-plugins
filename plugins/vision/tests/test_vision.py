@@ -1,12 +1,15 @@
 """Cutout, subjects / reframe, OCR and descriptions through the fake MCP server, with the fake model backend
 (VISION_FAKE=1: red is a person, yellow a face, blue an object). No model is downloaded or run."""
 
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.dirname(HERE)
@@ -59,6 +62,18 @@ class Base(unittest.TestCase):
 
     def commands(self, command_id):
         return [entry["params"] for entry in self.read_state()["log"] if entry["id"] == command_id]
+
+    def script(self, name, body):
+        """A stand-in program (POSIX shell) in the test folder."""
+        path = os.path.join(self.dir, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n" + body)
+        os.chmod(path, 0o755)
+        return path
+
+    def frame_files(self):
+        folder = os.path.join(self.dir, "vision-frames")
+        return sorted(os.listdir(folder)) if os.path.isdir(folder) else None
 
 
 class CutoutTests(Base):
@@ -175,22 +190,78 @@ class TextAndDescriptionTests(Base):
         self.assertEqual(lines[0]["text"], "Hello world")
         self.assertEqual((lines[0]["x"], lines[0]["y"], lines[0]["w"]), (0.1, 0.9, 0.18))
 
-
-    @unittest.skip("test ticket: a Tesseract that runs past the timeout ends ocr with ocr_failed JSON, not a traceback")
+    @unittest.skipIf(os.name == "nt", "the stand-in tesseract is a shell script")
     def test_tesseract_timeout_is_an_ocr_failed_error(self):
-        pass
+        from vision_plugin import cli
+        slow = self.script("tesseract", "exec sleep 30\n")
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch("vision_plugin.ocr.TIMEOUT", 0.5), redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(["ocr", "--samples", "1", "--tesseract", slow, "--project", self.state, "--cli", FAKE])
+        result = json.loads(out.getvalue())
+        self.assertEqual((code, result["ok"], result["error"]["code"]), (1, False, "ocr_failed"), result)
+        self.assertIn("more than", result["error"]["message"])
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertIsNone(self.frame_files())  # the frames are removed on the way out too
 
-    @unittest.skip("test ticket: ocr-apply with string and float times next to stored int times stores ints, sorted")
+    def write_answer(self, frames):
+        answer = os.path.join(self.dir, "answer.json")
+        with open(answer, "w", encoding="utf-8") as f:
+            json.dump({"frames": frames}, f)
+        return answer
+
     def test_ocr_apply_turns_the_agent_times_into_ticks(self):
-        pass
+        sidecar = os.path.join(self.dir, "results.vision.json")
+        with open(sidecar, "w", encoding="utf-8") as f:
+            json.dump({"clips": {"1": {"text": [{"time": 300, "lines": [{"text": "old"}]},
+                                                {"time": 100, "lines": [{"text": "replaced"}]}]}}}, f)
+        answer = self.write_answer([{"clip": 1, "time": "200", "text": [{"text": "two"}]},
+                                    {"clip": 1, "time": 100.0, "text": [{"text": "one"}]},
+                                    {"clip": 1, "time": "50.7", "text": []}])
+        code, result = self.run_cli("ocr-apply", "--sidecar", sidecar, "--answer", answer, project=False)
+        self.assertEqual(code, 0, result)
+        with open(sidecar, encoding="utf-8") as f:
+            texts = json.load(f)["clips"]["1"]["text"]
+        times = [t["time"] for t in texts]
+        self.assertEqual(times, [50, 100, 200, 300])
+        self.assertTrue(all(type(t) is int for t in times))
+        self.assertEqual([t["lines"][0]["text"] if t["lines"] else None for t in texts], [None, "one", "two", "old"])
 
-    @unittest.skip("test ticket: ocr-apply with a time that is not a number exits 2 (bad_args) and saves nothing")
     def test_ocr_apply_refuses_a_time_that_is_not_a_number(self):
-        pass
+        sidecar = os.path.join(self.dir, "results.vision.json")
+        with open(sidecar, "w", encoding="utf-8") as f:
+            json.dump({"clips": {"1": {"text": [{"time": 100, "lines": []}]}}}, f)
+        with open(sidecar, "rb") as f:
+            before = f.read()
+        for bad in ("soon", "1e999", [1], {"t": 1}):
+            with self.subTest(time=bad):
+                answer = self.write_answer([{"clip": 1, "time": 200, "text": [{"text": "ok"}]}, {"clip": 1, "time": bad, "text": []}])
+                code, result = self.run_cli("ocr-apply", "--sidecar", sidecar, "--answer", answer, project=False)
+                self.assertEqual((code, result["error"]["code"]), (2, "bad_args"), result)
+                with open(sidecar, "rb") as f:
+                    self.assertEqual(f.read(), before)
+        self.assertFalse(os.path.exists(sidecar + ".tmp"))
 
-    @unittest.skip("test ticket: a second ocr/describe run leaves only its own frames in vision-frames; ocr with Tesseract removes the folder")
+    @unittest.skipIf(os.name == "nt", "the stand-in tesseract is a shell script")
     def test_agent_frames_do_not_pile_up(self):
-        pass
+        self.write_state(64, 36, [clip(1, 7), clip(2, 8, start=int(TPS * 0.5))], {"7": PERSON, "8": OBJECT})
+        code, result = self.run_cli("ocr", "--samples", "3")
+        self.assertEqual(code, 3, result)
+        self.assertEqual(len(self.frame_files()), 6)
+        code, result = self.run_cli("ocr", "--samples", "1", "--clip", "2")
+        self.assertEqual(code, 3, result)
+        self.assertEqual(self.frame_files(), ["clip2-00.png"])
+        self.assertEqual([os.path.basename(f["path"]) for f in result["data"]["frames"]], ["clip2-00.png"])
+        code, result = self.run_cli("describe", "--samples", "2", "--clip", "1")
+        self.assertEqual(code, 3, result)
+        self.assertEqual(self.frame_files(), ["clip1-00.png", "clip1-01.png"])
+
+        tesseract = self.script("tesseract", "printf 'level\\tpage_num\\tblock_num\\tpar_num\\tline_num\\tword_num\\t"
+                                              "left\\ttop\\twidth\\theight\\tconf\\ttext\\n"
+                                              "5\\t1\\t1\\t1\\t1\\t1\\t4\\t30\\t20\\t4\\t95\\tHello\\n'\n")
+        code, result = self.run_cli("ocr", "--samples", "2", "--tesseract", tesseract)
+        self.assertEqual(code, 0, result)
+        self.assertEqual([f["text"][0]["text"] for f in result["data"]["frames"]], ["Hello"] * 4)
+        self.assertIsNone(self.frame_files())
 
 class ModelsTests(Base):
     def test_models_are_listed_from_models_json(self):
@@ -216,9 +287,22 @@ class ModelsTests(Base):
         self.assertEqual(code, 0, result)
         self.assertIn("onnxruntime>=1.17", result["data"]["steps"][-1])
 
-    @unittest.skip("test ticket: setup with a step that prints to stdout (fake python/uv): stdout is exactly one JSON object, the step output is on stderr")
+    @unittest.skipIf(os.name == "nt", "the stand-in python is a shell script")
     def test_setup_stdout_is_one_json_object(self):
-        pass
+        # makes the venv by copying itself to <venv>/bin/python3; every run prints to stdout
+        python = self.script("python", 'echo "fake python $*"\n'
+                                       'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
+        full = [sys.executable, os.path.join(PLUGIN, "plugin.py"), "setup", "--python", python]
+        env = dict(os.environ, FILMCRAFT_DATA_DIR=os.path.join(self.dir, "data"))
+        out = subprocess.run(full, capture_output=True, env=env, timeout=60)
+        stdout, stderr = out.stdout.decode("utf-8"), out.stderr.decode("utf-8")
+        self.assertEqual(out.returncode, 0, stdout + stderr)
+        result = json.loads(stdout)  # the whole of stdout is the one object
+        self.assertNotIn("fake python", stdout)
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(result["data"]["steps"]), 2)
+        self.assertIn("fake python -m venv", stderr)
+        self.assertIn("fake python -m pip install", stderr)
 
     def test_nms_keeps_the_best_of_overlapping_boxes(self):
         boxes = [{"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2, "score": 0.9}, {"x": 0.11, "y": 0.1, "w": 0.2, "h": 0.2, "score": 0.7},
