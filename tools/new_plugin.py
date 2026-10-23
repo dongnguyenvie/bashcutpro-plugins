@@ -82,7 +82,7 @@ def create(root, name, title, summary, vi_title, vi_summary, category="other"):
     values = tokens(name, title, summary.rstrip(), category, vi_title, vi_summary.rstrip())
     copy_template(root, folder, values)
     for src, dst in sync_shared.stale(root):
-        if os.path.dirname(dst) == folder:
+        if os.path.dirname(dst) in (folder, os.path.join(folder, "tests")):
             shutil.copyfile(src, dst)
     register(root, name, values)
     return folder

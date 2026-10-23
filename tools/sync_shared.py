@@ -15,7 +15,9 @@ so shared code is vendored).
   or `bashcut_frames`;
 - `bashcut_images.py` (BMP stills, PNG read and write): every plugin whose code imports it;
 - `bashcut_frames.py` (clips with frames to look at, speed-aware source sample times): every plugin whose code imports it;
-- `bashcut_models.py` (the downloader): every plugin whose manifest has a `models` list (`check_models.py` checks it too).
+- `bashcut_models.py` (the downloader): every plugin whose manifest has a `models` list (`check_models.py` checks it too);
+- `bashcut_fake_engine.py` (the test fake engine's core: JSON-RPC, `command_run` / `command_batch`, the state file):
+  into `tests/` of every plugin with a `tests/fake_filmcraft.py`.
 
 Edit the copy in `tools/`, then run this; `tests/test_shared_copies.py` fails while a copy differs.
 """
@@ -69,6 +71,9 @@ def copies(root=ROOT):
             yield os.path.join(root, "tools", "bashcut_frames.py"), os.path.join(root, "plugins", name, "bashcut_frames.py")
         if uses_models(root, name):
             yield os.path.join(root, "tools", "bashcut_models.py"), os.path.join(root, "plugins", name, "bashcut_models.py")
+        if os.path.isfile(os.path.join(root, "plugins", name, "tests", "fake_filmcraft.py")):
+            yield (os.path.join(root, "tools", "bashcut_fake_engine.py"),
+                   os.path.join(root, "plugins", name, "tests", "bashcut_fake_engine.py"))
 
 
 def read(path):

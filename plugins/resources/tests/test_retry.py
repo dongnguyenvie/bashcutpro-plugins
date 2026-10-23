@@ -211,7 +211,7 @@ class GetTests(unittest.TestCase):
             manifest = json.loads((Path(folder) / 'candidates.json').read_text(encoding='utf-8'))
         self.assertEqual(rows[0], {'slot': 'river', 'candidates': 3, 'inLibrary': 2, 'deferred': 1})
         self.assertTrue(rows[1]['capped'])
-        self.assertEqual(files, ['pexels-2-stock.mp4', 'pexels-3-stock.mp4'])  # no tags: named before 'words' is set
+        self.assertEqual(files, ['pexels-2-river.mp4', 'pexels-3-river.mp4'])  # no tags: named after the slot's words
         first = next(r for r in manifest if r.get('n') == 1)
         self.assertTrue(first['deferred'])
         self.assertNotIn('error', first)
