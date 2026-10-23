@@ -5,21 +5,25 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 from hyperframes_plugin import cli  # noqa: E402
 from hyperframes_plugin import composition as comp  # noqa: E402
+from hyperframes_plugin import render as rendering  # noqa: E402
 from hyperframes_plugin.mcp import AppError  # noqa: E402
 from hyperframes_plugin.runtime import find_node, parse_version, paths, pinned, status  # noqa: E402
 
 FAKE_APP = os.path.join(HERE, "fake_filmcraft.py")
 FAKE_NODE = os.path.join(HERE, "fake_node.py")
+REAL_NODE = shutil.which("node")
 TPS = 254016000000
 ENV_KEYS = ("FILMCRAFT_DATA_DIR", "BASHCUT_HYPERFRAMES_NODE", "BASHCUT_HYPERFRAMES_CHROME", "HYPERFRAMES_BROWSER_PATH",
             "BASHCUT_HYPERFRAMES_FFMPEG", "BASHCUT_HYPERFRAMES_FORMAT", "FAKE_HF_LOG", "FAKE_CHROME", "FAKE_NODE_VERSION")
@@ -32,6 +36,10 @@ PAGE = """<!doctype html>
 <body><div data-composition-id="main" data-width="1920" data-height="1080" data-duration="1"></div>
 <script src="gsap.min.js"></script>%s</body></html>
 """
+
+
+def glob_records(folder):
+    return [n for n in os.listdir(folder) if n.endswith(".graphic.json")]
 
 
 def touch(path, text="x"):
@@ -188,13 +196,48 @@ class CompositionTests(Base):
         touch(os.path.join(self.composition, "style.css"))
         self.assertNotEqual(first, comp.digest(self.composition, page, {"title": "A"}, 30, None, False))
 
-    @unittest.skip("test ticket: provide_scripts writes diagram.js / amenity-map.js with lib/brand.js in front (RP15)")
     def test_shared_scripts_carry_brand(self):
-        pass
+        lib = paths()["lib"]
+        with open(os.path.join(lib, "brand.js"), "rb") as f:
+            brand = f.read()
+        html = '<script src="diagram.js"></script><script src="./amenity-map.js"></script>'
+        touch(os.path.join(self.composition, "diagram.js"), "/* an old copy */")
+        comp.provide_scripts(self.composition, html)
+        for name in ("diagram.js", "amenity-map.js"):
+            with open(os.path.join(lib, name), "rb") as f:
+                own = f.read()
+            with open(os.path.join(self.composition, name), "rb") as f:
+                self.assertEqual(f.read(), brand + b"\n" + own, name)
+        self.assertFalse(os.path.exists(os.path.join(self.composition, "gsap.min.js")))  # not loaded by the page
 
-    @unittest.skip("test ticket: a render of flow-diagram with --set data='{bad' fails naming the data variable (RP15)")
+    @unittest.skipUnless(REAL_NODE, "needs Node.js on PATH")
     def test_bad_data_json_fails_clearly(self):
-        pass
+        # The fake HyperFrames runs no page script: mount the prepared flow-diagram's diagram.js in Node instead.
+        self.install()
+        source, page = comp.locate("flow-diagram")
+        vals, _ = comp.values(comp.declared(comp.read_page(source)), ["data={bad"])
+        work = os.path.join(self.dir, "work")
+        html = comp.prepare(source, page, work, vals)
+        data = next(d["default"] for d in comp.declared(html) if d["id"] == "data")
+        self.assertEqual(data, "{bad")
+        script = """
+            const style = { setProperty() {} };
+            const node = () => ({ style: {}, textContent: "", dataset: {}, appendChild() {} });
+            globalThis.document = { documentElement: { style }, body: node(), head: node(), createElement: node };
+            const diagram = require(process.argv[1]);
+            const root = node();
+            root.dataset = { width: "1080", height: "1920", duration: "8" };
+            try {
+                diagram.mount({}, { data: process.argv[2] }, "flow", root);
+                console.log("mounted");
+            } catch (error) {
+                console.log(error.message);
+            }
+        """
+        done = subprocess.run([REAL_NODE, "-e", script, os.path.join(work, "diagram.js"), data],
+                              capture_output=True, text=True, encoding="utf-8", timeout=60)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("the data variable is not valid JSON", done.stdout)
 
 
 class RenderTests(Base):
@@ -203,17 +246,69 @@ class RenderTests(Base):
         self.assertEqual(code, 0, out)
         self.assertTrue(out["data"]["ready"])
 
-    @unittest.skip("test ticket: png and mov renders of one graphic get separate outputs and records (RP14)")
     def test_png_and_mov_keep_separate_records(self):
-        pass
+        ffmpeg = os.path.join(self.dir, "ffmpeg")
+        touch(ffmpeg)
+        os.environ["BASHCUT_HYPERFRAMES_FFMPEG"] = ffmpeg
+        out_dir = os.path.join(self.dir, "renders")
+        code, png = self.run_cli("render", self.composition, "--out", out_dir)
+        self.assertEqual(code, 0, png)
+        with mock.patch.object(rendering, "encode_mov", side_effect=lambda ff, frames, fps, target: touch(target)):
+            code, mov = self.run_cli("render", self.composition, "--format", "mov", "--out", out_dir)
+        self.assertEqual(code, 0, mov)
+        self.assertFalse(mov["data"]["reused"])
+        self.assertTrue(mov["data"]["output"].endswith(".mov"))
+        self.assertNotEqual(os.path.splitext(mov["data"]["output"])[0], png["data"]["output"])
+        self.assertNotEqual(mov["data"]["record"], png["data"]["record"])
+        self.assertEqual(mov["data"]["media"], mov["data"]["output"])
+        for data, fmt in ((png["data"], "png"), (mov["data"], "mov")):
+            with open(data["record"], encoding="utf-8") as f:
+                self.assertEqual(json.load(f)["format"], fmt)
+        self.assertTrue(os.path.isfile(png["data"]["media"]))  # the movie left the frames alone
+        self.assertEqual(len(self.hf_calls("render")), 2)
 
-    @unittest.skip("test ticket: a name with a dot (a.b) gets its own record, not a.graphic.json (RP14)")
     def test_a_dotted_name_keeps_its_own_record(self):
-        pass
+        out_dir = os.path.join(self.dir, "renders")
+        code, dotted = self.run_cli("render", self.composition, "--name", "a.b", "--out", out_dir)
+        self.assertEqual(code, 0, dotted)
+        code, plain = self.run_cli("render", self.composition, "--name", "a", "--out", out_dir)
+        self.assertEqual(code, 0, plain)
+        record = dotted["data"]["record"]
+        self.assertEqual(record, dotted["data"]["output"] + ".graphic.json")
+        self.assertTrue(os.path.basename(record).startswith("a.b-"))
+        self.assertNotEqual(record, plain["data"]["record"])
+        self.assertEqual(len(glob_records(out_dir)), 2)
+        self.assertEqual(rendering.record_path(os.path.join(out_dir, "x.y-ab12.mov")),
+                         os.path.join(out_dir, "x.y-ab12.graphic.json"))
+        self.assertEqual(rendering.record_path(os.path.join(out_dir, "x.y-ab12") + os.sep),
+                         os.path.join(out_dir, "x.y-ab12.graphic.json"))
 
-    @unittest.skip("test ticket: reused / lint / warnings never land in the .graphic.json record (RP14)")
     def test_the_record_holds_no_transient_keys(self):
-        pass
+        touch(os.path.join(self.composition, "index.html"), PAGE % "<!-- LINT_ERROR -->")
+        out_dir = os.path.join(self.dir, "renders")
+        # headingFont is a brand id the page does not declare: a warning.
+        code, out = self.run_cli("render", self.composition, "--set", "headingFont=Inter", "--out", out_dir)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((out["data"]["reused"], out["data"]["lint"]["errors"]), (False, 1))
+        self.assertTrue(out["data"]["warnings"])
+        code, again = self.run_cli("render", self.composition, "--set", "headingFont=Inter", "--out", out_dir)
+        self.assertTrue(again["data"]["reused"])
+        with open(out["data"]["record"], encoding="utf-8") as f:
+            record = json.load(f)
+        for key in rendering.TRANSIENT:
+            self.assertNotIn(key, record)
+        self.assertEqual(record["schema"], rendering.SCHEMA)
+        self.assertEqual(record["placed"], [])
+
+    def test_a_frame_that_is_not_png_has_no_size(self):
+        jpeg = os.path.join(self.dir, "frame.jpg")
+        with open(jpeg, "wb") as f:
+            f.write(b"\xff\xd8\xff\xe0" + b"\x00" * 40)
+        short = os.path.join(self.dir, "short.png")
+        with open(short, "wb") as f:
+            f.write(b"\x89PNG\r\n")
+        self.assertEqual(rendering.png_size(jpeg), (None, None))
+        self.assertEqual(rendering.png_size(short), (None, None))
 
     def test_render_then_reuse(self):
         out_dir = os.path.join(self.dir, "renders")
@@ -284,10 +379,20 @@ class PlaceTests(Base):
         with open(data["record"], encoding="utf-8") as f:
             self.assertEqual(json.load(f)["placed"][0]["item"], data["item"])
 
-    @unittest.skip("test ticket: on a 25 fps sequence (fake settings.frame_rate 25/1) --frame 50 places at 2 s "
-                   "and renders at 25 fps (RP14)")
     def test_place_follows_the_sequence_frame_rate(self):
-        pass
+        with open(self.project, "w", encoding="utf-8") as f:
+            json.dump({"sequence": {"settings": {"frame_rate": {"num": 25, "den": 1}},
+                                    "video": [{"id": 1, "items": []}], "audio": [{"id": 2, "items": []}]}}, f)
+        code, out = self.run_cli("place", self.composition, "--frame", "50", project=True)
+        self.assertEqual(code, 0, out)
+        data = out["data"]
+        self.assertEqual((data["seconds"], data["fps"], data["renderFps"], data["frames"]), (2.0, 25, 25, 25))
+        args = self.hf_calls("render")[0]["args"]
+        self.assertEqual(args[args.index("--fps") + 1], "25")
+        place = next(e for e in self.state()["log"] if e["id"] == "timeline.place")["params"]
+        self.assertEqual(place["seconds"], 2.0)
+        clip = self.state()["sequence"]["video"][1]["items"][0]
+        self.assertEqual((clip["start"], clip["end"]), (2 * TPS, 3 * TPS))
 
     def test_place_needs_a_start(self):
         code, out = self.run_cli("place", self.composition, project=True)

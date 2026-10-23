@@ -1,11 +1,14 @@
 """A stand-in for Gemini's generateContent and OpenAI's images API on 127.0.0.1, used by the tests.
 
 It answers with a small PNG (a left half red, right half blue, so a test can see the centre crop), records
-every request and can be told to refuse a key, refuse one prompt or be busy once.
+every request and can be told to refuse a key, refuse one prompt, be busy once, answer a prompt with a picture
+link that does not answer (`dead_link_word`) or give queued answers first (`answers`: (status, JSON) or "drop", a
+connection closed with no answer).
 """
 
 import base64
 import json
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -23,12 +26,23 @@ def two_colour_png(width=96, height=64):
     return encode_png(width, height, 3, [row] * height)
 
 
+def dead_link():
+    """A link to a port on this machine that nothing listens on."""
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    return "http://127.0.0.1:%d/picture.png" % port
+
+
 class FakeService:
     def __init__(self):
         self.requests = []
         self.refuse_key = False
         self.refuse_word = None
         self.busy_once = False
+        self.dead_link_word = None
+        self.answers = []
         self.picture = two_colour_png()
         service = self
 
@@ -42,6 +56,12 @@ class FakeService:
                 service.requests.append(entry)
                 if service.refuse_key:
                     return self.answer(401, {"error": {"message": "API key not valid"}})
+                if service.answers:
+                    queued = service.answers.pop(0)
+                    if queued == "drop":
+                        self.close_connection = True
+                        return None
+                    return self.answer(*queued)
                 if service.busy_once:
                     service.busy_once = False
                     return self.answer(503, {"error": {"message": "overloaded"}})
@@ -50,6 +70,8 @@ class FakeService:
                     if "generateContent" in self.path:
                         return self.answer(200, {"candidates": [{"finishReason": "IMAGE_SAFETY", "content": {"parts": []}}]})
                     return self.answer(400, {"error": {"message": "rejected by the safety system"}})
+                if service.dead_link_word and service.dead_link_word in text and "/v1/images/" in self.path:
+                    return self.answer(200, {"data": [{"url": dead_link()}]})
                 data = base64.b64encode(service.picture).decode("ascii")
                 if "generateContent" in self.path:
                     return self.answer(200, {"candidates": [{"content": {"parts": [
