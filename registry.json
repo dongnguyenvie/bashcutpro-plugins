@@ -34,7 +34,7 @@
     {
       "id": "bashcut.resources",
       "name": "Online Resources",
-      "version": "0.2.14",
+      "version": "0.2.15",
       "summary": "Open music, SFX, stock photos and video, icons, emoji, logos, illustrations, fonts and LUTs from official APIs: search with the licence shown before download, each file's licence recorded next to it; credit lines only when asked.",
       "i18n": {"vi": {"name": "Tài nguyên trực tuyến", "summary": "Nhạc, hiệu ứng âm thanh, ảnh và video stock, biểu tượng, emoji, logo, hình minh họa, phông chữ và LUT mở từ API chính thức: xem giấy phép trước khi tải, ghi giấy phép cạnh từng tệp; chỉ ghi nguồn khi được yêu cầu."}},
       "category": "resources",
@@ -62,7 +62,7 @@
     {
       "id": "bashcut.hyperframes",
       "name": "HyperFrames Graphics",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "summary": "HTML/CSS + GSAP graphics rendered with HyperFrames to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
       "i18n": {"vi": {"name": "Đồ họa HyperFrames", "summary": "Đồ họa HTML/CSS + GSAP dựng bằng HyperFrames thành chuỗi PNG hoặc ProRes 4444 có alpha, rồi nhập và đặt lên trên hình."}},
       "category": "graphics",
@@ -76,7 +76,7 @@
     {
       "id": "bashcut.align",
       "name": "Align Script to Speech",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "summary": "Put a known script, subtitles or translation on the speech with word timing; report low-confidence spans; check a script against its time.",
       "i18n": {"vi": {"name": "Khớp kịch bản với lời nói", "summary": "Khớp kịch bản, phụ đề hoặc bản dịch có sẵn vào lời nói theo từng từ; báo các đoạn kém tin cậy; kiểm tra kịch bản có vừa thời lượng không."}},
       "category": "captions",
