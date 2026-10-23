@@ -26,6 +26,7 @@ tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
 tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, connection flags (copied into each plugin)
+tools/bashcut_settings.py          data dir, plugin folder, flag → env → file → default (copied into plugins that use it)
 tools/sync_shared.py               writes those copies (--check lists stale ones)
 tools/check_all.py                 every check and every plugin's tests in one run
 tests/                             repo-wide checks: text encoding, find_cli, manifest text, registry, shared copies…
@@ -46,13 +47,14 @@ also be run on its own.
 
 There is no scaffold yet (RP4 in [docs/review-2026-10.md](docs/review-2026-10.md)). A plugin folder is installed on its
 own (the host copies `registry.json`'s `source.path`), so it must not import anything outside its folder; shared code
-is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every plugin, `bashcut_models.py` into
-those with `models`), and `tests/test_shared_copies.py` fails while a copy is stale. Today:
+is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every plugin, `bashcut_settings.py` into
+those that import it, `bashcut_models.py` into those with `models`), and `tests/test_shared_copies.py` fails while a copy is stale. Today:
 
 1. Copy the closest plugin folder to `plugins/<name>/` and rename its package.
 2. Replace the old id everywhere it is written: `bashcut-plugin.json` (`id`, `name`, `entry`, `skills`), `plugin.py`,
    `<package>/__init__.py`, `<package>/mcp.py` (the `clientInfo` line only: the rest of `mcp.py` must stay equal to
-   the other plugins'), `<package>/settings.py` (`PLUGIN_ID`), the `progress` name in `cli.py`, the skill.
+   the other plugins'), `<package>/settings.py` (`PLUGIN_ID` and its `SETTINGS` table:
+   `{id: ([env vars], default, secret?)}`, resolved by `bashcut_settings.resolve`), the `progress` name in `cli.py`, the skill.
 3. In `cli.py`, replace the commands; keep `main()` as the others have it: `bashcut_cli.utf8_stdio()`, parse, then
    `return bashcut_cli.run(COMMANDS[args.command], args, (AppError, …), handoff=(…))`. A command returns
    `(message, data)` or raises an error with `code` and `message` (and `data` for a hand-off); `connection_args(p)` adds
@@ -78,7 +80,7 @@ person from a shell. The host and these runs all start a plugin the same way, fr
    open app (`--bridge 127.0.0.1:<port>`, the app started with `filmcraft --control <port>`). It talks to the engine with
    the MCP tools (`command_run`, `command_batch`, `sequence_inspect`, …) and engine command ids.
 3. **Settings**: each setting comes from its flag, else its environment variables, else the plugin's settings file
-   `<data dir>/bashcut-plugins/<id>/settings.json` (FilmCraft's data dir). Secrets (API keys) never go in that file:
+   `<data dir>/bashcut-plugins/<id>/settings.json` (FilmCraft's data dir; `tools/bashcut_settings.py`). Secrets (API keys) never go in that file:
    a host keeps them in the OS key store and passes them as environment variables.
 4. **Result** (`output: "bashcut-result/1"`): one JSON object on stdout, `{"ok": true, "message", "data"}` or
    `{"ok": false, "error": {"code", "message"}, "data"?}`; progress lines on stderr. Exit status 0 success, 1 failure,
