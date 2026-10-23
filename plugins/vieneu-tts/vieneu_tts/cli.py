@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 import bashcut_cli
-from bashcut_cli import connection_args
+from bashcut_cli import connection_args, save
 from bashcut_models import ModelError, Models
 
 from . import __version__
@@ -83,13 +83,6 @@ def build_parser():
 
 def connect(args):
     return McpClient.connect(cli=args.cli, project=args.project, bridge=args.bridge)
-
-
-def save(app, args):
-    if args.project and not args.no_save:
-        app.run("file.save", {"path": args.project})
-        return True
-    return False
 
 
 def hf_home():

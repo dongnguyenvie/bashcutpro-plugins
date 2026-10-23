@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 import bashcut_cli
-from bashcut_cli import connection_args
+from bashcut_cli import connection_args, save
 
 from . import __version__
 from .licences import credit_line, from_line, merge_notes, read_sidecar, write_sidecar
@@ -111,13 +111,6 @@ def connect(args):
 
 def connected(args):
     return bool(getattr(args, "project", None) or getattr(args, "bridge", None))
-
-
-def save(app, args):
-    if args.project and not args.no_save:
-        app.run("file.save", {"path": args.project})
-        return True
-    return False
 
 
 def script_arguments(args):

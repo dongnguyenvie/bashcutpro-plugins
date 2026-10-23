@@ -1,5 +1,5 @@
 """The command-line plumbing every BashCutPro plugin shares: UTF-8 stdio, progress lines, the result protocol
-(`bashcut-result/1`) and the connection flags.
+(`bashcut-result/1`), the connection flags and saving a headless project.
 
 Canonical copy: `tools/bashcut_cli.py` in bashcutpro-plugins. Each plugin ships an identical copy next to its
 `plugin.py` (a plugin folder is installed on its own); `python3 tools/sync_shared.py` writes the copies and
@@ -49,6 +49,14 @@ def connection_args(parser, title="connection (one of)"):
     group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
     group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
     group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
+
+
+def save(app, args):
+    """Headless (`--project`): save the project with `file.save` unless `--no-save`. Whether it saved."""
+    if args.project and not args.no_save:
+        app.run("file.save", {"path": args.project})
+        return True
+    return False
 
 
 def failure(code, message, data=None):

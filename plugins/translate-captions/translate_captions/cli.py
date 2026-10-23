@@ -11,7 +11,7 @@ import json
 import sys
 
 import bashcut_cli
-from bashcut_cli import connection_args, emit
+from bashcut_cli import connection_args, emit, save
 
 from . import __version__
 from .captions import (export_lines, lines_from_listing, set_text_steps, stale_lines, translations_from_answer,
@@ -88,13 +88,6 @@ def build_parser():
 
 def connect(args):
     return McpClient.connect(cli=args.cli, project=args.project, bridge=args.bridge)
-
-
-def save(app, args):
-    if args.project and not args.no_save:
-        app.run("file.save", {"path": args.project})
-        return True
-    return False
 
 
 def read_lines(app, args):
