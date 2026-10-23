@@ -28,7 +28,6 @@ import concurrent.futures
 import hashlib
 import io
 import json
-import os
 import re
 import sys
 import urllib.parse
@@ -38,7 +37,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import bashcut, get  # noqa: E402
+from fetch_stock import bashcut, get, shared_dir, slug  # noqa: E402
 
 GMIC = "https://gmic.eu/color_presets/"
 # A copy of the same RawTherapee collection, used when the official server refuses (it often answers 509).
@@ -46,16 +45,8 @@ RT_MIRROR = "cedeber/hald-clut"
 RT_FOLDER = "HaldCLUT/Film Simulation/"
 
 
-def shared(env, fallback):
-    return Path(os.environ.get(env) or os.path.expanduser(fallback))
-
-
-DATA = shared("BASHCUT_SHARED_DATA", "~/Library/Application Support/BashCut/PluginData/_shared") / "luts"
-CACHE = shared("BASHCUT_SHARED_CACHE", "~/Library/Caches/BashCut/PluginData/_shared") / "luts"
-
-
-def slug(text):
-    return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+DATA = shared_dir("luts")
+CACHE = shared_dir("luts", "cache")
 
 
 # --- titles ----------------------------------------------------------------------------------------------------
@@ -366,7 +357,7 @@ def gmic(quota):
     def fetch(item):
         cat, ref = item
         name = f"{cat}-{Path(ref).stem}"
-        kept = DATA / "gmic" / f"{slug(name)}.cube"
+        kept = DATA / "gmic" / f"{slug(name, 'lut', None)}.cube"
         if kept.exists():
             return name, b"", "seen"
         try:
@@ -416,7 +407,7 @@ def rawtherapee(quota):
 
     def fetch(path):
         name = "-".join(Path(path).parts[-2:]).removesuffix(".png")
-        kept = DATA / "rawtherapee" / f"{slug(name)}.cube"
+        kept = DATA / "rawtherapee" / f"{slug(name, 'lut', None)}.cube"
         if kept.exists():
             return name, b"", "seen"
         url = f"https://raw.githubusercontent.com/{RT_MIRROR}/master/{urllib.parse.quote(path)}"
@@ -465,7 +456,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
     store = DATA / source
     store.mkdir(parents=True, exist_ok=True)
     for name, body, kind in items:
-        if kind == "seen" or (DATA / source / f"{slug(name)}.cube").exists():
+        if kind == "seen" or (DATA / source / f"{slug(name, 'lut', None)}.cube").exists():
             counts["known"] += 1  # measured on an earlier run
             continue
         if not body:
@@ -488,7 +479,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
             counts["duplicates"] += 1
             continue
         kept.append(fp)
-        path = store / f"{slug(name)}.cube"
+        path = store / f"{slug(name, 'lut', None)}.cube"
         label = title(source, name)
         path.write_text(cube_text(table, label), encoding="utf-8")
         counts["log"] += log
@@ -499,7 +490,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
         params = {"color": {"lutStrength": 1}, "lutName": label,
                   "lut": {"sha": sha, "source": source, "name": name, "file": str(path), "fp": fp}}
         added = bashcut("library", "add", "--kind", "look", "--name", label, "--file", str(path),
-                        "--scope", o.scope, "--id", f"lut-{slug(source)}-{slug(name)}"[:64].strip("-"),
+                        "--scope", o.scope, "--id", f"lut-{slug(source, 'lut', None)}-{slug(name, 'lut', None)}"[:64].strip("-"),
                         "--tags", ",".join(tags), "--pack", f"LUT {source}", "--origin", "web" if source != "local" else "own",
                         "--params", json.dumps(params))
         if added.get("error") and "already" in str(added["error"]):

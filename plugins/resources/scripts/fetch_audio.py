@@ -28,7 +28,6 @@ import concurrent.futures
 import hashlib
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -36,7 +35,7 @@ import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import bashcut, get, place, save  # noqa: E402  (get: curl, with retries on resets, timeouts and HTTP 429/5xx)
+from fetch_stock import bashcut, get, openverse_licence, place, save, slug  # noqa: E402  (get: curl, with retries on resets, timeouts and HTTP 429/5xx)
 
 WORKERS = 6
 OPENVERSE_LICENCES = ["cc0", "by", "by-sa"]  # --safe-licence: monetised edits allowed (BY / BY-SA: the credit line)
@@ -51,20 +50,6 @@ def openverse(query, music, size=20, any_licence=True):
     data = json.loads(get("https://api.openverse.org/v1/audio/?" + urllib.parse.urlencode(params)))
     return [r for r in data.get("results", []) if r.get("url")
             and (any_licence or (r.get("license") or "").lower() in OPENVERSE_LICENCES)]
-
-
-def openverse_licence(hit):
-    """Openverse's licence code as people read it ("by", "4.0" -> "CC BY 4.0"; "cc0" -> "CC0"), as fetch_stock does."""
-    code = (hit.get("license") or "").lower()
-    if code == "cc0":
-        return "CC0"
-    if code == "pdm":
-        return "Public Domain Mark"
-    return " ".join(x for x in ("CC", code.upper(), hit.get("license_version")) if x) if code else None
-
-
-def slug(text):
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "audio"
 
 
 def numbered(stem, n, count, suffix):
@@ -87,7 +72,7 @@ def music_candidates(query, count, min_seconds, any_licence=True):
         if seconds and seconds < min_seconds:
             continue
         suffix = "." + (hit.get("filetype") or "mp3").replace("mp32", "mp3")
-        rows.append({"url": hit["url"], "stem": f"music-{slug(hit.get('title') or query)}", "suffix": suffix,
+        rows.append({"url": hit["url"], "stem": f"music-{slug(hit.get('title') or query, 'audio')}", "suffix": suffix,
                      "kind": "music", "title": hit.get("title"), "seconds": round(seconds) or None,
                      "tags": [t.get("name") for t in hit.get("tags", [])][:5],
                      "license": openverse_licence(hit), "author": hit.get("creator"),
@@ -112,7 +97,7 @@ def freesound(word, max_seconds, count):
         for hit in data.get("results", []):
             preview = (hit.get("previews") or {}).get("preview-hq-mp3")
             if preview:  # previews are public files: the key stays off the CDN
-                rows.append({"url": preview, "stem": f"sfx-{slug(word)}", "suffix": ".mp3", "kind": "sfx",
+                rows.append({"url": preview, "stem": f"sfx-{slug(word, 'audio')}", "suffix": ".mp3", "kind": "sfx",
                              "title": hit.get("name"), "from": "freesound",
                              "seconds": round(hit.get("duration") or 0, 1) or None, "license": hit.get("license"),
                              "author": hit.get("username"), "source": hit.get("url")})
@@ -122,7 +107,7 @@ def freesound(word, max_seconds, count):
 
 
 def openverse_sfx(word, max_seconds, count, any_licence=True):
-    return [{"url": hit["url"], "stem": f"sfx-{slug(word)}", "suffix": "." + (hit.get("filetype") or "mp3"),
+    return [{"url": hit["url"], "stem": f"sfx-{slug(word, 'audio')}", "suffix": "." + (hit.get("filetype") or "mp3"),
              "kind": "sfx", "title": hit.get("title"), "from": "openverse", "license": openverse_licence(hit),
              "author": hit.get("creator"), "source": hit.get("foreign_landing_url")}
             for hit in openverse(word, music=False, size=max(20, count * 3), any_licence=any_licence)
@@ -208,14 +193,14 @@ FINISHED = {"completed", "succeeded", "failed", "cancelled", "canceled"}
 def item_id(row):
     """The same download URL is the same library item, so a second run reuses it instead of adding a copy."""
     digest = hashlib.sha1((row.get("url") or row["file"]).encode()).hexdigest()[:6]
-    return f"{slug(Path(row['file']).stem)[:40]}-{digest}"
+    return f"{slug(Path(row['file']).stem, 'audio')}-{digest}"
 
 
 def to_library(rows, dest, scope):
     """library add every file, then measure all of them with one library analyze job (several IDs); fills id,
     seconds, lufs, tp, landmarks, bpm, beat confidence and energy."""
     for row in rows:
-        tags = ",".join(t for t in [row["kind"], row.get("slot"), *slug(row.get("words") or "").split("-")] if t)
+        tags = ",".join(t for t in [row["kind"], row.get("slot"), *slug(row.get("words") or "", "audio").split("-")] if t)
         wanted = item_id(row)
         args = ["--kind", "audio", "--file", str(dest / row["file"]),
                 "--name", f"{row.get('title') or row['file']} ({row.get('slot')} {row.get('n')})"[:80],

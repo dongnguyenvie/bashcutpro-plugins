@@ -18,14 +18,13 @@ each; animated emoji first, drawn from their first frame). --pick n@frame[:durat
 import argparse
 import concurrent.futures
 import json
-import os
 import re
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import draw_sheets, get, parse_pick, place, save  # noqa: E402
+from fetch_stock import draw_sheets, get, parse_pick, place, save, shared_dir  # noqa: E402
 
 # Licences checked October 2026 (the user owns the rights question): Noto Animated Emoji CC BY 4.0, OpenMoji
 # CC BY-SA 4.0, CLDR annotations Unicode licence.
@@ -55,12 +54,6 @@ SYNONYMS = {
     "target": "direct hit", "look": "eyes", "eyes": "eyes", "music": "musical notes", "travel": "airplane",
     "home": "house", "work": "laptop briefcase", "study": "books", "phone": "mobile phone", "gift": "gift",
 }
-
-
-def shared_dir():
-    root = os.environ.get("BASHCUT_SHARED_DATA") or str(
-        Path.home() / "Library/Application Support/BashCut/PluginData/_shared")
-    return Path(root) / "emoji"
 
 
 def key(code):
@@ -103,7 +96,7 @@ def build_index(noto, openmoji, vi):
 
 def ingest(refresh=False, fetch=None):
     """The index in the shared folder, fetched once; returns (rows, seconds or None when it was already there)."""
-    folder = shared_dir()
+    folder = shared_dir("emoji")
     path = folder / "index.json"
     if path.exists() and not refresh:
         return json.loads(path.read_text(encoding="utf-8"))["items"], None
@@ -150,10 +143,10 @@ def emoji_file(row, kind, fetch=None):
     """The emoji's file in the shared folder, fetched the first time: Noto 512 px WebP, OpenMoji SVG."""
     fetch = fetch or (lambda url: get(url, timeout=60))
     if kind == "noto":
-        path = shared_dir() / "noto" / f"{row['noto']}.webp"
+        path = shared_dir("emoji") / "noto" / f"{row['noto']}.webp"
         url = NOTO_FILE.format(code=row["noto"])
     else:
-        path = shared_dir() / "openmoji" / f"{row['openmoji']}.svg"
+        path = shared_dir("emoji") / "openmoji" / f"{row['openmoji']}.svg"
         url = f"{OPENMOJI}/color/svg/{row['openmoji']}.svg"
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)

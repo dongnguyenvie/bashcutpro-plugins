@@ -26,7 +26,6 @@ import argparse
 import concurrent.futures
 import hashlib
 import json
-import os
 import re
 import sys
 import time
@@ -35,7 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fetch_font as single  # noqa: E402  (whole-file download from Google Fonts)
-from fetch_stock import bashcut, get  # noqa: E402
+from fetch_stock import bashcut, get, shared_dir  # noqa: E402
 
 API = "https://api.fontsource.org/v1/fonts"
 CSS = "https://fonts.googleapis.com/css2"
@@ -57,12 +56,8 @@ BASE_PRESET = {"title": "hook-title", "caption": "bold-outline", "lower-third": 
 
 
 def shared(kind):
-    """BashCut's fixed shared folder: data (index, picks, whole fonts) or cache (subsets, sheets)."""
-    if kind == "data":
-        root = os.environ.get("BASHCUT_SHARED_DATA") or "~/Library/Application Support/BashCut/PluginData/_shared"
-    else:
-        root = os.environ.get("BASHCUT_SHARED_CACHE") or "~/Library/Caches/BashCut/PluginData/_shared"
-    folder = Path(root).expanduser() / "fonts"
+    """BashCut's shared folder: data (index, picks, whole fonts) or cache (subsets, sheets)."""
+    folder = shared_dir("fonts", kind)
     folder.mkdir(parents=True, exist_ok=True)
     return folder
 

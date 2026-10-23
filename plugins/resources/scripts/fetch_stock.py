@@ -204,11 +204,21 @@ def pexels_by_id(item_id, kind, min_short):
 
 
 # Openverse: no key; each picture keeps its own licence (CC0, CC BY, some NonCommercial) and creator.
+def openverse_licence(item):
+    """Openverse's licence code as people read it ("by", "4.0" -> "CC BY 4.0"; "cc0" -> "CC0"; "pdm" -> "Public Domain
+    Mark"), for photos and audio alike."""
+    code = (item.get("license") or "").lower()
+    if code == "cc0":
+        return "CC0"
+    if code == "pdm":
+        return "Public Domain Mark"
+    return " ".join(x for x in ("CC", code.upper(), item.get("license_version")) if x) if code else None
+
+
 def openverse_row(item, kind, min_short):
-    licence = " ".join(x for x in ("CC", (item.get("license") or "").upper(), item.get("license_version")) if x)
     return {"id": str(item["id"]), "source": "openverse", "kind": "photo", "page": item.get("foreign_landing_url"),
             "author": item.get("creator"), "tags": (item.get("title") or "")[:80],
-            "license": "CC0" if item.get("license") == "cc0" else licence,
+            "license": openverse_licence(item),
             "size": f"{item.get('width')}x{item.get('height')}", "preview": item.get("thumbnail"), "url": item.get("url")}
 
 
@@ -460,8 +470,22 @@ BY_ID = {"pixabay": pixabay_by_id, "pexels": pexels_by_id, "openverse": openvers
          "documentary": documentary_by_id}
 
 
-def slug(text):
-    return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")[:40] or "stock"
+def slug(text, fallback="stock", limit=40):
+    """A file-name part every fetch script uses: lower-case ASCII letters and digits joined by "-", at most limit
+    characters (None: no cap), fallback when nothing is left."""
+    return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")[:limit].strip("-") or fallback
+
+
+def shared_dir(name, kind="data"):
+    """BashCut's shared folder <name> (emoji, fonts, luts…): under BASHCUT_SHARED_DATA (kind "cache":
+    BASHCUT_SHARED_CACHE), which the plugin sets when it runs a script, else the plugin's own data folder (shared/,
+    cache/) on every system."""
+    root = os.environ.get("BASHCUT_SHARED_CACHE" if kind == "cache" else "BASHCUT_SHARED_DATA")
+    if not root:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from resources_plugin.settings import plugin_dir
+        root = os.path.join(plugin_dir(), "cache" if kind == "cache" else "shared")
+    return Path(root).expanduser() / name
 
 
 def file_name(row):
@@ -575,7 +599,7 @@ def read_slots(args):
     else:
         slots = [{"slot": slug(args.query), "query": args.query}]
     for i, slot in enumerate(slots):
-        slot.setdefault("slot", slug(slot.get("query")) or f"slot{i + 1}")
+        slot.setdefault("slot", slug(slot.get("query"), "") or f"slot{i + 1}")
         slot.setdefault("kind", args.kind)
         slot.setdefault("orientation", args.orientation)
         slot["count"] = int(slot.get("count") or args.candidates)
@@ -832,7 +856,8 @@ def main(argv=None):
             parser.error("--slots needs --dest")
         dest = Path(args.dest)
         dest.mkdir(parents=True, exist_ok=True)
-        rows, capped = gather(read_slots(args), pick_source(args.source, read_slots(args)[0]["kind"]), dest, args.max_mb, args.min_short,
+        slots = read_slots(args)
+        rows, capped = gather(slots, pick_source(args.source, slots[0]["kind"]), dest, args.max_mb, args.min_short,
                               args.scope, args.library)
         sheets = draw_sheets(rows, dest, max(1, args.sheet_slots))
         (dest / "candidates.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")

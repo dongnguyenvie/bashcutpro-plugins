@@ -14,15 +14,15 @@ collecting them into a library of our own, so only what a sheet shows is kept). 
 first time a sheet shows it and kept there. One numbered sheet holds every word (a row each); a tile is a 2×2 strip of
 the animation at 10, 35, 60 and 85 % of its length, drawn with rlottie (Samsung's C++ player, a pip wheel: renders a
 frame in milliseconds without a browser, so a sheet of 24 costs about a second). --pick copies the JSON into --dest
-(or --save-to) and prints what the HyperFrames lottie widget needs: `graphic place lottie --set file=<path>`, with
-the --at-frame/--duration of @frame[:duration]. The library refuses Lottie stickers, so the file stays a project file.
+(or --save-to) and prints the hyperframes plugin's call for its lottie example: `hyperframes place lottie --set
+file=<path>`, with --frame of @frame; :duration comes back as "frames" (hyperframes' --duration is seconds: frames /
+the sequence's fps). The library refuses Lottie stickers, so the file stays a project file.
 """
 import argparse
 import concurrent.futures
 import io
 import json
 import math
-import os
 import re
 import sys
 import tarfile
@@ -30,7 +30,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import draw_sheets, get, parse_pick, slug  # noqa: E402
+from fetch_stock import draw_sheets, get, parse_pick, shared_dir, slug  # noqa: E402
 
 # Licences checked October 2026 (the user owns the rights question): useAnimations MIT; Noto Animated Emoji CC BY 4.0;
 # LottieFiles' free animations the Lottie Simple License (commercial use and edits allowed, attribution not required
@@ -67,12 +67,6 @@ SYNONYMS = {
     "money": "money dollar coin bag", "idea": "light bulb idea", "wow": "astonished exploding head",
     "time": "clock alarm hourglass", "rocket": "rocket", "growth": "chart increasing rocket",
 }
-
-
-def shared_dir():
-    root = os.environ.get("BASHCUT_SHARED_DATA") or str(
-        Path.home() / "Library/Application Support/BashCut/PluginData/_shared")
-    return Path(root) / "lottie"
 
 
 def words(text):
@@ -146,7 +140,7 @@ def noto(fetch):
 
 def ingest(refresh=False, fetch=None):
     """The index in the shared folder, fetched once; returns (rows, seconds or None when it was already there)."""
-    folder = shared_dir()
+    folder = shared_dir("lottie")
     path = folder / "index.json"
     if path.exists() and not refresh:
         return json.loads(path.read_text(encoding="utf-8"))["items"], None
@@ -193,7 +187,7 @@ def rank(word, rows, count, source):
 
 def lottiefiles(word, count, max_kb, refresh=False, send=None):
     """LottieFiles' public search for a word (cached per word), as rows; a file over max_kb is left out."""
-    path = shared_dir() / "lottiefiles" / f"search-{slug(word)}.json"
+    path = shared_dir("lottie") / "lottiefiles" / f"search-{slug(word)}.json"
     if path.exists() and not refresh:
         edges = json.loads(path.read_text(encoding="utf-8"))
     else:
@@ -215,7 +209,7 @@ def lottiefiles(word, count, max_kb, refresh=False, send=None):
 
 def lottie_file(row, fetch=None):
     """The animation's JSON in the shared folder, fetched the first time it is shown."""
-    folder = shared_dir() / row["source"]
+    folder = shared_dir("lottie") / row["source"]
     path = folder / f"{slug(row['id']) if row['source'] == 'lottiefiles' else row['id']}.json"
     if not path.exists():
         url = row.get("url") or (NOTO_FILE.format(code=row["id"]) if row["source"] == "noto" else None)
@@ -371,13 +365,11 @@ def pick(args):
             continue
         path = folder / f"{row['slot']}-{SOURCES[row['source']]['short']}-{slug(row['id'])}.json"
         path.write_bytes(data)
-        place = f"graphic place lottie --set file={path}"
-        if frame is not None:
-            place += f" --at-frame {frame}" + (f" --duration {duration}" if duration else "")
+        place = f"hyperframes place lottie --set file={path}" + (f" --frame {frame}" if frame is not None else "")
         line = {"slot": row["slot"], "n": n, "name": row.get("name"), "file": str(path), "source": row["source"],
                 "license": row["license"], "author": row["author"], "page": row["page"], "fps": row.get("fps"),
                 "seconds": row.get("seconds"), "size": [row.get("width"), row.get("height")],
-                "mono": row.get("mono"), "place": place}
+                "mono": row.get("mono"), "place": place, "frames": duration}
         print(json.dumps({k: v for k, v in line.items() if v is not None}, ensure_ascii=False))
 
 

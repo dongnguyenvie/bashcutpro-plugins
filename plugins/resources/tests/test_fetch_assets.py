@@ -567,5 +567,23 @@ class FontTests(unittest.TestCase):
         self.assertIn('not on Google Fonts', rows[0]['error'])
 
 
+class SharedHelperTests(unittest.TestCase):
+    @unittest.skip("test ticket: fetch_stock.slug caps at limit (None: no cap), strips a trailing '-', returns the fallback when nothing is left")
+    def test_slug_limit_and_fallback(self):
+        pass
+
+    @unittest.skip("test ticket: shared_dir uses BASHCUT_SHARED_DATA / BASHCUT_SHARED_CACHE, else <plugin data dir>/shared or /cache (no ~/Library off macOS)")
+    def test_shared_dir_env_then_plugin_folder(self):
+        pass
+
+    @unittest.skip("test ticket: an Openverse pdm photo is 'Public Domain Mark' in fetch_stock as in fetch_audio")
+    def test_openverse_photo_licence_matches_audio(self):
+        pass
+
+    @unittest.skip("test ticket: a --slots query with no letters or digits gets slot<n>, not 'stock'")
+    def test_empty_query_slot_name(self):
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()
