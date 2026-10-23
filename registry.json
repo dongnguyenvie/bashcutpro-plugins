@@ -6,7 +6,7 @@
     {
       "id": "bashcut.translate-captions",
       "name": "Translate Captions",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "summary": "Translate captions with your own Gemini or OpenAI key (or your agent), keeping their timing; blur burned-in subtitles.",
       "i18n": {"vi": {"name": "Dịch phụ đề", "summary": "Dịch phụ đề bằng khóa Gemini hoặc OpenAI của bạn (hoặc agent của bạn) mà vẫn giữ thời gian; làm mờ phụ đề cứng trong video."}},
       "category": "captions",
@@ -104,7 +104,7 @@
     {
       "id": "bashcut.vision",
       "name": "Vision",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "summary": "Cut out a person or object, find faces and people per shot and reframe following the face, read on-screen text, describe shots with your agent.",
       "i18n": {"vi": {"name": "Thị giác máy", "summary": "Tách người hoặc vật, tìm khuôn mặt và người theo từng cảnh rồi đổi khung hình bám theo mặt, đọc chữ trên màn hình, mô tả cảnh cùng agent của bạn."}},
       "category": "vision",
