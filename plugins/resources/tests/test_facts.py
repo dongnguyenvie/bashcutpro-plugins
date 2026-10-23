@@ -216,15 +216,14 @@ class GetTests(unittest.TestCase):
         facts = load()
         answers = [subprocess.CompletedProcess([], 56, b'', b''), subprocess.CompletedProcess([], 0, b'{}', b'503'),
                    subprocess.CompletedProcess([], 0, b'{"ok": 1}', b'200')]
-        with mock.patch.object(facts.subprocess, 'run', side_effect=answers) as run, \
-                mock.patch.object(facts.time, 'sleep'):
+        with mock.patch('subprocess.run', side_effect=answers) as run, mock.patch('time.sleep'):
             self.assertEqual(facts.get_json('https://example.org/x'), {'ok': 1})
         self.assertEqual(run.call_count, 3)
         self.assertIn('bashcut-agent-kit', run.call_args.args[0][run.call_args.args[0].index('-A') + 1])
 
     def test_not_found_is_not_retried(self):
         facts = load()
-        with mock.patch.object(facts.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'404')) \
+        with mock.patch('subprocess.run', return_value=subprocess.CompletedProcess([], 0, b'', b'404')) \
                 as run, self.assertRaises(facts.NotFound):
             facts.get('https://example.org/missing')
         self.assertEqual(run.call_count, 1)

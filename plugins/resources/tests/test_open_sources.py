@@ -142,7 +142,7 @@ class EmojiTests(unittest.TestCase):
         fake = FakeBashCut()
         with tempfile.TemporaryDirectory() as shared, tempfile.TemporaryDirectory() as dest, \
                 mock.patch.dict(os.environ, {'BASHCUT_SHARED_DATA': shared}), \
-                mock.patch.object(self.emoji, 'get', web), mock.patch.object(self.emoji, 'bashcut', fake):
+                mock.patch.object(self.emoji, 'get', web), mock.patch('fetch_stock.bashcut', fake):
             lines = run(self.emoji, ['--words', 'fire,lửa', '--dest', dest, '--set', 'noto'])
             self.assertEqual(lines[0]['ingested'], 4)
             self.assertEqual(lines[1], {'slot': 'fire', 'candidates': 2, 'animated': 2, 'best': '🔥🌞'})

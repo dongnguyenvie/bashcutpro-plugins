@@ -35,7 +35,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import bashcut, draw_sheets, get, parse_pick, slug  # noqa: E402
+from fetch_stock import draw_sheets, get, parse_pick, place, save, slug  # noqa: E402
 
 SVG_NS = "http://www.w3.org/2000/svg"
 ET.register_namespace("", SVG_NS)
@@ -593,32 +593,13 @@ def pick(args):
         png = dest / f"{name}-{row['id']}-{palette_key(palette)}-{args.size}.png"
         render_png(svg, args.size, shape, png)
         wanted = slug(f"{name}-{row['id']}-{palette_key(palette)}")
-        added = bashcut("library", "add", "--kind", "sticker", "--file", str(png), "--scope", args.scope,
-                        "--id", wanted, "--name", f"{slot} {name} {row['id']}"[:80],
-                        "--tags", ",".join(["illustration", name, slug(slot), *slug(row["words"]).split("-")]),
-                        "--license", meta["license"], "--author", meta["author"], "--source", meta["page"])
         line = {"slot": slot, "n": n, "file": str(png)}
-        if added.get("error") and "already has" in str(added["error"]):
-            line["id"] = f"{args.scope}:{wanted}"
-        elif added.get("error"):
-            line["error"] = str(added["error"])[:120]
-        else:
-            got = (added.get("item") or {}) if isinstance(added.get("item"), dict) else added
-            found = got.get("reference") or got.get("id") or wanted
-            line["id"] = found if ":" in str(found) else f"{args.scope}:{found}"
+        line.update(save(args.scope, wanted, "--kind", "sticker", "--file", str(png),
+                         "--name", f"{slot} {name} {row['id']}"[:80],
+                         "--tags", ",".join(["illustration", name, slug(slot), *slug(row["words"]).split("-")]),
+                         "--license", meta["license"], "--author", meta["author"], "--source", meta["page"]))
         if frame is not None and line.get("id"):
-            place = ["library", "place", line["id"], "--at-frame", str(frame), "--base-rev", "last"]
-            if duration:
-                place += ["--duration", str(duration)]
-            if args.place_size:
-                place += ["--size", str(args.place_size)]
-            if args.position:
-                place += ["--position", args.position]
-            placed = bashcut(*place)
-            if placed.get("error"):
-                line["placeError"] = str(placed["error"])[:120]
-            else:
-                line.update(placed=frame, rev=placed.get("rev"))
+            line.update(place(line["id"], frame, duration, args.place_size, args.position))
         out.append(line)
     for line in out:
         print(json.dumps(line, ensure_ascii=False))

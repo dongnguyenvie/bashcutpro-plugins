@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import bashcut, draw_sheets, get, parse_pick  # noqa: E402
+from fetch_stock import draw_sheets, get, parse_pick, place, save  # noqa: E402
 
 # Licences checked October 2026 (the user owns the rights question): Noto Animated Emoji CC BY 4.0, OpenMoji
 # CC BY-SA 4.0, CLDR annotations Unicode licence.
@@ -230,33 +230,14 @@ def pick(args):
             wanted = f"emoji-openmoji-{row['openmoji'].lower()}"
         meta = SETS[row["set"]]
         tags = ",".join(dict.fromkeys(["emoji", row["set"], *words(row.get("name")), *words(row["words"])]))
-        added = bashcut("library", "add", "--kind", "sticker", "--file", str(path), "--scope", args.scope,
-                        "--id", wanted, "--name", f"{row.get('emoji') or ''} {row.get('name') or ''}".strip()[:80],
-                        "--tags", tags, "--license", meta["license"], "--author", meta["author"],
-                        "--source", meta["page"])
         line = {"slot": row["slot"], "n": n, "emoji": row.get("emoji"), "animated": row["set"] == "noto",
                 "file": str(path)}
-        if added.get("error") and "already has" in str(added["error"]):
-            line["id"] = f"{args.scope}:{wanted}"
-        elif added.get("error"):
-            line["error"] = str(added["error"])[:120]
-        else:
-            got = added.get("item") if isinstance(added.get("item"), dict) else added
-            found = got.get("reference") or got.get("id") or wanted
-            line["id"] = found if ":" in str(found) else f"{args.scope}:{found}"
+        line.update(save(args.scope, wanted, "--kind", "sticker", "--file", str(path),
+                         "--name", f"{row.get('emoji') or ''} {row.get('name') or ''}".strip()[:80],
+                         "--tags", tags, "--license", meta["license"], "--author", meta["author"],
+                         "--source", meta["page"]))
         if frame is not None and line.get("id"):
-            place = ["library", "place", line["id"], "--at-frame", str(frame), "--base-rev", "last"]
-            if duration:
-                place += ["--duration", str(duration)]
-            if args.place_size:
-                place += ["--size", str(args.place_size)]
-            if args.position:
-                place += ["--position", args.position]
-            placed = bashcut(*place)
-            if placed.get("error"):
-                line["placeError"] = str(placed["error"])[:120]
-            else:
-                line.update(placed=frame, rev=placed.get("rev"))
+            line.update(place(line["id"], frame, duration, args.place_size, args.position))
         print(json.dumps(line, ensure_ascii=False))
 
 

@@ -30,7 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch_illustrations import render_png  # noqa: E402
-from fetch_stock import bashcut, draw_sheets, get  # noqa: E402
+from fetch_stock import draw_sheets, get, place, save as library_save  # noqa: E402
 
 REGISTRY = "https://registry.npmjs.org/simple-icons"
 ICONIFY = "https://api.iconify.design"
@@ -163,31 +163,10 @@ def svg_shape(svg_text):
 
 def save(args, name, file_id, png, tags, source, frame, duration):
     licence, author, page = LICENCE[source]
-    added = bashcut("library", "add", "--kind", "sticker", "--file", str(png), "--scope", args.scope, "--id", file_id,
-                    "--name", f"{name} logo"[:80], "--tags", ",".join(tags), "--license", licence, "--author", author,
-                    "--source", page)
-    line = {}
-    if added.get("error") and "already has" in str(added["error"]):
-        line["id"] = f"{args.scope}:{file_id}"
-    elif added.get("error"):
-        line["error"] = str(added["error"])[:120]
-    else:
-        got = added.get("item") if isinstance(added.get("item"), dict) else added
-        found = got.get("reference") or got.get("id") or file_id
-        line["id"] = found if ":" in str(found) else f"{args.scope}:{found}"
+    line = library_save(args.scope, file_id, "--kind", "sticker", "--file", str(png), "--name", f"{name} logo"[:80],
+                        "--tags", ",".join(tags), "--license", licence, "--author", author, "--source", page)
     if frame is not None and line.get("id"):
-        place = ["library", "place", line["id"], "--at-frame", str(frame), "--base-rev", "last"]
-        if duration:
-            place += ["--duration", str(duration)]
-        if args.place_size:
-            place += ["--size", str(args.place_size)]
-        if args.position:
-            place += ["--position", args.position]
-        placed = bashcut(*place)
-        if placed.get("error"):
-            line["placeError"] = str(placed["error"])[:120]
-        else:
-            line.update(placed=frame, rev=placed.get("rev"))
+        line.update(place(line["id"], frame, duration, args.place_size, args.position))
     return line
 
 

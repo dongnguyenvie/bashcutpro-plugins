@@ -36,7 +36,7 @@ import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import get  # noqa: E402  (curl, with retries on resets, timeouts and HTTP 429/5xx)
+from fetch_stock import bashcut, get, place, save  # noqa: E402  (get: curl, with retries on resets, timeouts and HTTP 429/5xx)
 
 WORKERS = 6
 OPENVERSE_LICENCES = ["cc0", "by", "by-sa"]  # --safe-licence: monetised edits allowed (BY / BY-SA: the credit line)
@@ -70,11 +70,6 @@ def slug(text):
 def numbered(stem, n, count, suffix):
     """sfx-whoosh.mp3 for a single file, sfx-whoosh-3.mp3 for candidate 3 of several."""
     return f"{stem}-{n}{suffix}" if count > 1 else f"{stem}{suffix}"
-
-
-def save(url, path):
-    path.write_bytes(get(url, timeout=120))
-    return path
 
 
 # Finders return candidates without downloading: {url, name, …row fields}. Downloads happen together afterwards.
@@ -207,29 +202,6 @@ def _fetch(candidate):
         return None
 
 
-def bashcut(*args, retry=True):
-    try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
-    except FileNotFoundError:
-        return {"error": "bashcut is not on PATH"}
-    try:
-        result = json.loads(out.stdout or out.stderr)
-    except ValueError:
-        return {"error": (out.stderr or out.stdout).strip()[:200] or f"bashcut exit {out.returncode}"}
-    error = result.get("error") if isinstance(result, dict) else None
-    if isinstance(error, dict):
-        if retry and (error.get("data") or {}).get("category") == "stale_revision":
-            bashcut("context", "get", retry=False)  # the open project changed: read it, then once more
-            return bashcut(*args, retry=False)
-        result = {**result, "error": error.get("message") or str(error)}
-    return result
-
-
-def library_id(result):
-    item = result.get("item") if isinstance(result.get("item"), dict) else result
-    return item.get("reference") or item.get("id")
-
-
 FINISHED = {"completed", "succeeded", "failed", "cancelled", "canceled"}
 
 
@@ -245,21 +217,13 @@ def to_library(rows, dest, scope):
     for row in rows:
         tags = ",".join(t for t in [row["kind"], row.get("slot"), *slug(row.get("words") or "").split("-")] if t)
         wanted = item_id(row)
-        args = ["library", "add", "--kind", "audio", "--file", str(dest / row["file"]), "--scope", scope,
-                "--id", wanted, "--name", f"{row.get('title') or row['file']} ({row.get('slot')} {row.get('n')})"[:80],
+        args = ["--kind", "audio", "--file", str(dest / row["file"]),
+                "--name", f"{row.get('title') or row['file']} ({row.get('slot')} {row.get('n')})"[:80],
                 "--tags", tags, "--params", json.dumps({"role": "music" if row["kind"] == "music" else "sfx"})]
         for flag, key in (("--source", "source"), ("--license", "license"), ("--author", "author")):
             if row.get(key):
                 args += [flag, str(row[key])]
-        added = bashcut(*args)
-        if added.get("error") and "already has" in str(added.get("error")):
-            row["id"] = f"{scope}:{wanted}"  # fetched before: reuse it
-        elif added.get("error"):
-            row["error"] = str(added["error"])[:120]
-            continue
-        else:
-            found = library_id(added)
-            row["id"] = found if ":" in str(found) else f"{scope}:{found}"
+        row.update(save(scope, wanted, *args))  # id (an item fetched before is reused) or error
     analyze_all([r for r in rows if r.get("id")], scope)
 
 
@@ -364,14 +328,10 @@ def place_picks(dest, spec, scope):
             continue
         line = {"slot": slot, "n": n, "id": row["id"]}
         if frame is not None:
-            args = ["library", "place", row["id"], "--at-frame", str(frame), "--base-rev", "last"]
-            if duration:
-                args += ["--duration", str(duration)]
-            placed = bashcut(*args)
-            if placed.get("error"):
-                line["error"] = str(placed["error"])[:120]
-            else:
-                line.update(placed=frame, rev=placed.get("rev"))
+            placed = place(row["id"], frame, duration)
+            if "placeError" in placed:
+                placed["error"] = placed.pop("placeError")
+            line.update(placed)
         out.append(line)
     return out
 
