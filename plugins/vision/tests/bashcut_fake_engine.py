@@ -4,7 +4,9 @@ plugin's `tests/` next to its `fake_filmcraft.py`).
 
 Same newline-delimited JSON-RPC as the engine: `initialize`, `tools/call` (anything else is "no method"), UTF-8
 whatever the code page. State is a JSON file (the `--project` path) with a `log` of every engine command run,
-saved after every tool call so a test can read it back. `command_run` and `command_batch` (upstream's shape:
+saved after every tool call so a test can read it back; the handshake is saved too (`initialize`: its params, with
+the plugin's `clientInfo`; `initialized`: true once the client said so). Run on its own
+(`bashcut_fake_engine.py mcp --project state.json`) it is an engine with only `command_run` / `command_batch`. `command_run` and `command_batch` (upstream's shape:
 `{completed, failed, results: [{ok, result | error}]}`, stopping at the first error with `stop_on_error`) run the
 commands a plugin's fake registers; a tool or command that raises answers `isError` with `<id>: <message>` like
 the engine. A plugin's `fake_filmcraft.py` registers only what it uses:
@@ -118,8 +120,13 @@ class Engine:
                 continue
             msg = json.loads(line)
             if "id" not in msg:
+                if msg.get("method") == "notifications/initialized":
+                    self.state["initialized"] = True
+                    self.store()
                 continue
             if msg["method"] == "initialize":
+                self.state["initialize"] = msg["params"]
+                self.store()
                 result = {"protocolVersion": msg["params"]["protocolVersion"], "capabilities": {"tools": {}},
                           "serverInfo": {"name": "fake-filmcraft", "version": "0.9.0"}}
             elif msg["method"] == "tools/call":
@@ -247,3 +254,7 @@ def media(engine):
     @engine.tool("sequence_inspect")
     def sequence_inspect(a):
         return state["sequence"]
+
+
+if __name__ == "__main__":
+    sys.exit(Engine.from_argv().serve())
