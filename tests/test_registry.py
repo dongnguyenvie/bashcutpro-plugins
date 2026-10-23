@@ -24,29 +24,48 @@ class RegistryTests(unittest.TestCase):
                 f.write('__version__ = "9.9.9"\n')
             self.assertEqual(check_registry.check_python_version(base, "0.1.2"), [])
             self.assertEqual(check_registry.check_python_version(base, "0.1.3"),
-                             ["pkg/__init__.py: __version__ is '0.1.2', the manifest says '0.1.3'"])
+                             ["pkg/__init__.py: __version__ is '0.1.2', the manifest says '0.1.3' (--fix)"])
 
     def test_default_true_bool_needs_the_no_form(self):
-        m = {"actions": [{"id": "go", "params": [
+        m = {"actions": [{"id": "go", "args": ["go"], "params": [
             {"id": "keep", "flag": "--keep", "type": "bool", "default": True},
             {"id": "dry", "flag": "--dry", "type": "bool"}]}]}
         with tempfile.TemporaryDirectory() as base:
-            script = os.path.join(base, "plugin.py")
+            os.makedirs(os.path.join(base, "pkg"))
+            script = os.path.join(base, "pkg", "cli.py")
+            parser = ('import argparse, json, sys\n\ndef build_parser():\n    root = argparse.ArgumentParser()\n'
+                      '    p = root.add_subparsers(dest="command").add_parser("go")\n    p.add_argument("--keep", %s)\n'
+                      '    p.add_argument("--dry", action="store_true")\n    return root\n\n'
+                      'if __name__ == "__main__":\n    print(json.dumps(build_parser().parse_args(["go"] + sys.argv[1:]).keep))\n')
             with open(script, "w", encoding="utf-8") as f:
-                f.write('import argparse\np = argparse.ArgumentParser()\np.add_argument("--keep", action="store_true")\n'
-                        'p.add_argument("--dry", action="store_true")\n')
+                f.write(parser % 'action="store_true"')
             self.assertEqual(check_registry.check_bool_defaults(base, m),
-                             ["action go: bool param keep defaults to true, so the script must accept --no-keep "
-                              "(argparse.BooleanOptionalAction)"])
+                             ["action go: bool param keep defaults to true, so build_parser() go must accept --no-keep, "
+                              "storing false (argparse.BooleanOptionalAction)"])
             with open(script, "w", encoding="utf-8") as f:
-                f.write('import argparse, json, sys\np = argparse.ArgumentParser()\n'
-                        'p.add_argument("--keep", action=argparse.BooleanOptionalAction, default=True)\n'
-                        'print(json.dumps(p.parse_args(sys.argv[1:]).keep))\n')
+                f.write(parser % "action=argparse.BooleanOptionalAction, default=True")
             self.assertEqual(check_registry.check_bool_defaults(base, m), [])
             # the form BashCutPro sends for false really turns it off
             import subprocess
             run = lambda *a: subprocess.run([sys.executable, script, *a], capture_output=True, text=True).stdout.strip()
             self.assertEqual((run(), run("--keep"), run("--no-keep")), ("true", "true", "false"))
+
+    @unittest.skip("test ticket: a `--no-<name>` mention in a help string or a comment no longer satisfies the bool check")
+    def test_bool_check_ignores_mentions_outside_the_parser(self):
+        pass
+
+    @unittest.skip("test ticket: --fix copies a bumped manifest version into registry.json and every __version__, "
+                   "keeps the registry layout byte for byte, and leaves summary and tests/ untouched")
+    def test_fix_writes_the_derived_fields_and_python_version(self):
+        pass
+
+    @unittest.skip("test ticket: --fix copies the manifest's i18n.<lang>.name into the entry and check() then passes")
+    def test_fix_copies_the_translated_name(self):
+        pass
+
+    @unittest.skip("test ticket: dump_registry(json.loads(text)) == text for the real registry.json")
+    def test_registry_layout_round_trips(self):
+        pass
 
     def test_choice_labels_name_only_the_items_choices(self):
         def manifest(labels):

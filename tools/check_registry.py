@@ -2,11 +2,18 @@
 """Check `registry.json` and every plugin's `bashcut-plugin.json` (format: README.md, "Manifest").
 
     python3 tools/check_registry.py          # prints problems, exit 1 when there are any
+    python3 tools/check_registry.py --fix    # first copies the manifests into registry.json and `__version__`
+
+A version bump is one edit (the manifest's `version`) and `--fix`: it writes the registry entry's derived fields
+(`name`, `version`, `category`, `platforms`, `minAppVersion`, `path`, `i18n.<lang>.name`) and every `__version__`
+in the plugin's Python. The registry's own `summary` lines, and a plugin missing from it, stay hand-written.
 """
 
+import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,6 +23,7 @@ SETTING_TYPES = {"string", "secret", "enum", "integer", "number", "bool", "path"
 ID = re.compile(r"^[a-z0-9]+(\.[a-z0-9-]+)+$")
 VERSION = re.compile(r"^\d+\.\d+\.\d+$")
 PY_VERSION = re.compile(r"""^__version__\s*=\s*["']([^"']*)["']""", re.M)
+PY_VERSION_LINE = re.compile(r"""^(__version__\s*=\s*["'])([^"']*)(["'])""", re.M)
 
 
 LANGS = {"vi"}
@@ -80,32 +88,68 @@ def check_python_version(base, version):
             with open(path, encoding="utf-8") as f:
                 for found in PY_VERSION.findall(f.read()):
                     if found != version:
-                        problems.append("%s: __version__ is %r, the manifest says %r"
+                        problems.append("%s: __version__ is %r, the manifest says %r (--fix)"
                                         % (os.path.relpath(path, base).replace(os.sep, "/"), found, version))
     return problems
 
 
+# Run in a child Python with the plugin folder on sys.path (every plugin vendors modules of the same name):
+# prints {"sub cmd": {"--flag": "off" | "on"}} for the parser and each subcommand, "off" when the option stores false.
+PARSER_FLAGS = r"""
+import argparse, importlib, json, sys
+sys.path.insert(0, sys.argv[1])
+def walk(parser, path, out):
+    flags = out.setdefault(" ".join(path), {})
+    for a in parser._actions:
+        if isinstance(a, argparse._SubParsersAction):
+            for name, sub in a.choices.items():
+                walk(sub, path + [name], out)
+        for o in a.option_strings:
+            off = isinstance(a, argparse._StoreFalseAction) or (
+                isinstance(a, getattr(argparse, "BooleanOptionalAction", ())) and o.startswith("--no-"))
+            flags[o] = "off" if off else "on"
+    return out
+print(json.dumps(walk(importlib.import_module(sys.argv[2]).build_parser(), [], {})))
+"""
+
+
+def parser_module(base):
+    """The plugin's `<package>.cli` module that defines `build_parser()` (the parser `--help` shows), or None."""
+    for folder, dirs, files in os.walk(base):
+        dirs[:] = sorted(d for d in dirs if d not in ("tests", "node_modules", "__pycache__") and not d.startswith("."))
+        if "cli.py" in files and folder != base:
+            with open(os.path.join(folder, "cli.py"), encoding="utf-8") as f:
+                if re.search(r"^def build_parser\(", f.read(), re.M):
+                    return os.path.relpath(folder, base).replace(os.sep, ".") + ".cli"
+    return None
+
+
 def check_bool_defaults(base, m):
     """A bool param with `default: true` is turned off by BashCutPro with `--no-<name>` (BF1), so the plugin's
-    Python (tests aside) must accept it: name `--no-<name>` or use `BooleanOptionalAction`."""
-    wanted = [(a.get("id"), p) for a in m.get("actions") or [] for p in a.get("params") or []
+    parser (`<package>.cli.build_parser()`) must have that option on the action's subcommand, storing false
+    (`argparse.BooleanOptionalAction` or `store_false`)."""
+    wanted = [(a, p) for a in m.get("actions") or [] for p in a.get("params") or []
               if p.get("type") == "bool" and p.get("default") is True]
     if not wanted:
         return []
-    source = ""
-    for folder, dirs, files in os.walk(base):
-        dirs[:] = sorted(d for d in dirs if d not in ("tests", "node_modules", "__pycache__") and not d.startswith("."))
-        for name in sorted(files):
-            if name.endswith(".py"):
-                with open(os.path.join(folder, name), encoding="utf-8") as f:
-                    source += f.read()
+    module = parser_module(base)
+    if module is None:
+        return ["bool params default to true, but no <package>/cli.py defines build_parser() to check --no-<name> on"]
+    run = subprocess.run([sys.executable, "-c", PARSER_FLAGS, base, module], capture_output=True, text=True)
+    if run.returncode != 0:
+        return ["%s.build_parser() failed: %s" % (module, (run.stderr.strip().splitlines() or ["?"])[-1])]
+    parsers = json.loads(run.stdout)
     problems = []
-    for action, p in wanted:
-        flag = str(p.get("flag", ""))
-        off = "--no-" + flag.lstrip("-")
-        if off not in source and not (flag in source and "BooleanOptionalAction" in source):
-            problems.append("action %s: bool param %s defaults to true, so the script must accept %s "
-                            "(argparse.BooleanOptionalAction)" % (action, p.get("id"), off))
+    for a, p in wanted:
+        path = []
+        for arg in a.get("args") or []:
+            if " ".join(path + [str(arg)]) not in parsers:
+                break
+            path.append(str(arg))
+        off = "--no-" + str(p.get("flag", "")).lstrip("-")
+        if parsers[" ".join(path)].get(off) != "off":
+            problems.append("action %s: bool param %s defaults to true, so %s must accept %s, storing false "
+                            "(argparse.BooleanOptionalAction)" % (a.get("id"), p.get("id"), " ".join(["build_parser()"] + path), off))
     return problems
 
 
@@ -126,7 +170,7 @@ def check_registry_i18n(entry, manifest):
     for lang, text in sorted((manifest.get("i18n") or {}).items()):
         mine = i18n.get(lang) if isinstance(i18n.get(lang), dict) else {}
         if isinstance(text, dict) and mine.get("name") != text.get("name"):
-            problems.append("registry.json: %s.i18n.%s.name is %r, the manifest says %r" % (pid, lang, mine.get("name"), text.get("name")))
+            problems.append("registry.json: %s.i18n.%s.name is %r, the manifest says %r (--fix)" % (pid, lang, mine.get("name"), text.get("name")))
         if not (isinstance(mine.get("summary"), str) and mine["summary"].strip()):
             problems.append("registry.json: %s has no i18n.%s.summary" % (pid, lang))
     return problems
@@ -189,7 +233,7 @@ def check_manifest(path):
                  "action %s: param %s needs a title (its label in the app's form)" % (a.get("id"), p.get("id")))
         handoff = a.get("handoff")
         if handoff:
-            need(handoff.get("then") in actions or handoff.get("then") in [x.get("id") for x in m["actions"]],
+            need(handoff.get("then") in [x.get("id") for x in m["actions"]],
                  "action %s: handoff.then names an action" % a.get("id"))
     problems += ["%s: %s" % (where, x) for x in check_i18n(m)]
     problems += ["%s: %s" % (where, x) for x in check_python_version(base, m.get("version"))]
@@ -219,15 +263,9 @@ def check(root=ROOT):
         problems += found
         if manifest is None:
             continue
-        expected = {
-            "id": manifest.get("id"), "name": manifest.get("name"), "version": manifest.get("version"),
-            "category": manifest.get("category"), "platforms": manifest.get("platforms"),
-            "minAppVersion": (manifest.get("app") or {}).get("minVersion"),
-            "path": os.path.relpath(os.path.dirname(manifest_path), root).replace(os.sep, "/"),
-        }
-        for key, value in expected.items():
+        for key, value in derived(manifest, manifest_path, root).items():
             if entry.get(key) != value:
-                problems.append("registry.json: %s.%s is %r, the manifest says %r" % (pid, key, entry.get(key), value))
+                problems.append("registry.json: %s.%s is %r, the manifest says %r (--fix)" % (pid, key, entry.get(key), value))
         problems += check_registry_i18n(entry, manifest)
     plugins = os.path.join(root, "plugins")
     for name in sorted(os.listdir(plugins)) if os.path.isdir(plugins) else []:
@@ -237,7 +275,96 @@ def check(root=ROOT):
     return problems
 
 
-def main():
+def derived(manifest, manifest_path, root=ROOT):
+    """The registry entry fields that are copies of the manifest."""
+    return {
+        "id": manifest.get("id"), "name": manifest.get("name"), "version": manifest.get("version"),
+        "category": manifest.get("category"), "platforms": manifest.get("platforms"),
+        "minAppVersion": (manifest.get("app") or {}).get("minVersion"),
+        "path": os.path.relpath(os.path.dirname(manifest_path), root).replace(os.sep, "/"),
+    }
+
+
+def dump_registry(registry):
+    """registry.json as it is laid out by hand: one line per key, each plugin entry one key per line."""
+    d = lambda v: json.dumps(v, ensure_ascii=False)  # noqa: E731
+    lines = ["{"]
+    for i, key in enumerate(registry):
+        comma = "," if i < len(registry) - 1 else ""
+        if key != "plugins":
+            lines.append("  %s: %s%s" % (d(key), d(registry[key]), comma))
+            continue
+        lines.append('  "plugins": [')
+        for j, entry in enumerate(registry["plugins"]):
+            lines.append("    {")
+            lines += ["      %s: %s%s" % (d(k), d(v), "," if n < len(entry) - 1 else "") for n, (k, v) in enumerate(entry.items())]
+            lines.append("    }" + ("," if j < len(registry["plugins"]) - 1 else ""))
+        lines.append("  ]" + comma)
+    return "\n".join(lines + ["}"]) + "\n"
+
+
+def fix(root=ROOT):
+    """Write the derived registry fields and every plugin's `__version__` from the manifests; returns what changed.
+    The entry's `id` is how it is matched, so it is never rewritten; a manifest that does not load is skipped."""
+    changed = []
+    path = os.path.join(root, "registry.json")
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    registry = json.loads(text)
+    for entry in registry.get("plugins") or []:
+        manifest_path = os.path.join(root, entry.get("manifest", ""))
+        try:
+            with open(manifest_path, encoding="utf-8") as f:
+                manifest = json.load(f)
+        except (OSError, ValueError):
+            continue
+        pid = entry.get("id")
+        for key, value in derived(manifest, manifest_path, root).items():
+            if key != "id" and entry.get(key) != value:
+                changed.append("registry.json: %s.%s %r -> %r" % (pid, key, entry.get(key), value))
+                entry[key] = value
+        for lang, names in sorted((manifest.get("i18n") or {}).items()):
+            if not (isinstance(names, dict) and names.get("name") and isinstance(entry.get("i18n", {}), dict)):
+                continue
+            mine = entry.setdefault("i18n", {}).setdefault(lang, {})
+            if isinstance(mine, dict) and mine.get("name") != names["name"]:
+                changed.append("registry.json: %s.i18n.%s.name %r -> %r" % (pid, lang, mine.get("name"), names["name"]))
+                mine["name"] = names["name"]
+        changed += fix_python_version(os.path.dirname(manifest_path), manifest.get("version"), root)
+    new = dump_registry(registry)
+    if new != text:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(new)
+    return changed
+
+
+def fix_python_version(base, version, root=ROOT):
+    """Set every `__version__ = "…"` in the plugin's Python (tests aside) to the manifest `version`."""
+    if not (isinstance(version, str) and VERSION.match(version)):
+        return []
+    changed = []
+    for folder, dirs, files in os.walk(base):
+        dirs[:] = sorted(d for d in dirs if d not in ("tests", "node_modules", "__pycache__") and not d.startswith("."))
+        for name in sorted(f for f in files if f.endswith(".py")):
+            path = os.path.join(folder, name)
+            with open(path, encoding="utf-8", newline="") as f:
+                text = f.read()
+            new = PY_VERSION_LINE.sub(lambda g: g.group(1) + version + g.group(3), text)
+            if new != text:
+                with open(path, "w", encoding="utf-8", newline="") as f:
+                    f.write(new)
+                changed.append("%s: __version__ -> %r" % (os.path.relpath(path, root).replace(os.sep, "/"), version))
+    return changed
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Check registry.json and every plugin manifest.")
+    parser.add_argument("--fix", action="store_true",
+                        help="first copy the manifests into registry.json's derived fields and every __version__")
+    args = parser.parse_args(argv)
+    if args.fix:
+        for line in fix():
+            print("fixed " + line)
     problems = check()
     for p in problems:
         print(p)
