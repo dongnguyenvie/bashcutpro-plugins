@@ -57,7 +57,7 @@ is never read from that file.
 
 ## Where it runs
 
-Python 3.9+ standard library on macOS, Windows and Linux. Fitting uses ffmpeg when it is on `PATH` (or `$FFMPEG`):
+Python 3.9+ standard library on macOS, Windows and Linux. Fitting uses ffmpeg when found (the `ffmpeg` setting / `--ffmpeg` / `BASHCUT_IMAGE_FFMPEG`, else `PATH`):
 Lanczos scale and crop, any answer format. Without it, PNG answers (what both services return by default) are
 decoded, cropped and scaled nearest-neighbour in Python, and JPEG / WebP answers are kept as they came
 (`fitted: false`); FilmCraft still fits a still to the frame when it is placed. `--no-ffmpeg` forces the Python

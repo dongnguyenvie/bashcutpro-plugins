@@ -19,6 +19,7 @@ SETTINGS = {
     "apiKey": (["BASHCUT_IMAGE_API_KEY"], "", True),
     "model": (["BASHCUT_IMAGE_MODEL"], "auto", False),
     "endpoint": (["BASHCUT_IMAGE_ENDPOINT"], "", False),
+    "ffmpeg": (["BASHCUT_IMAGE_FFMPEG", "FFMPEG"], "", False),
 }
 SERVICE_KEYS = {"gemini": ["GEMINI_API_KEY", "GOOGLE_API_KEY"], "openai": ["OPENAI_API_KEY"]}
 

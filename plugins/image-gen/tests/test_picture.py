@@ -86,6 +86,10 @@ class PictureTests(unittest.TestCase):
         with self.assertRaises(PictureError):
             fit(b"<html>busy</html>", 100, 100, path, use_ffmpeg=False)
 
+    @unittest.skip("test ticket: find_ffmpeg uses the setting when it is a file, None when it is not, else ffmpeg on PATH")
+    def test_ffmpeg_from_the_setting_then_path(self):
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

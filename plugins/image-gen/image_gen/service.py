@@ -167,8 +167,11 @@ class Service:
             link = first["url"]
             if not (link.startswith("https://") or is_local(link)):
                 raise ImageError("no_image", "OpenAI returned a picture link that is not https")
-            with urllib.request.urlopen(link, timeout=120) as response:
-                return response.read()
+            try:
+                with urllib.request.urlopen(link, timeout=120) as response:
+                    return response.read()
+            except (urllib.error.URLError, socket.timeout, ConnectionError) as error:
+                raise ImageError("network", "The OpenAI picture link did not answer: %s" % getattr(error, "reason", error))
         raise ImageError("no_image", "OpenAI returned no picture")
 
     def _send(self, path, body, headers):
@@ -224,7 +227,7 @@ class Multipart:
         return b"".join(self.parts) + ("--%s--\r\n" % self.boundary).encode("utf-8")
 
 
-def generate_batch(scenes, style, service, width, height, folder, progress=None, use_ffmpeg=True):
+def generate_batch(scenes, style, service, width, height, folder, progress=None, use_ffmpeg=True, ffmpeg=""):
     """Every scene [{id, prompt}] into `folder`. Returns (images, failed)."""
     os.makedirs(folder, exist_ok=True)
     images, failed = [], []
@@ -234,7 +237,7 @@ def generate_batch(scenes, style, service, width, height, folder, progress=None,
         try:
             data = service.generate(style.text(scene["prompt"]), style, width, height)
             path, fitted = fit(data, width, height, os.path.join(folder, safe_name(scene["id"]) + ".png"),
-                               use_ffmpeg=use_ffmpeg)
+                               ffmpeg=ffmpeg, use_ffmpeg=use_ffmpeg)
             image = {"id": scene["id"], "path": path, "prompt": scene["prompt"], "fitted": fitted}
             if style.seed is not None:
                 image["seed"] = style.seed

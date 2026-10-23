@@ -1,6 +1,6 @@
 """Fitting a generated picture to the asked size: crop to the shape around the centre, then scale.
 
-ffmpeg does it when it is on PATH (or `$FFMPEG`); otherwise PNG is decoded and written here with the standard
+ffmpeg does it when found (the `ffmpeg` setting, else PATH); otherwise PNG is decoded and written here with the standard
 library (zlib), scaled nearest-neighbour. Another format without ffmpeg is kept as it came (`fitted: false`):
 FilmCraft still fits a still to the frame when it is placed.
 """
@@ -32,11 +32,12 @@ def kind(data):
     return None
 
 
-def find_ffmpeg():
-    explicit = os.environ.get("FFMPEG")
-    if explicit:
-        return explicit if os.path.isfile(explicit) else None
-    return shutil.which("ffmpeg")
+def find_ffmpeg(setting="", env=None):
+    """The `ffmpeg` setting when given (None when it is not a file), else ffmpeg on PATH."""
+    if setting:
+        return setting if os.path.isfile(setting) else None
+    env = os.environ if env is None else env
+    return shutil.which("ffmpeg", path=env.get("PATH"))
 
 
 def crop_box(width, height, target_w, target_h):
@@ -48,12 +49,15 @@ def crop_box(width, height, target_w, target_h):
     return 0, (height - h) // 2, width, h
 
 
-def fit(data, width, height, path, ffmpeg=None, use_ffmpeg=True):
-    """Write the picture `data` fitted to width x height. Returns (path written, fitted)."""
+def fit(data, width, height, path, ffmpeg="", use_ffmpeg=True):
+    """Write the picture `data` fitted to width x height. Returns (path written, fitted).
+
+    `ffmpeg` is the setting's path (empty: PATH); a setting that is not a file falls back to the Python fit.
+    """
     found = kind(data)
     if found is None:
         raise PictureError("bad_image", "The service's answer is not a picture")
-    tool = (ffmpeg or find_ffmpeg()) if use_ffmpeg else None
+    tool = find_ffmpeg(ffmpeg) if use_ffmpeg else None
     if tool:
         source = path + ".source." + found
         with open(source, "wb") as f:

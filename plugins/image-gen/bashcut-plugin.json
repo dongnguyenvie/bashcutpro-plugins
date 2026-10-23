@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.image-gen",
   "name": "Image Generation",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "summary": "AI pictures for an edit with your own Gemini or OpenAI key (or a local OpenAI-compatible server): every scene in one batch, one locked style and the same character from reference pictures, imported labelled as AI-generated.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "type": "python",
     "version": ">=3.9",
     "packages": [],
-    "note": "Standard library only. ffmpeg on PATH (optional) gives a smoother scale and fits JPEG and WebP answers too."
+    "note": "Standard library only. ffmpeg (optional: the ffmpeg setting, else PATH) gives a smoother scale and fits JPEG and WebP answers too."
   },
   "entry": {
     "command": ["python3", "plugin.py"],
@@ -73,6 +73,17 @@
       "flag": "--endpoint",
       "help": "For OpenAI: any server with /v1/images/generations and /v1/images/edits, such as a local model (needs no key).",
       "i18n": {"vi": {"title": "Địa chỉ máy chủ", "help": "Với OpenAI: máy chủ bất kỳ có /v1/images/generations và /v1/images/edits, ví dụ mô hình chạy trên máy (không cần khóa)."}}
+    },
+    {
+      "id": "ffmpeg",
+      "title": "FFmpeg",
+      "type": "path",
+      "default": "",
+      "env": ["BASHCUT_IMAGE_FFMPEG", "FFMPEG"],
+      "flag": "--ffmpeg",
+      "optional": true,
+      "help": "Optional: a smoother scale, and JPEG / WebP answers fitted too. Empty: the one found on this computer.",
+      "i18n": {"vi": {"title": "FFmpeg", "help": "Không bắt buộc: thu phóng mượt hơn, và cũng khớp được ảnh JPEG / WebP. Để trống: dùng bản tìm thấy trên máy này."}}
     }
   ],
   "actions": [
