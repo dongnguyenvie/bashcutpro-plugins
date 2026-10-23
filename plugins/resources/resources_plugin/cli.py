@@ -253,7 +253,9 @@ def cmd_fetch(args):
             message += ", credits in the project notes"
     if data.get("pending"):
         message += "; %d picks not placed: pass --project or --bridge" % len(placements)
-    if code not in (0, None) and not lines:
+    if code not in (0, None) and data.get("imported"):
+        message += "; %s exited %s after its files were imported" % (script, code)
+    if code not in (0, None) and not lines and not data.get("imported"):
         raise AppError("script_failed", "%s exited %s: %s" % (script, code, " ".join(text)[:300] or "see its messages above"))
     return message, data
 

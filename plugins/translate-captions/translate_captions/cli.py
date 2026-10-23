@@ -179,11 +179,13 @@ def cmd_apply(args):
         stale = {l.id for l in stale_lines(exported, lines)}
         translated = {k: v for k, v in translations_from_answer(answer, lines).items() if k not in stale}
         steps, kept, saved = write_back(app, args, listing, lines, translated, args.target)
+    stale_captions = {l.caption for l in lines if l.id in stale}
+    missing = [c for c in kept if c not in stale_captions]
     message = "Wrote %d of %d captions" % (len(steps), len(lines))
     if stale:
         message += "; %d skipped because their text changed since the export" % len(stale)
-    if kept:
-        message += "; %d had no translation in the answer" % (len(kept) - len(stale))
+    if missing:
+        message += "; %d had no translation in the answer" % len(missing)
     return message, {"lines": len(lines), "written": len(steps), "kept": kept, "stale": sorted(stale, key=int), "saved": saved}
 
 

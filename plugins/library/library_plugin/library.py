@@ -7,6 +7,7 @@ so the library keeps working when the originals move. A pack is a zip of `librar
 (`bashcut-library-pack/1`, the items' index entries) and `items/<id>/…`.
 """
 
+import copy
 import datetime
 import hashlib
 import json
@@ -14,6 +15,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 import zipfile
 
 import bashcut_settings
@@ -78,27 +80,111 @@ def files_hash(folder, names):
     return digest.hexdigest()
 
 
+def pack_files_hash(pack, folder, names):
+    """`files_hash` of a pack's `folder/<name>` members, computed from the bytes (the pack's own sha256 is not trusted)."""
+    digest = hashlib.sha256()
+    for name in sorted(names):
+        digest.update(name.encode("utf-8"))
+        try:
+            with pack.open("%s/%s" % (folder, name)) as f:
+                for block in iter(lambda: f.read(1 << 20), b""):
+                    digest.update(block)
+        except KeyError:
+            raise LibraryError("bad_pack", "%s: %s/%s is missing" % (pack.filename, folder, name))
+    return digest.hexdigest()
+
+
+LOCK_WAIT, LOCK_STALE = 30, 120  # seconds
+
+
+class IndexLock:
+    """`index.json.lock`, made with O_EXCL so one run at a time re-reads and writes the index; a lock older than
+    LOCK_STALE seconds is left from a crashed run and is taken over."""
+
+    def __init__(self, path):
+        self.path = path + ".lock"
+
+    def __enter__(self):
+        deadline = time.time() + LOCK_WAIT
+        while True:
+            try:
+                os.close(os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                return self
+            except FileExistsError:
+                try:
+                    if time.time() - os.path.getmtime(self.path) > LOCK_STALE:
+                        os.remove(self.path)
+                        continue
+                except OSError:
+                    continue
+                if time.time() > deadline:
+                    raise LibraryError("busy", "the library index is locked by another run (%s)" % self.path)
+                time.sleep(0.05)
+
+    def __exit__(self, *exc):
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+
+
 class Library:
     def __init__(self, root=None):
         self.root = root or library_dir()
         self.path = os.path.join(self.root, "index.json")
-        self.items = []
-        if os.path.isfile(self.path):
-            try:
-                with open(self.path, encoding="utf-8") as f:
-                    index = json.load(f)
-            except (OSError, ValueError) as error:
-                raise LibraryError("bad_index", "cannot read %s: %s" % (self.path, error))
-            if index.get("schema") != SCHEMA:
-                raise LibraryError("bad_index", "%s: schema must be %s" % (self.path, SCHEMA))
-            self.items = [i for i in index.get("items") or [] if isinstance(i, dict) and i.get("id")]
+        self.items = self._read()
+        self._base = {i["id"]: copy.deepcopy(i) for i in self.items}  # as read: what save() compares against
+
+    def _read(self):
+        if not os.path.isfile(self.path):
+            return []
+        try:
+            with open(self.path, encoding="utf-8") as f:
+                index = json.load(f)
+        except (OSError, ValueError) as error:
+            raise LibraryError("bad_index", "cannot read %s: %s" % (self.path, error))
+        if index.get("schema") != SCHEMA:
+            raise LibraryError("bad_index", "%s: schema must be %s" % (self.path, SCHEMA))
+        return [i for i in index.get("items") or [] if isinstance(i, dict) and i.get("id")]
+
+    def _merged(self, disk):
+        """This run's changes since it read the index, applied to the index as it is on disk now: other runs' adds,
+        removes and edits are kept, `uses` adds up and `recent` keeps every project."""
+        ours = {i["id"]: i for i in self.items}
+        out = []
+        for item in disk:
+            mine, base = ours.get(item["id"]), self._base.get(item["id"])
+            if base is not None and mine is None:
+                continue  # removed by this run
+            if mine is not None and mine != base:
+                item = dict(item)
+                for key in set(mine) | set(base or {}):
+                    if (base or {}).get(key) == mine.get(key):
+                        continue
+                    if key == "uses":
+                        item[key] = int(item.get(key) or 0) + int(mine.get(key) or 0) - int((base or {}).get(key) or 0)
+                    elif key == "recent":
+                        item[key] = dict(item.get(key) or {}, **(mine.get(key) or {}))
+                    elif key in mine:
+                        item[key] = mine[key]
+                    else:
+                        item.pop(key, None)
+            out.append(item)
+        on_disk = {i["id"] for i in disk}
+        out += [i for i in self.items if i["id"] not in on_disk and i["id"] not in self._base]  # added by this run
+        return out
 
     def save(self):
+        """Write the index under its lock, re-read first, so concurrent runs (batch packs) do not lose each other's
+        updates."""
         os.makedirs(self.root, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=self.root, suffix=".json")
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump({"schema": SCHEMA, "items": self.items}, f, ensure_ascii=False, indent=1)
-        os.replace(tmp, self.path)
+        with IndexLock(self.path):
+            self.items = self._merged(self._read())
+            fd, tmp = tempfile.mkstemp(dir=self.root, suffix=".json")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump({"schema": SCHEMA, "items": self.items}, f, ensure_ascii=False, indent=1)
+            os.replace(tmp, self.path)
+        self._base = {i["id"]: copy.deepcopy(i) for i in self.items}
 
     def folder(self, item_id):
         return os.path.join(self.root, "items", item_id)
@@ -266,7 +352,8 @@ class Library:
                 if entry.get("kind") not in KINDS or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", old):
                     raise LibraryError("bad_pack", "%s: bad item %r" % (path, old))
                 entry = dict(entry, params=_renamed_refs(entry.get("params") or {}, renamed))
-                same = known.get(entry.get("sha256")) if entry.get("sha256") else next(
+                entry["sha256"] = pack_files_hash(pack, "items/" + old, entry["files"]) if entry.get("files") else ""
+                same = known.get(entry["sha256"]) if entry["sha256"] else next(
                     (i["id"] for i in self.items if not i.get("files") and i.get("kind") == entry["kind"]
                      and i.get("title") == entry.get("title") and i.get("params") == entry["params"]), None)
                 if same:
@@ -285,6 +372,8 @@ class Library:
                         shutil.copyfileobj(src, dst)
                 self.items.append(dict(entry, id=new, favourite=False, uses=0, recent={}, added=now()))
                 added.append(new)
+                if entry["sha256"]:
+                    known[entry["sha256"]] = new
         self.save()
         return {"added": added, "skipped": skipped, "renamed": {k: v for k, v in renamed.items() if k != v}}
 
