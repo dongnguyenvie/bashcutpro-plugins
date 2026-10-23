@@ -28,14 +28,16 @@ import concurrent.futures
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import time
 import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import bashcut, get, openverse_licence, place, save, slug  # noqa: E402  (get: curl, with retries on resets, timeouts and HTTP 429/5xx)
+from fetch_stock import (bashcut, get, import_into, openverse_licence, parse_pick, place, save,  # noqa: E402
+                         slug)  # get: curl, with retries on resets, timeouts and HTTP 429/5xx
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from resources_plugin.licences import write_sidecar  # noqa: E402
 
 WORKERS = 6
 OPENVERSE_LICENCES = ["cc0", "by", "by-sa"]  # --safe-licence: monetised edits allowed (BY / BY-SA: the credit line)
@@ -172,11 +174,8 @@ def download_slot(slot, dest, budget, taken):
 
 
 def write_licence(path, row):
-    """<file>.licence.json next to the file, the record resources_plugin.licences writes (the fetch command keeps it)."""
-    record = {"file": path.name}
-    record.update({k: row[k] for k in ("title", "license", "author", "source", "kind") if row.get(k)})
-    record.update(fetchedBy="bashcut.resources fetch_audio", fetched=time.strftime("%Y-%m-%d"))
-    Path(f"{path}.licence.json").write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8")
+    """<file>.licence.json next to the file (resources_plugin.licences; the fetch command keeps it)."""
+    write_sidecar(str(path), {k: row.get(k) for k in ("title", "license", "author", "source", "kind")}, "fetch_audio")
 
 
 def _fetch(candidate):
@@ -290,18 +289,6 @@ def table(rows):
     return "\n".join(lines)
 
 
-def parse_pick(spec):
-    """"whoosh=2@120;music=1@0:900" → [(slot, n, frame or None, duration or None)]."""
-    picks = []
-    for part in [p for p in spec.split(";") if p.strip()]:
-        slot, _, rest = part.partition("=")
-        for choice in [c.strip() for c in rest.split(",") if c.strip()]:
-            n, _, where = choice.partition("@")
-            frame, _, duration = where.partition(":")
-            picks.append((slot.strip(), int(n), int(frame) if frame else None, int(duration) if duration else None))
-    return picks
-
-
 def place_picks(dest, spec, scope):
     """--pick: the chosen candidates' library IDs, placed at @frame (and :duration) when given."""
     rows = json.loads((dest / "candidates.json").read_text(encoding="utf-8"))
@@ -395,15 +382,7 @@ def main(argv=None):
     if use_library and any("file" in r for r in rows):
         to_library([r for r in rows if "file" in r], dest, args.scope)
     if args.import_ and any("file" in r for r in rows):
-        out = subprocess.run(["bashcut", "media", "import", str(dest), "--base-rev", "last"],
-                             capture_output=True, text=True, encoding="utf-8")
-        try:
-            ids = {Path(f["path"]).name: f.get("media") for f in json.loads(out.stdout).get("files", [])}
-        except (ValueError, AttributeError):
-            ids = {}
-            print(out.stderr.strip()[:300], file=sys.stderr)
-        for row in rows:
-            row["media"] = ids.get(row.get("file"))
+        import_into(dest, rows)
     if candidates_mode:
         (dest / "candidates.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
         print(table(rows))

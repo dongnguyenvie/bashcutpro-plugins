@@ -27,9 +27,9 @@ Candidates, to choose from one look instead of one preview at a time:
     uv run fetch_stock.py --dest /abs/project/media/stock --pick "pot=3@120;river=2,5@300:90"
 
 --slots is a JSON list of {"slot", "query", "kind", "orientation", "count"}. Every candidate is downloaded in
-parallel (videos until --max-mb, the rest kept for --pick), saved to the project library (`library add --kind
-clip`, tags = stock, slot, words) and drawn on numbered contact sheets, about --sheet-slots slots a sheet (a video
-tile shows the provider's frames). It prints one line per slot and the sheet paths; look at the sheets, then
+parallel straight to disk (videos until --max-mb: a video that passes it is stopped at once and kept for --pick),
+saved to the project library (`library add --kind clip`, tags = stock, slot, words) and drawn on numbered contact
+sheets, about --sheet-slots slots a sheet (a video tile shows the provider's frames). It prints one line per slot and the sheet paths; look at the sheets, then
 --pick the ones you choose: n@frame[:duration] places it there (library place), a bare n prints its library ID;
 a chosen video that was over the cap is downloaded first. The rest stay in the library for later edits. A dropped
 connection, a timeout or HTTP 429/5xx is tried 3 times per file; a file still missing after that is named in its
@@ -72,8 +72,13 @@ class NotFound(FetchError):
     """HTTP 404: never tried again (a missing page is an answer, not a network error)."""
 
 
+class TooLarge(FetchError):
+    """A download stopped because it passed its byte cap (get_file's max_bytes); never tried again."""
+
+
 def get(url, headers=None, timeout=30, tries=TRIES, agent=AGENT, data=None):
-    """The body of url; with data (bytes) a POST. The one HTTP getter of the resources scripts.
+    """The body of url; with data (bytes) a POST. The one HTTP getter of the resources scripts (get_file writes a
+    download straight to a file).
 
     curl, not urllib: it uses the system's certificates, which some Python installs lack. Transient network errors
     (Openverse and Wikimedia reset connections now and then: curl 56) and HTTP 429/5xx are tried again with backoff;
@@ -88,13 +93,45 @@ def get(url, headers=None, timeout=30, tries=TRIES, agent=AGENT, data=None):
         status = int(re.sub(rb"\D", b"", (out.stderr or b"")[-3:]) or 0)
         if out.returncode == 0 and status < 400:
             return out.stdout
-        reason = f"http {status}" if out.returncode == 0 else f"curl exit {out.returncode}"
-        if status == 404:
-            raise NotFound(reason, url)
-        if attempt < tries and (out.returncode in TRANSIENT or status == 429 or status >= 500):
-            time.sleep(BACKOFF * attempt)
-            continue
-        raise FetchError(reason + (f" after {attempt} tries" if attempt > 1 else ""), url)
+        retry_or_raise(out.returncode, status, attempt, tries, url)
+
+
+def retry_or_raise(code, status, attempt, tries, url):
+    """After a failed try (curl exit code, HTTP status): sleeps when it is worth another try, else raises."""
+    reason = f"http {status}" if code == 0 else f"curl exit {code}"
+    if status == 404:
+        raise NotFound(reason, url)
+    if attempt < tries and (code in TRANSIENT or status == 429 or status >= 500):
+        time.sleep(BACKOFF * attempt)
+        return
+    raise FetchError(reason + (f" after {attempt} tries" if attempt > 1 else ""), url)
+
+
+def get_file(url, path, timeout=300, tries=TRIES, max_bytes=None, agent=AGENT):
+    """Downloads url straight into the file path (curl -o path.part, renamed once complete; never held in memory)
+    and returns its size. With max_bytes curl --max-filesize stops the download as soon as it passes the cap (up
+    front when the server sends the size) and TooLarge is raised; a curl too old to stop mid-transfer is still
+    caught by the size on disk. Nothing is left behind on failure. Tried again as get is."""
+    path = Path(path)
+    part = path.with_name(path.name + ".part")
+    command = ["curl", "-sL", "-A", agent, "--max-time", str(timeout), "-w", "%{stderr}%{http_code}", "-o", str(part)]
+    if max_bytes is not None:
+        command += ["--max-filesize", str(max(1, int(max_bytes)))]
+    for attempt in range(1, tries + 1):
+        out = subprocess.run(command + [url], capture_output=True)
+        status = int(re.sub(rb"\D", b"", (out.stderr or b"")[-3:]) or 0)
+        size = part.stat().st_size if part.exists() else 0
+        # curl 63: the announced size is over --max-filesize; a transfer of unknown size that reaches the cap is cut
+        # there with another exit (curl 8 gives 56), and an old curl that does not cut it leaves more on disk
+        capped = max_bytes is not None and (size > max_bytes or (out.returncode and size >= max_bytes))
+        if out.returncode == 63 or capped:
+            part.unlink(missing_ok=True)
+            raise TooLarge(f"over the {max_bytes / 1e6:g} MB cap", url)
+        if out.returncode == 0 and status < 400:
+            part.replace(path)
+            return size
+        part.unlink(missing_ok=True)
+        retry_or_raise(out.returncode, status, attempt, tries, url)
 
 
 def get_json(url, headers=None):
@@ -495,7 +532,7 @@ def file_name(row):
 
 def download(row, dest):
     name = file_name(row)
-    (dest / name).write_bytes(get(row["url"], timeout=300))
+    get_file(row["url"], dest / name, timeout=300)
     return name
 
 
@@ -576,10 +613,16 @@ def library_add(row, dest, scope):
         row["libraryId"] = saved["id"]
 
 
-def fetch_body(url, timeout=300, row=None):
-    """The file, or None once get gave up: logged as skipped, and the reason put on row["error"] when given."""
+def fetch_body(url, timeout=300, row=None, to=None, max_bytes=None):
+    """The file (with to: streamed into that path, and its size returned), or None once get / get_file gave up: logged
+    as skipped, and the reason put on row["error"] when given. A download over max_bytes is stopped early and only
+    marks the row deferred (fetched when picked)."""
     try:
-        return get(url, timeout=timeout)
+        return get(url, timeout=timeout) if to is None else get_file(url, to, timeout=timeout, max_bytes=max_bytes)
+    except TooLarge:
+        if row is not None:
+            row["deferred"] = True
+        return None
     except OSError as error:
         print(json.dumps({"skipped": url.split("?")[0], "error": str(error)[:80]}), file=sys.stderr)
         if row is not None:
@@ -617,7 +660,7 @@ def gather(slots, source, dest, max_mb, min_short, scope, use_library):
 
     with concurrent.futures.ThreadPoolExecutor(6) as pool:
         found = list(pool.map(search, slots))
-    rows, left = [], None if max_mb is None else max_mb * 1_000_000
+    rows, left, capped = [], None if max_mb is None else max_mb * 1_000_000, False
     for slot, hits in zip(slots, found):
         for n, row in enumerate([h for h in hits if h.get("url")], 1):
             row.update(slot=slot["slot"], words=slot["query"], n=n, file=file_name(row))
@@ -629,23 +672,22 @@ def gather(slots, source, dest, max_mb, min_short, scope, use_library):
     photos = [r for r in wanted if r["kind"] == "photo"]
     videos = [r for r in wanted if r["kind"] == "video"]
     with concurrent.futures.ThreadPoolExecutor(6) as pool:
-        for row, body in zip(photos, pool.map(lambda r: fetch_body(r["url"], row=r), photos)):
-            if body is not None:
-                (dest / row["file"]).write_bytes(body)
-        # videos in slot order, so the cap cuts the last candidates of a slot, not whole slots
+        list(pool.map(lambda r: fetch_body(r["url"], row=r, to=dest / r["file"]), photos))
+        # videos in slot order, so the cap cuts the last candidates of a slot, not whole slots; each download stops
+        # as soon as it passes what is left of the cap (that video is deferred, a smaller one may still fit)
         videos.sort(key=lambda r: (r["n"], r["slot"]))
         for row in videos:
             if row.get("deferred"):
                 continue  # fetched when picked
             if left is not None and left <= 0:
-                row["deferred"] = True
+                row["deferred"] = capped = True
                 continue
-            body = fetch_body(row["url"], row=row)
-            if body is None:
+            size = fetch_body(row["url"], row=row, to=dest / row["file"], max_bytes=left)
+            if size is None:
+                capped = capped or bool(row.get("deferred"))
                 continue
-            (dest / row["file"]).write_bytes(body)
             if left is not None:
-                left -= len(body)
+                left -= size
         tiles = [r for r in videos if r.get("frames") or r.get("preview") or (dest / r["file"]).exists()]
         thumbs = dest / ".thumbs"
         thumbs.mkdir(exist_ok=True)
@@ -671,7 +713,7 @@ def gather(slots, source, dest, max_mb, min_short, scope, use_library):
         for row in wanted:
             if (dest / row["file"]).exists() and not row.get("deferred") and not row.get("error"):
                 library_add(row, dest, scope)
-    return rows, left is not None and left <= 0
+    return rows, capped
 
 
 def video_frames(video, stem):
@@ -696,12 +738,23 @@ def video_frames(video, stem):
 
 
 # Sheet labels hold the user's words, often Vietnamese: Pillow's own font has no ă, ơ, ư or tone marks.
+# Fonts with Vietnamese glyphs for the sheet labels, first found wins: macOS, Windows (under %WINDIR%), Linux
+# (DejaVu, Noto, Liberation at their usual Debian / Fedora / Arch paths), then bare names Pillow looks up itself in
+# the system font folders.
+WINDOWS_FONTS = os.path.join(os.environ.get("WINDIR") or r"C:\Windows", "Fonts")
 LABEL_FONTS = ("/System/Library/Fonts/SFNS.ttf", "/System/Library/Fonts/Supplemental/Arial.ttf",
-               "/System/Library/Fonts/Supplemental/Arial Unicode.ttf")
+               "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+               *(os.path.join(WINDOWS_FONTS, name) for name in ("segoeui.ttf", "arial.ttf", "tahoma.ttf")),
+               "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+               "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+               "/usr/share/fonts/google-noto/NotoSans-Regular.ttf", "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+               "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+               "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+               "DejaVuSans.ttf", "NotoSans-Regular.ttf", "LiberationSans-Regular.ttf")
 
 
 def label_font(size):
-    """A macOS system font with Vietnamese for sheet labels, else Pillow's own."""
+    """A system font with Vietnamese for sheet labels (LABEL_FONTS), else Pillow's own (no Vietnamese)."""
     from PIL import ImageFont
     for path in LABEL_FONTS:
         try:
@@ -795,9 +848,9 @@ def pick(dest, spec, scope):
     wanted = [(s, n) for s, n, _, _ in parse_pick(spec)]
     late = [r for r in rows if r.get("deferred") and (r.get("slot"), r.get("n")) in wanted]
     with concurrent.futures.ThreadPoolExecutor(4) as pool:  # deferred videos in parallel before placing in order
-        for row, body in zip(late, pool.map(lambda r: fetch_body(r["url"], timeout=1800, row=r), late)):
-            if body is not None:
-                (dest / row["file"]).write_bytes(body)
+        for row, size in zip(late, pool.map(lambda r: fetch_body(r["url"], timeout=1800, row=r, to=dest / r["file"]),
+                                            late)):
+            if size is not None:
                 row.pop("deferred")
                 row.pop("error", None)
             else:

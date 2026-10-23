@@ -153,12 +153,13 @@ class IngestTests(unittest.TestCase):
 
     def test_title_is_readable_and_the_stem_stays_the_id(self):
         _, adds = self.run_main()
-        warm = next(dict(zip(a[2::2], a[3::2])) for a in adds if dict(zip(a[2::2], a[3::2]))['--id'] == 'lut-local-warm-copy')
+        stem = self.f.stem('warm-copy')  # slug + a short hash of the exact name (RP24)
+        warm = next(dict(zip(a[2::2], a[3::2])) for a in adds if dict(zip(a[2::2], a[3::2]))['--id'] == f'lut-local-{stem}')
         self.assertEqual(warm['--name'], 'Warm copy')
         params = json.loads(warm['--params'])
         self.assertEqual(params['lutName'], 'Warm copy')
         self.assertEqual(params['lut']['name'], 'warm-copy')
-        self.assertEqual(Path(params['lut']['file']).name, 'warm-copy.cube')
+        self.assertEqual(Path(params['lut']['file']).name, f'{stem}.cube')
 
     def test_earlier_looks_are_renamed_unless_renamed_since(self):
         calls = []
@@ -195,6 +196,14 @@ class IngestTests(unittest.TestCase):
             self.f.main(['--source', 'gmic', '--no-library'])
         self.assertEqual(out.getvalue().splitlines()[0], 'gmic: skipped (curl exit 22)')
         self.assertEqual(len(out.getvalue().splitlines()), 2)
+
+    @unittest.skip("test ticket: LUTs named 'Warm' and 'warm' (or 'Café' and 'Cafe') are both kept, with different files and IDs")
+    def test_names_that_differ_only_in_case_are_both_kept(self):
+        pass
+
+    @unittest.skip("test ticket: rawtherapee with --limit reads the verified models.json zip, spread over its folders")
+    def test_limit_keeps_the_verified_zip(self):
+        pass
 
 
 if __name__ == '__main__':

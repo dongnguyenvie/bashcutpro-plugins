@@ -19,8 +19,9 @@ clipped and crushed share. Log-to-Rec.709 LUTs (a big contrast jump with clippin
 go to the library: `library add --kind look --file X.cube --tags lut,<source>,<tags from the numbers>` with the
 measurements in params.lut. Prints one line: added, duplicates, log, broken. `grade.py candidates` ranks them.
 
+Files and library IDs are the name's slug plus a short hash of the exact name, so "Warm" and "warm" stay two LUTs.
 Each look gets a readable title ("creative-bleachbypass_1" reads "Bleach bypass 1", "Kodak-Kodak T-Max 400" reads
-"Kodak T-Max 400"); the file stem stays its ID and file name (params.lut.name keeps it). Looks an earlier run added
+"Kodak T-Max 400"); the name stays its ID and file stem (params.lut.name keeps it). Looks an earlier run added
 under the file name are renamed, unless someone renamed them since.
 """
 import argparse
@@ -47,6 +48,12 @@ RT_FOLDER = "HaldCLUT/Film Simulation/"
 
 DATA = shared_dir("luts")
 CACHE = shared_dir("luts", "cache")
+
+
+def stem(name):
+    """A LUT's file stem and library ID part: its slug (at most 40 characters) and a short hash of the exact name, so
+    names that differ only in case, punctuation or non-ASCII letters stay two LUTs."""
+    return f"{slug(name, 'lut', 40)}-{hashlib.sha1(name.encode('utf-8')).hexdigest()[:6]}"
 
 
 # --- titles ----------------------------------------------------------------------------------------------------
@@ -357,7 +364,7 @@ def gmic(quota):
     def fetch(item):
         cat, ref = item
         name = f"{cat}-{Path(ref).stem}"
-        kept = DATA / "gmic" / f"{slug(name, 'lut', None)}.cube"
+        kept = DATA / "gmic" / f"{stem(name)}.cube"
         if kept.exists():
             return name, b"", "seen"
         try:
@@ -386,28 +393,34 @@ def rt_pack():
         return None
 
 
+def spread(paths, quota):
+    """A small quota of paths spread over their folders (black and white, colour, each maker); all without one."""
+    if not quota or not paths:
+        return paths
+    by_folder = {}
+    for p in paths:
+        by_folder.setdefault(str(Path(p).parent), []).append(p)
+    groups = list(by_folder.values())
+    return [g[i] for i in range(max(len(g) for g in groups)) for g in groups if i < len(g)][:quota]
+
+
 def rawtherapee(quota):
-    """RawTherapee film simulation HaldCLUTs: the official zip (verified), else the same files from a GitHub copy."""
-    pack = None if quota else rt_pack()
+    """RawTherapee film simulation HaldCLUTs: the official zip (verified; with --limit too), else the same files from
+    a GitHub copy."""
+    pack = rt_pack()
     if pack and pack.exists():
         with zipfile.ZipFile(pack) as z:
             names = sorted(n for n in z.namelist() if n.lower().endswith(".png") and "Film Simulation" in n)
-            for n in names[:quota or None]:
+            for n in spread(names, quota):
                 yield "-".join(Path(n).parts[-2:]).removesuffix(".png"), z.read(n), "hald"
         return
     tree = json.loads(get(f"https://api.github.com/repos/{RT_MIRROR}/git/trees/master?recursive=1", timeout=60))
-    paths = sorted(t["path"] for t in tree.get("tree", []) if t.get("type") == "blob"
-                   and t["path"].startswith(RT_FOLDER) and t["path"].lower().endswith(".png"))
-    if quota:  # spread a small quota over the folders (black and white, colour, each maker)
-        by_folder = {}
-        for p in paths:
-            by_folder.setdefault(str(Path(p).parent), []).append(p)
-        groups = list(by_folder.values())
-        paths = [g[i] for i in range(max(len(g) for g in groups)) for g in groups if i < len(g)][:quota]
+    paths = spread(sorted(t["path"] for t in tree.get("tree", []) if t.get("type") == "blob"
+                          and t["path"].startswith(RT_FOLDER) and t["path"].lower().endswith(".png")), quota)
 
     def fetch(path):
         name = "-".join(Path(path).parts[-2:]).removesuffix(".png")
-        kept = DATA / "rawtherapee" / f"{slug(name, 'lut', None)}.cube"
+        kept = DATA / "rawtherapee" / f"{stem(name)}.cube"
         if kept.exists():
             return name, b"", "seen"
         url = f"https://raw.githubusercontent.com/{RT_MIRROR}/master/{urllib.parse.quote(path)}"
@@ -456,7 +469,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
     store = DATA / source
     store.mkdir(parents=True, exist_ok=True)
     for name, body, kind in items:
-        if kind == "seen" or (DATA / source / f"{slug(name, 'lut', None)}.cube").exists():
+        if kind == "seen" or (DATA / source / f"{stem(name)}.cube").exists():
             counts["known"] += 1  # measured on an earlier run
             continue
         if not body:
@@ -479,7 +492,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
             counts["duplicates"] += 1
             continue
         kept.append(fp)
-        path = store / f"{slug(name, 'lut', None)}.cube"
+        path = store / f"{stem(name)}.cube"
         label = title(source, name)
         path.write_text(cube_text(table, label), encoding="utf-8")
         counts["log"] += log
@@ -490,7 +503,7 @@ def ingest(items, source, known, kept, counts, o, library=frozenset()):
         params = {"color": {"lutStrength": 1}, "lutName": label,
                   "lut": {"sha": sha, "source": source, "name": name, "file": str(path), "fp": fp}}
         added = bashcut("library", "add", "--kind", "look", "--name", label, "--file", str(path),
-                        "--scope", o.scope, "--id", f"lut-{slug(source, 'lut', None)}-{slug(name, 'lut', None)}"[:64].strip("-"),
+                        "--scope", o.scope, "--id", f"lut-{slug(source, 'lut', 12)}-{stem(name)}",
                         "--tags", ",".join(tags), "--pack", f"LUT {source}", "--origin", "web" if source != "local" else "own",
                         "--params", json.dumps(params))
         if added.get("error") and "already" in str(added["error"]):
