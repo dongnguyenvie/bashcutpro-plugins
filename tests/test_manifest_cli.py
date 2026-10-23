@@ -29,7 +29,7 @@ def walk(parser, path, out, required):
         if isinstance(a, argparse._SubParsersAction):
             for name, sub in a.choices.items():
                 walk(sub, path + [name], out, required)
-        elif not a.option_strings and a.required:
+        elif not a.option_strings and a.required and a.nargs not in (argparse.REMAINDER, "*", "?"):  # 3.10 calls those required
             required.setdefault(" ".join(path), []).append(a.dest)
         options += a.option_strings
     return out
