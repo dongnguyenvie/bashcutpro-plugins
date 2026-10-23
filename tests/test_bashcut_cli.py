@@ -14,12 +14,8 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import bashcut_cli  # noqa: E402
 
 
-class Failure(Exception):
-    def __init__(self, code, message, data=None):
-        super().__init__(message)
-        self.code, self.message = code, message
-        if data is not None:
-            self.data = data
+class Failure(bashcut_cli.PluginError):
+    pass
 
 
 def raising(error):
@@ -31,7 +27,7 @@ def raising(error):
 def run(command, **kwargs):
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
-        code = bashcut_cli.run(command, None, (Failure,), **kwargs)
+        code = bashcut_cli.run(command, None, **kwargs)
     text = out.getvalue()
     return code, json.loads(text) if text else None
 

@@ -155,11 +155,11 @@ class Handoff(Exception):
         self.data = dict(data, then=then, answer=answer)
 
 
-def run(command, args, errors=(), handoff=()):
+def run(command, args, handoff=()):
     """Run one command and print its result; returns the exit status.
 
     `command(args)` returns `(message, data)`, or an exit status when it wrote its own output (a pass-through).
-    A `Handoff`, a `PluginError`, or an exception in `errors` (with `code`, `message` and maybe `data`), becomes
+    A `Handoff` or a `PluginError` (every shared module's and plugin's error derives from it) becomes
     `{"ok": false, "error"}`: exit 3 for a `Handoff` or a code in `handoff`, 2 for `bad_args`, else 1. `OSError` and
     `ValueError` are `failed`, exit 1.
     """
@@ -168,8 +168,8 @@ def run(command, args, errors=(), handoff=()):
     except Handoff as error:
         emit(failure(error.code, error.message, error.data))
         return EXIT_HANDOFF
-    except (PluginError,) + tuple(errors) as error:
-        emit(failure(error.code, error.message, getattr(error, "data", None)))
+    except PluginError as error:
+        emit(failure(error.code, error.message, error.data))
         return EXIT_HANDOFF if error.code in handoff else EXIT_USAGE if error.code == "bad_args" else EXIT_FAILED
     except (OSError, ValueError) as error:
         emit(failure("failed", str(error)))

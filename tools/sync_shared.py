@@ -9,6 +9,8 @@ so shared code is vendored).
 - `bashcut_settings.py` (data dir, plugin folder, settings resolution): every plugin whose code imports it;
 - `bashcut_ai.py` (the Gemini / OpenAI client: key and endpoint checks, `send()` with retries): every plugin whose
   code imports it;
+- `bashcut_mcp.py` (the MCP client: finding the CLI, the handshake with the plugin's id and version, tools, batches):
+  every plugin whose code imports it (its `mcp.py` does);
 - `bashcut_timeline.py` (the ticks constant, import, tracks, overlaps, `timeline.place`): every plugin whose code imports it
   or `bashcut_frames`;
 - `bashcut_images.py` (BMP stills, PNG read and write): every plugin whose code imports it;
@@ -56,6 +58,8 @@ def copies(root=ROOT):
             yield os.path.join(root, "tools", "bashcut_settings.py"), os.path.join(root, "plugins", name, "bashcut_settings.py")
         if imports(root, name, "bashcut_ai"):
             yield os.path.join(root, "tools", "bashcut_ai.py"), os.path.join(root, "plugins", name, "bashcut_ai.py")
+        if imports(root, name, "bashcut_mcp"):
+            yield os.path.join(root, "tools", "bashcut_mcp.py"), os.path.join(root, "plugins", name, "bashcut_mcp.py")
         frames = imports(root, name, "bashcut_frames")
         if frames or imports(root, name, "bashcut_timeline"):  # bashcut_frames imports bashcut_timeline
             yield os.path.join(root, "tools", "bashcut_timeline.py"), os.path.join(root, "plugins", name, "bashcut_timeline.py")

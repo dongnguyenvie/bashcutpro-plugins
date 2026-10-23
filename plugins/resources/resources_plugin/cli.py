@@ -14,7 +14,6 @@ import tempfile
 
 import bashcut_cli
 from bashcut_cli import connection_args, save
-from bashcut_timeline import TimelineError
 
 from . import __version__
 from .licences import credit_line, from_line, merge_notes, read_sidecar, write_sidecar
@@ -305,4 +304,4 @@ COMMANDS = {"scripts": cmd_scripts, "setup": cmd_setup, "fetch": cmd_fetch, "imp
 def main(argv=None):
     bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))
+    return bashcut_cli.run(COMMANDS[args.command], args)

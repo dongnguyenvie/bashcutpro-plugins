@@ -25,6 +25,8 @@ import sys
 import urllib.error
 import urllib.request
 
+import bashcut_cli
+
 SCHEMA = "bashcut-models/1"
 MANIFEST = "models.json"
 AGENT = "bashcutpro-plugins"
@@ -32,11 +34,8 @@ CHUNK = 1 << 20
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
-class ModelError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+class ModelError(bashcut_cli.PluginError):
+    """A model that cannot be found, downloaded or verified; `code` and `message` as in the result protocol."""
 
 
 def data_dir(env=None):

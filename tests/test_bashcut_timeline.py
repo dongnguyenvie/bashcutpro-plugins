@@ -39,5 +39,12 @@ class Place(unittest.TestCase):
         pass
 
 
+class Errors(unittest.TestCase):
+    @unittest.skip("test ticket: TimelineError is a bashcut_cli.PluginError, so bashcut_cli.run prints import_failed "
+                   "with exit 1 and bad_args with exit 2 without an errors tuple")
+    def test_timeline_error_is_a_plugin_error(self):
+        pass
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,6 @@ import os
 
 import bashcut_cli
 from bashcut_cli import connection_args, save
-from bashcut_timeline import TimelineError
 
 from . import __version__
 from .mcp import AppError, McpClient
@@ -291,4 +290,4 @@ COMMANDS = {"style": cmd_style, "generate": cmd_generate, "import": cmd_import, 
 def main(argv=None):
     bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))
+    return bashcut_cli.run(COMMANDS[args.command], args)

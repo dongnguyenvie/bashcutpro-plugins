@@ -26,6 +26,7 @@ tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
 tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, PluginError, read_json, connection flags, the setup venv recipe (copied into each plugin)
+tools/bashcut_mcp.py               the MCP client: finding the CLI, the handshake with the plugin's id and version, tools, batches (copied into each plugin)
 tools/bashcut_settings.py          data dir, plugin folder, flag → env → file → default (copied into plugins that use it)
 tools/bashcut_ai.py                the Gemini / OpenAI client: key and endpoint checks, send() with retries (copied into plugins that use it)
 tools/bashcut_timeline.py          ticks per second, import, tracks, overlaps, timeline.place (copied into plugins that use it)
@@ -55,7 +56,7 @@ python3 tools/new_plugin.py beat-markers --title "Beat Markers" --summary "Puts 
 ```
 
 makes `plugins/beat-markers/` from `tools/plugin_template/` (manifest with `i18n.vi`, `plugin.py`, the
-`beat_markers_plugin` package with `cli.py` and the shared `mcp.py`, the skill, a README, `tests/` with a fake engine)
+`beat_markers_plugin` package with `cli.py` and an `mcp.py` that hands the shared client its id and version, the skill, a README, `tests/` with a fake engine)
 and its `registry.json` entry; every check passes on it as made (`tests/test_new_plugin.py`). Then replace the example
 `clips` action with the plugin's own: its manifest action and params (English and Vietnamese), a `cmd_<action>` in
 `cli.py` that returns `(message, data)` or raises a `bashcut_cli.PluginError(code, message)` (`bad_args` for a usage
@@ -63,7 +64,7 @@ error, exit 2), the skill and tests; add a row to the table above; run `tools/ch
 plugin's tests by itself).
 
 A plugin folder is installed on its own (the host copies `registry.json`'s `source.path`), so it imports nothing
-outside its folder: shared code is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every
+outside its folder: shared code is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` and `bashcut_mcp.py` into every
 plugin, `bashcut_settings.py`, `bashcut_ai.py`, `bashcut_timeline.py`, `bashcut_images.py` and `bashcut_frames.py` into
 those that import them (`bashcut_frames.py` brings `bashcut_timeline.py`),
 `bashcut_models.py` into those with `models`), and `tests/test_shared_copies.py` fails while a copy is stale. Fix
