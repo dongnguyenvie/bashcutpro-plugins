@@ -77,7 +77,7 @@ Windows and Linux; BashCut ran them on macOS only (live test pending on all thre
 - `bashcut-plugin.json`: the manifest; `plugin.py`: the entry point
 - `hyperframes_plugin/`: `cli.py` (commands), `runtime.py` (finding Node.js, Chrome, FFmpeg; `setup`),
   `composition.py` (variables, copies, hashes), `render.py` (render, snapshot, records), `timeline.py` (import,
-  place, swap), `mcp.py` (MCP client for `bashcutpro mcp`), `settings.py`
+  place, swap), `mcp.py` (MCP client for `bashcutpro-cli mcp`), `settings.py`
 - `examples/`, `lib/` (shared composition scripts and `osm-map.mjs`), `runtime/` (the pinned npm packages)
 - `skills/hyperframes/SKILL.md`: the agent skill
 - `tests/`: unit tests with `fake_filmcraft.py` (MCP), `fake_node.py` and `fake_hyperframes.py`
@@ -88,5 +88,5 @@ Windows and Linux; BashCut ran them on macOS only (live test pending on all thre
 python3 -m unittest discover -s tests -v
 ```
 
-Live test pending (needs `filmcraft-cli`, Node.js and `setup`): a stat-counter rendered, placed on V2 and swapped by
+Live test pending (needs `bashcutpro-cli`, Node.js and `setup`): a stat-counter rendered, placed on V2 and swapped by
 `rerender`.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The core of every plugin's test stand-in for `bashcutpro mcp --project <state.json>` (RP5; copied into each
+"""The core of every plugin's test stand-in for `bashcutpro-cli mcp --project <state.json>` (RP5; copied into each
 plugin's `tests/` next to its `fake_filmcraft.py`).
 
 Same newline-delimited JSON-RPC as the engine: `initialize`, `tools/call` (anything else is "no method"), UTF-8

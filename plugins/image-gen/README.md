@@ -78,12 +78,12 @@ project setting (the style lives in the output folder); the BashCut provider ran
 - `bashcut-plugin.json`: the manifest; `plugin.py`: the entry point
 - `image_gen/`: `cli.py` (commands, the locked style, the record), `service.py` (the request, Gemini and OpenAI),
   `picture.py` (centre crop, ffmpeg; PNG decode and encode from the shared `bashcut_images.py`), `timeline.py` (import, label, place), `mcp.py` (MCP
-  client for `bashcutpro mcp`), `settings.py`
+  client for `bashcutpro-cli mcp`), `settings.py`
 - `bashcut_cli.py`, `bashcut_settings.py`, `bashcut_ai.py` (the Gemini / OpenAI client): copies of the repo's
   `tools/` modules (`tools/sync_shared.py`), not edited here
 - `skills/image-gen/SKILL.md`: the agent skill
 - `tests/`: unit tests, a fake Gemini / OpenAI server on 127.0.0.1 (`fake_service.py`) and a fake
-  `filmcraft-cli mcp` (`fake_filmcraft.py`); no real key or network
+  `bashcutpro-cli mcp` (`fake_filmcraft.py`); no real key or network
 
 ## Test
 
@@ -91,4 +91,4 @@ project setting (the style lives in the output folder); the BashCut provider ran
 python3 -m unittest discover -s tests -v
 ```
 
-Live test pending (needs `filmcraft-cli` and a key): a batch of pictures generated, imported and placed on V2.
+Live test pending (needs `bashcutpro-cli` and a key): a batch of pictures generated, imported and placed on V2.

@@ -81,8 +81,8 @@ def connection_args(parser, title="connection (one of)"):
     """The flags of the manifest's `connect` block: `--project`, `--bridge`, `--cli`, and `--no-save`."""
     group = parser.add_argument_group(title)
     group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
-    group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
+    group.add_argument("--bridge", help="host:port of the open app (bashcutpro --control <port>), e.g. 127.0.0.1:9876")
+    group.add_argument("--cli", help="path to bashcutpro-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
     group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
 
 
