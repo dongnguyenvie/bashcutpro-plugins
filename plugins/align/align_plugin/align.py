@@ -9,11 +9,14 @@ Each script word gets `start`, `end`, `how` (exact | fold | changed | interpolat
 (1, 0.8, 0.4, 0, times the transcriber's word confidence when it has one).
 """
 
+from array import array
+
 from .texts import fold, norm
 
 FOLD_COST = 0.4
 CONFIDENCE = {"exact": 1.0, "fold": 0.8, "changed": 0.4, "interpolated": 0.0}
 LOW = 0.5
+NONE, DIAG, UP, LEFT = 0, 1, 2, 3  # back-pointer steps in `path`
 
 
 def pair_cost(a, b):
@@ -30,7 +33,11 @@ def band(n, m, extra=60):
 
 
 def path(script, heard):
-    """Pairs (i, j) along the cheapest alignment: j None = deletion, i None = insertion."""
+    """Pairs (i, j) along the cheapest alignment: j None = deletion, i None = insertion.
+
+    Memory stays bounded: two cost rows (float arrays) and one back-pointer byte per band cell, so 500 script
+    words against 10 000 heard words take about 10 MB instead of two dicts of 10 M tuples.
+    """
     n, m = len(script), len(heard)
     width = band(n, m)
     inf = float("inf")
@@ -38,41 +45,51 @@ def path(script, heard):
     def centre(i):
         return i * m // n if n else 0
 
-    cost = {(0, 0): 0.0}
-    back = {}
+    rows = []  # per row i: (lo, bytearray of steps for j in lo..hi)
+    prev, prev_lo, prev_hi = None, 0, -1
     for i in range(n + 1):
         lo = max(0, centre(i) - width)
         hi = min(m, centre(i) + width)
+        row = array("d", [inf]) * (hi - lo + 1)
+        steps = bytearray([NONE]) * (hi - lo + 1)
         for j in range(lo, hi + 1):
             if i == 0 and j == 0:
+                row[0] = 0.0
                 continue
-            best, step = inf, None
-            if i and j and (i - 1, j - 1) in cost:
-                c = cost[(i - 1, j - 1)] + pair_cost(script[i - 1], heard[j - 1])
+            best, step = inf, NONE
+            if i and j and prev_lo <= j - 1 <= prev_hi:
+                c = prev[j - 1 - prev_lo] + pair_cost(script[i - 1], heard[j - 1])
                 if c < best:
-                    best, step = c, (i - 1, j - 1)
-            if i and (i - 1, j) in cost:
-                c = cost[(i - 1, j)] + 1.0
+                    best, step = c, DIAG
+            if i and prev_lo <= j <= prev_hi:
+                c = prev[j - prev_lo] + 1.0
                 if c < best:
-                    best, step = c, (i - 1, j)
-            if j and (i, j - 1) in cost:
-                c = cost[(i, j - 1)] + 1.0
+                    best, step = c, UP
+            if j > lo:
+                c = row[j - 1 - lo] + 1.0
                 if c < best:
-                    best, step = c, (i, j - 1)
-            if step is not None:
-                cost[(i, j)] = best
-                back[(i, j)] = step
+                    best, step = c, LEFT
+            if step != NONE:
+                row[j - lo] = best
+                steps[j - lo] = step
+        rows.append((lo, steps))
+        prev, prev_lo, prev_hi = row, lo, hi
     pairs = []
     i, j = n, m
     while (i, j) != (0, 0):
-        pi, pj = back[(i, j)]
-        if pi == i - 1 and pj == j - 1:
+        lo, steps = rows[i]
+        step = steps[j - lo]
+        if step == DIAG:
             pairs.append((i - 1, j - 1))
-        elif pi == i - 1:
+            i, j = i - 1, j - 1
+        elif step == UP:
             pairs.append((i - 1, None))
-        else:
+            i -= 1
+        elif step == LEFT:
             pairs.append((None, j - 1))
-        i, j = pi, pj
+            j -= 1
+        else:
+            raise KeyError((i, j))
     pairs.reverse()
     return pairs
 
