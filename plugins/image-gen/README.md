@@ -16,7 +16,14 @@ into the project itself with `media_import`, `metadata.set` and `timeline.place`
   line asking to keep their character, colours and drawing style. Every prompt asks for no text in the picture.
 - **One call per scene:** the picture is cropped to the asked shape around its centre and scaled to the asked
   size, written as `<id>.png`. A refused scene goes into `failed` and the rest are kept; a refused key stops the
-  batch. 429 and 5xx answers are tried again three times (5, 15, 30 s).
+  batch. The client is the shared `bashcut_ai` one (as in translate-captions): a full quota (429) waits as long
+  as Gemini's `retryDelay` asks (20 s otherwise, 3 minutes in all) and a daily quota is final; 5xx answers are tried
+  again after 3, 8, 15 s; no answer (network) is tried again twice after 3 s; each call may take up to 240 s.
+- **Model check:** without an endpoint, a Gemini model must be a `gemini…` one and an OpenAI model must not be, else
+  the run stops with `wrong_model` before anything is sent.
+
+Changed in 0.1.11 (RP11): before, a network error failed the scene at once, 429 and 5xx waited a fixed 5, 15, 30 s,
+and a mismatched model was sent to the service as is.
 
 ```sh
 python3 plugin.py generate --prompt "a red fox on a misty hill at dawn" --style-text "flat vector, pastel" --width 1080 --height 1920 --out pics
@@ -72,6 +79,8 @@ project setting (the style lives in the output folder); the BashCut provider ran
 - `image_gen/`: `cli.py` (commands, the locked style, the record), `service.py` (the request, Gemini and OpenAI),
   `picture.py` (PNG decode and encode, centre crop, ffmpeg), `timeline.py` (import, label, place), `mcp.py` (MCP
   client for `bashcutpro mcp`), `settings.py`
+- `bashcut_cli.py`, `bashcut_settings.py`, `bashcut_ai.py` (the Gemini / OpenAI client): copies of the repo's
+  `tools/` modules (`tools/sync_shared.py`), not edited here
 - `skills/image-gen/SKILL.md`: the agent skill
 - `tests/`: unit tests, a fake Gemini / OpenAI server on 127.0.0.1 (`fake_service.py`) and a fake
   `filmcraft-cli mcp` (`fake_filmcraft.py`); no real key or network

@@ -141,7 +141,23 @@ class ServiceTests(Base):
         self.fake.busy_once = True
         waits = []
         Service("gemini", "k", endpoint=self.fake.url, sleep=waits.append).generate("a fox", Style(), 512, 512)
-        self.assertEqual((len(self.fake.requests), waits), (2, [5]))
+        self.assertEqual((len(self.fake.requests), waits), (2, [3]))
+
+    @unittest.skip("test ticket: a network error (no answer) is tried again after 3 s, then the call succeeds")
+    def test_network_error_is_tried_again(self):
+        pass
+
+    @unittest.skip("test ticket: a Gemini 429 with RetryInfo retryDelay '7s' waits 8 s; a daily quota is final (quota)")
+    def test_quota_waits_as_asked(self):
+        pass
+
+    @unittest.skip("test ticket: --service gemini --model gpt-image-1 without an endpoint raises wrong_model, nothing sent")
+    def test_wrong_model_is_refused(self):
+        pass
+
+    @unittest.skip("test ticket: an images/edits call that answers 503 once is sent again with the same multipart body")
+    def test_edits_busy_is_tried_again(self):
+        pass
 
 
 class GenerateTests(Base):
