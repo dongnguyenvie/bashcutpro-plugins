@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Entry point of the BashCutPro plugin `__ID__` (see bashcut-plugin.json)."""
+
+import os
+import sys
+
+if sys.version_info < (3, 9):
+    sys.exit("__NAME__ needs Python 3.9 or later")
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from __PACKAGE__.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())
