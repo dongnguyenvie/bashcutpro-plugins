@@ -663,7 +663,8 @@ def gather(slots, source, dest, max_mb, min_short, scope, use_library):
     rows, left, capped = [], None if max_mb is None else max_mb * 1_000_000, False
     for slot, hits in zip(slots, found):
         for n, row in enumerate([h for h in hits if h.get("url")], 1):
-            row.update(slot=slot["slot"], words=slot["query"], n=n, file=file_name(row))
+            row.update(slot=slot["slot"], words=slot["query"], n=n)
+            row["file"] = file_name(row)  # untagged rows (videos) are named after the slot's words
             rows.append(row)
         if not any(h.get("url") for h in hits):
             rows.append({"slot": slot["slot"], "words": slot["query"],

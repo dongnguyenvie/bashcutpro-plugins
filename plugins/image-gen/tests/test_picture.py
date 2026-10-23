@@ -9,7 +9,7 @@ import zlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from image_gen.picture import PictureError, crop_box, decode_png, encode_png, fit, kind  # noqa: E402
+from image_gen.picture import PictureError, crop_box, decode_png, encode_png, find_ffmpeg, fit, kind  # noqa: E402
 from fake_service import two_colour_png  # noqa: E402
 
 
@@ -86,9 +86,18 @@ class PictureTests(unittest.TestCase):
         with self.assertRaises(PictureError):
             fit(b"<html>busy</html>", 100, 100, path, use_ffmpeg=False)
 
-    @unittest.skip("test ticket: find_ffmpeg uses the setting when it is a file, None when it is not, else ffmpeg on PATH")
     def test_ffmpeg_from_the_setting_then_path(self):
-        pass
+        folder = tempfile.mkdtemp()
+        tool = os.path.join(folder, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+        with open(tool, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n")
+        os.chmod(tool, 0o755)
+        self.assertEqual(find_ffmpeg(tool, env={"PATH": ""}), tool)
+        # a setting that is not a file is not replaced by the one on PATH
+        self.assertIsNone(find_ffmpeg(os.path.join(folder, "missing"), env={"PATH": folder}))
+        self.assertIsNone(find_ffmpeg(folder, env={"PATH": folder}))
+        self.assertEqual(os.path.normcase(find_ffmpeg("", env={"PATH": folder})), os.path.normcase(tool))
+        self.assertIsNone(find_ffmpeg("", env={"PATH": tempfile.mkdtemp()}))
 
 
 if __name__ == "__main__":

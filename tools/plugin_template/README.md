@@ -10,4 +10,4 @@ python3 plugin.py clips --project film.fcproj        # headless
 python3 plugin.py clips --bridge 127.0.0.1:9876      # the open app (filmcraft --control 9876)
 ```
 
-Tests: `python3 -m unittest discover -s tests` (no app needed: `tests/fake_filmcraft.py` stands in for the engine).
+Tests: `python3 -m unittest discover -s tests` (no app needed: `tests/fake_filmcraft.py` stands in for the engine, on the shared `tests/bashcut_fake_engine.py`).
