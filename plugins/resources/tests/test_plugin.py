@@ -178,6 +178,10 @@ class FetchTests(Base):
         code, out = self.run_cli("credits", "--folder", self.dest, project=False)
         self.assertEqual(out["data"]["credits"], ["- pot.jpg, by Ann Ó, CC BY 4.0, https://commons.wikimedia.org/wiki/File:pot.jpg"])
 
+    @unittest.skip("test ticket: setup with a step that prints to stdout (fake python/uv): stdout is exactly one JSON object, the step output is on stderr")
+    def test_setup_stdout_is_one_json_object(self):
+        pass
+
 
 class OutputTests(unittest.TestCase):
     def test_the_result_is_utf8_whatever_the_console_code_page(self):

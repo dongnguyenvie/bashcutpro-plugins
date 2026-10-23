@@ -25,7 +25,7 @@ packs/batch/                       batch presets for bashcut-batch (vietsub, pod
 tools/check_registry.py            checks the registry and every manifest
 tools/check_models.py              checks models.json and the plugins that use it
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
-tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, connection flags (copied into each plugin)
+tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, connection flags, the setup venv recipe (copied into each plugin)
 tools/bashcut_settings.py          data dir, plugin folder, flag → env → file → default (copied into plugins that use it)
 tools/sync_shared.py               writes those copies (--check lists stale ones)
 tools/new_plugin.py                starts a new plugin from tools/plugin_template/ (see Adding a plugin)

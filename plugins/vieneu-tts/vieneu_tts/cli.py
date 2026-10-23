@@ -171,30 +171,14 @@ def cmd_check(args):
     raise AppError("not_installed", "VieNeu is not installed in %s: run `setup` (about 1.4 GB with the model)" % python)
 
 
-def setup_steps(args):
-    venv = os.path.dirname(os.path.dirname(venv_python()))
-    target = venv_python()
-    base = args.python or (sys.executable if sys.version_info >= (3, 10) else None)
-    if base:
-        make = [base, "-m", "venv", venv]
-        install = [target, "-m", "pip", "install", "--upgrade"] + PACKAGES
-    else:
-        make = ["uv", "venv", "--python", "3.12", venv]
-        install = ["uv", "pip", "install", "--python", target, "--upgrade"] + PACKAGES
-    steps = [] if os.path.isfile(target) else [make]
-    steps.append(install)
-    return steps
-
-
 def cmd_setup(args):
-    steps = setup_steps(args)
+    steps = bashcut_cli.venv_steps(venv_python(), PACKAGES, args.python)
     models = MODELS if args.download_model else []
     if args.dry_run:
         return "%d steps (dry run: nothing ran)" % len(steps), {"steps": steps, "models": models}
-    for step in steps:
-        progress(" ".join(step))
-        if subprocess.run(step, env=engine_env()).returncode != 0:
-            raise AppError("setup_failed", "this step failed: %s" % " ".join(step))
+    failed = bashcut_cli.run_steps(steps, progress, engine_env())
+    if failed:
+        raise AppError("setup_failed", "this step failed: %s" % " ".join(failed))
     folders = {}
     if models:
         try:

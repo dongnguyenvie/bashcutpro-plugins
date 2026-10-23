@@ -1,5 +1,5 @@
 """The command-line plumbing every BashCutPro plugin shares: UTF-8 stdio, progress lines, the result protocol
-(`bashcut-result/1`), the connection flags and saving a headless project.
+(`bashcut-result/1`), the connection flags, saving a headless project and the private-venv `setup` recipe.
 
 Canonical copy: `tools/bashcut_cli.py` in bashcutpro-plugins. Each plugin ships an identical copy next to its
 `plugin.py` (a plugin folder is installed on its own); `python3 tools/sync_shared.py` writes the copies and
@@ -7,6 +7,8 @@ Canonical copy: `tools/bashcut_cli.py` in bashcutpro-plugins. Each plugin ships 
 """
 
 import json
+import os
+import subprocess
 import sys
 
 EXIT_OK = 0
@@ -57,6 +59,40 @@ def save(app, args):
         app.run("file.save", {"path": args.project})
         return True
     return False
+
+
+def venv_steps(target, packages, python=None, minimum=(3, 10)):
+    """The commands `setup` runs to put `packages` in the private environment whose Python is `target`
+    (`<venv>/bin/python3`). The venv is made with `python`, else this Python when it is at least `minimum`, else with
+    `uv` (Python 3.12); it is made only when `target` is missing. The install uses pip, or `uv pip` on the uv path."""
+    venv = os.path.dirname(os.path.dirname(target))
+    base = python or (sys.executable if sys.version_info >= minimum else None)
+    if base:
+        make = [base, "-m", "venv", venv]
+        install = [target, "-m", "pip", "install", "--upgrade"] + list(packages)
+    else:
+        make = ["uv", "venv", "--python", "3.12", venv]
+        install = ["uv", "pip", "install", "--python", target, "--upgrade"] + list(packages)
+    return ([] if os.path.isfile(target) else [make]) + [install]
+
+
+def run_steps(steps, report, env=None):
+    """Run each command, `report(command line)` first; their output goes to stderr (stdout holds only the one result
+    object). Returns the step that failed (or could not start), else None."""
+    try:
+        out = sys.stderr.fileno()
+    except (AttributeError, OSError, ValueError):  # the tests' StringIO
+        out = subprocess.DEVNULL
+    for step in steps:
+        report(" ".join(step))
+        sys.stdout.flush()
+        sys.stderr.flush()
+        try:
+            if subprocess.run(step, env=env, stdin=subprocess.DEVNULL, stdout=out).returncode != 0:
+                return step
+        except OSError:  # e.g. no `uv` on PATH
+            return step
+    return None
 
 
 def failure(code, message, data=None):

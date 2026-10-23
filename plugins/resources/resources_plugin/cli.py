@@ -10,7 +10,6 @@ import json
 import os
 import shlex
 import subprocess
-import sys
 import tempfile
 
 import bashcut_cli
@@ -210,19 +209,12 @@ def cmd_scripts(args):
 def cmd_setup(args):
     venv = os.path.dirname(os.path.dirname(venv_python()))
     target = venv_python()
-    base = args.python or (sys.executable if sys.version_info >= (3, 10) else None)
-    if base:
-        make, install = [base, "-m", "venv", venv], [target, "-m", "pip", "install", "--upgrade"] + PACKAGES
-    else:
-        make = ["uv", "venv", "--python", "3.12", venv]
-        install = ["uv", "pip", "install", "--python", target, "--upgrade"] + PACKAGES
-    steps = ([] if os.path.isfile(target) else [make]) + [install]
+    steps = bashcut_cli.venv_steps(target, PACKAGES, args.python)
     if args.dry_run:
         return "%d steps (dry run: nothing ran)" % len(steps), {"steps": steps}
-    for step in steps:
-        progress(" ".join(step))
-        if subprocess.run(step).returncode != 0:
-            raise AppError("setup_failed", "this step failed: %s" % " ".join(step))
+    failed = bashcut_cli.run_steps(steps, progress)
+    if failed:
+        raise AppError("setup_failed", "this step failed: %s" % " ".join(failed))
     return "The fetch scripts' packages are installed in %s" % venv, {"python": target, "steps": steps}
 
 

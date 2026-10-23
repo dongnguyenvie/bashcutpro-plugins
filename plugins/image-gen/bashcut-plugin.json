@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.image-gen",
   "name": "Image Generation",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "summary": "AI pictures for an edit with your own Gemini or OpenAI key (or a local OpenAI-compatible server): every scene in one batch, one locked style and the same character from reference pictures, imported labelled as AI-generated.",
   "publisher": "dongnguyenvie",
   "license": "MIT",

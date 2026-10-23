@@ -5,7 +5,7 @@ so shared code is vendored).
     python3 tools/sync_shared.py           # writes the copies, prints what changed
     python3 tools/sync_shared.py --check   # prints stale copies, exit 1 when there are any
 
-- `bashcut_cli.py` (UTF-8 stdio, progress, the result protocol, connection flags): every plugin;
+- `bashcut_cli.py` (UTF-8 stdio, progress, the result protocol, connection flags, the setup venv recipe): every plugin;
 - `bashcut_settings.py` (data dir, plugin folder, settings resolution): every plugin whose code imports it;
 - `bashcut_models.py` (the downloader): every plugin whose manifest has a `models` list (`check_models.py` checks it too).
 
