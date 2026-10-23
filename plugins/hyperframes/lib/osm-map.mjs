@@ -1,10 +1,10 @@
-// bin/osm-map: puts an OpenStreetMap map and a route into a composition folder, so a page can draw the map and
+// osm-map (the plugin's `osm-map` command runs this file): puts an OpenStreetMap map and a route into a composition folder, so a page can draw the map and
 // animate the route without network at render time.
 //
-//   bin/osm-map --dir D --points "21.0278,105.8342,Hồ Gươm;21.0545,105.8194,Hồ Tây" [--route car|bike|foot|none]
-//               [--width 1080] [--height 1920] [--padding 0.2] [--zoom Z] [--legs chain|star]
-//               [--places "Name, City;…"] [--amenities "school,hospital,mall,park" --radius 1000]
-//               [--style osm|dark|light] [--tiles "https://…/{z}/{x}/{y}.png,…"]
+//   osm-map --dir D --points "21.0278,105.8342,Hồ Gươm;21.0545,105.8194,Hồ Tây" [--route car|bike|foot|none]
+//           [--width 1080] [--height 1920] [--padding 0.2] [--zoom Z] [--legs chain|star]
+//           [--places "Name, City;…"] [--amenities "school,hospital,mall,park" --radius 1000]
+//           [--style osm|dark|light] [--tiles "https://…/{z}/{x}/{y}.png,…"]
 //
 // Writes D/map/<z>-<x>-<y>.png (tiles, also cached in the plugin cache folder) and D/map-data.js, which sets
 // window.MAP_DATA = {width, height, zoom, tiles: [{src, x, y, size}], points: [{x, y, label, lat, lon}],
@@ -20,9 +20,9 @@
 // is) with its km; same-named duplicates within 300 m count once. With --dir, MAP_DATA.amenities holds the centre,
 // the radius in pixels, a marker per place {x, y, kind, name, km} and `detail`, sharper tiles around the circle
 // for a zoom onto it (amenity-radius); without --dir only the counts are printed.
-// Kinds (their OSM tags in AMENITIES, what each leaves out in EXCLUDE): school, kindergarten, university,
-// language_school, driving_school, hospital, clinic, pharmacy, mall, supermarket, market, park, playground, gym,
-// restaurant, cafe, bank, metro, station, bus. A hospital is amenity=hospital or healthcare=hospital, never a clinic,
+// Kinds: the keys of KINDS in amenity-map.js (their colours and icons), each with its OSM tags in AMENITIES and what
+// it leaves out in EXCLUDE (school, kindergarten, university, language_school, driving_school, hospital, clinic,
+// pharmacy, mall, supermarket, market, park, playground, gym, restaurant, cafe, bank, metro, station, bus). A hospital is amenity=hospital or healthcare=hospital, never a clinic,
 // doctor, dentist or pharmacy (by its tags or a name such as "Phòng khám", "Nha khoa", "Dental"): those count as
 // clinic when it is asked for. A school is amenity=school without driving or language centres; a mall is
 // shop=mall|department_store (supermarkets are their own kind); a park is leisure=park, not a private one, a garden
@@ -38,6 +38,7 @@
 // Tiles fall back to the next server (tile.openstreetmap.org → tile.openstreetmap.de → openstreetmap.fr HOT), and
 // `tileServer` / `warnings` say which one was used. A failed route falls back to straight lines (warned); a failed --places lookup is skipped
 // with a warning when --points are given, else it fails asking for --points "lat,lon,Label" (no probing needed).
+import { createRequire } from "node:module";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
@@ -88,6 +89,9 @@ export function describeFailure(error, seconds = 60) {
     return error?.cause?.message ?? error?.message ?? String(error);
 }
 
+/** The amenity kinds: one list, amenity-map.js's (the page draws each with its colour and icon). */
+export const KINDS = Object.keys(createRequire(import.meta.url)("./amenity-map.js").KINDS);
+
 /** Friendly kinds → the OpenStreetMap tags that make one: a row matches when each of its keys has one of its values. */
 export const AMENITIES = {
     school: [{ amenity: "school" }],
@@ -111,6 +115,14 @@ export const AMENITIES = {
     station: [{ railway: "station|halt" }],
     bus: [{ highway: "bus_stop" }],
 };
+
+{
+    const untagged = KINDS.filter((kind) => !AMENITIES[kind]);
+    const unknown = Object.keys(AMENITIES).filter((kind) => !KINDS.includes(kind));
+    if (untagged.length || unknown.length) {
+        throw new Error(`amenity kinds out of step: no OSM tags for ${untagged.join(", ") || "-"}; not in amenity-map.js KINDS: ${unknown.join(", ") || "-"}`);
+    }
+}
 
 const CLINICAL = "clinic|doctors|dentist|pharmacy|laboratory|optometrist|physiotherapist";
 /**
@@ -144,7 +156,7 @@ function pluginVersion() {
 }
 
 function fail(message) {
-    process.stderr.write(`osm-map: ${message} (bin/osm-map --help shows the options)\n`);
+    process.stderr.write(`osm-map: ${message} (osm-map --help shows the options)\n`);
     process.exit(2);
 }
 
@@ -193,8 +205,8 @@ function checkNumbers(options) {
         }
     }
     if (!["chain", "star"].includes(options.legs)) fail("--legs must be chain or star");
-    const unknown = options.amenities.filter((kind) => !AMENITIES[kind]);
-    if (unknown.length) fail(`unknown amenity ${unknown.join(", ")}: one of ${Object.keys(AMENITIES).join(", ")}`);
+    const unknown = options.amenities.filter((kind) => !KINDS.includes(kind));
+    if (unknown.length) fail(`unknown amenity ${unknown.join(", ")}: one of ${KINDS.join(", ")}`);
     options.radius = Number(options.radius ?? 1000);
     if (!(options.radius >= 50 && options.radius <= 5000)) fail("--radius must be 50–5000 (metres)");
     options.points = (options.points ?? "").split(";").filter(Boolean).map((part) => {
@@ -308,14 +320,20 @@ async function routeChain(points, profile) {
     };
 }
 
+/** [smallest, largest] of many numbers (a long route has more than Math.max(...xs) takes as arguments). */
+function extent(xs) {
+    return xs.reduce(([lo, hi], x) => [Math.min(lo, x), Math.max(hi, x)], [Infinity, -Infinity]);
+}
+
 function fitZoom(line, options) {
     if (options.zoom) return options.zoom;
     const roomX = options.width * (1 - 2 * options.padding);
     const roomY = options.height * (1 - 2 * options.padding);
     for (let z = 17; z >= 2; z -= 1) {
         const xy = line.map(([lat, lon]) => project(lat, lon, z));
-        const spanX = Math.max(...xy.map((p) => p[0])) - Math.min(...xy.map((p) => p[0]));
-        const spanY = Math.max(...xy.map((p) => p[1])) - Math.min(...xy.map((p) => p[1]));
+        const [x0, x1] = extent(xy.map((p) => p[0]));
+        const [y0, y1] = extent(xy.map((p) => p[1]));
+        const [spanX, spanY] = [x1 - x0, y1 - y0];
         if (spanX <= roomX && spanY <= roomY) return z;
     }
     return 2;
@@ -425,11 +443,22 @@ export function measure(geometry) {
     return { areaM2: null, perimeterKm: null, rings: [] };
 }
 
+/** A cached answer, or null when there is none or it does not parse (a write cut short): it is asked for again. */
+function cached(file) {
+    if (!existsSync(file)) return null;
+    try {
+        return JSON.parse(readFileSync(file, "utf8"));
+    } catch {
+        return null;
+    }
+}
+
 async function lookUp(query, last) {
     const cache = join(cacheRoot(), "osm-places");
     mkdirSync(cache, { recursive: true });
     const file = join(cache, `${createHash("sha256").update(query).digest("hex").slice(0, 20)}.json`);
-    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));
+    const kept = cached(file);
+    if (kept) return kept;
     // Nominatim's usage policy: one request per second at most, with a real User-Agent.
     const wait = 1100 - (Date.now() - last.at);
     if (wait > 0) await new Promise((done) => setTimeout(done, wait));
@@ -519,7 +548,8 @@ async function overpass(query) {
     const cache = join(cacheRoot(), "osm-amenities");
     mkdirSync(cache, { recursive: true });
     const file = join(cache, `${createHash("sha256").update(query).digest("hex").slice(0, 20)}.json`);
-    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));
+    const kept = cached(file);
+    if (kept) return kept;
     // Overpass usage policy: a real User-Agent, one query at a time, answers cached instead of asked again.
     let failure;
     for (const server of OVERPASS) {
@@ -610,10 +640,8 @@ async function main() {
     const z = fitZoom(line.concat(options.points.map((p) => [p.lat, p.lon]), reach, ...outlines), options);
     const xy = line.map(([lat, lon]) => project(lat, lon, z));
     const box = xy.concat(reach.map(([lat, lon]) => project(lat, lon, z)));
-    const minX = Math.min(...box.map((p) => p[0]));
-    const maxX = Math.max(...box.map((p) => p[0]));
-    const minY = Math.min(...box.map((p) => p[1]));
-    const maxY = Math.max(...box.map((p) => p[1]));
+    const [minX, maxX] = extent(box.map((p) => p[0]));
+    const [minY, maxY] = extent(box.map((p) => p[1]));
     const origin = [(minX + maxX) / 2 - options.width / 2, (minY + maxY) / 2 - options.height / 2];
     const local = ([x, y]) => [Math.round((x - origin[0]) * 10) / 10, Math.round((y - origin[1]) * 10) / 10];
     let base;
@@ -678,11 +706,11 @@ async function main() {
         }));
     }
     writeFileSync(join(options.dir, "map-data.js"),
-        `// Written by bin/osm-map. Map data © OpenStreetMap contributors (ODbL).\nwindow.MAP_DATA = ${JSON.stringify(data)};\n`);
+        `// Written by osm-map. Map data © OpenStreetMap contributors (ODbL).\nwindow.MAP_DATA = ${JSON.stringify(data)};\n`);
     process.stdout.write(`${JSON.stringify({ ...summary, tiles: placed.length + detail.placed.length, downloaded: downloaded + detail.downloaded, file: join(options.dir, "map-data.js") }, null, 2)}\n`);
 }
 
-// Compared as real paths: the plugin folder is often reached through a symlink (see lib/graphic.mjs).
+// Compared as real paths: the plugin folder is often reached through a symlink.
 if (process.argv[1] && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
     main().catch((error) => fail(error.message));
 }

@@ -105,8 +105,8 @@ a composition does not declare is dropped with a warning. Edit HTML only when no
   filter in a layer that moves.
 - Time the exit from the root's `data-duration` (`END - 0.5`), as the examples do: `--duration` stretches it, so
   the card holds to the end.
-- `render` and `--snapshot` copy GSAP, lottie-web, KaTeX and `lib/diagram.js` / `lib/amenity-map.js` next to the
-  page when it loads them. `hf snapshot` and `hf check` do not: copy `hf --gsap` next to `index.html` first, or
+- `render` and `--snapshot` copy GSAP, lottie-web, KaTeX and `lib/diagram.js` / `lib/amenity-map.js` (with `lib/brand.js` in
+  front) next to the page when it loads them; a `data` variable that is not valid JSON fails the render, naming it. `hf snapshot` and `hf check` do not: copy `hf --gsap` next to `index.html` first, or
   every frame shows the end state ("Timeline did not advance under seek").
 - No credit, source or licence line on the picture by default. Only when the user asks, set the composition's own
   variable (`map-route` / `amenity-radius` › `credit`, `bar-chart` › `source`). Keep sources in your notes.

@@ -1,10 +1,14 @@
 // Map pieces for the amenity-radius example: the brand look, the category colours and icons, tiles, pins, the legend
-// chips, and the amenity markers laid out so no two icons touch at the scale they are seen at. graphics.render
-// copies it next to the page (like GSAP), and the tests load it in Node to check declutter (pure, no DOM).
+// chips, and the amenity markers laid out so no two icons touch at the scale they are seen at. `render` copies it
+// next to the page (like GSAP) with brand.js in front; in Node it is loaded for declutter (pure, no DOM) and by
+// osm-map.mjs for the list of kinds.
 (function (root) {
     "use strict";
 
-    // MARK: categories (24 × 24 icon paths); a kind not listed gets a dot in the secondary colour
+    const brand = root.BCBrand ?? require("./brand.js");
+
+    // MARK: categories (24 × 24 icon paths); a kind not listed gets a dot in the secondary colour. KINDS is the one
+    // list of amenity kinds: osm-map.mjs offers these and needs an AMENITIES row (the OSM tags) for each.
 
     const CAP = "M12 3 1 9l11 6 9-4.9V17h2V9L12 3zm-7 9.2v4L12 20l7-3.8v-4L12 16l-7-3.8z";
     const CROSS = "M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z";
@@ -28,31 +32,17 @@
     function kindOf(kind) { return KINDS[kind] ?? [muted, DOT]; }
     function icon(kind, size) { return `<svg class="icon" viewBox="0 0 24 24" width="${size}" height="${size}"><path d="${kindOf(kind)[1]}"/></svg>`; }
 
-    // MARK: brand look (bin/graphic fills accent, background, text, secondary and the fonts from the project's brand)
+    // MARK: brand look (brand.js; `render --brand` fills accent, background, text, secondary and the fonts)
 
-    /** A font is a family or PostScript name on this Mac, System-<Weight> (San Francisco) or a font file in the folder. */
+    /** The brand look on `doc`; the secondary colour also becomes the dot of a kind not listed. */
     function applyLook(v, doc) {
-        const look = doc.documentElement.style;
-        for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
         if (v.secondary) muted = v.secondary;
-        const faces = doc.createElement("style");
-        for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
-            const name = String(v[key] ?? "").trim();
-            if (!name) continue;
-            const file = /\.(ttf|otf|woff2?)$/i.test(name);
-            if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
-            look.setProperty(slot, name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`);
-        }
-        doc.head.appendChild(faces);
+        return brand.applyLook(v, doc);
     }
 
-    /** A JSON variable such as kindLabels; anything that does not parse is {}. */
+    /** A JSON variable such as kindLabels; anything that does not parse is {} (the labels are optional). */
     function parseJSON(text) {
-        try {
-            return JSON.parse(text || "{}");
-        } catch {
-            return {};
-        }
+        return brand.parseJSON(text, "JSON", {});
     }
 
     // MARK: declutter (pure: map pixels in, frame pixels out)
