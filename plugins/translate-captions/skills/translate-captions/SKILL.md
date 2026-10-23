@@ -38,11 +38,13 @@ its own undo step in the app.
 
 ## Without an API key: translate yourself
 
-`TC translate` exits with status 3 and `error.code: "no_key"` when there is no key (setting `apiKey`:
+`TC translate` exits with status 3 (a hand-off) and `error.code: "no_key"` when there is no key (setting `apiKey`:
 `BASHCUT_TC_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `--api-key`). Only the user adds a key;
-never ask them to paste it into the chat. Translate the lines yourself instead:
+never ask them to paste it into the chat. Translate the lines yourself instead; `data` already holds them, with
+`data.then` (`apply`) and `data.answer` (the answer's template), the same object `export-lines` writes:
 
-1. `TC export-lines --target vi --out lines.json`: per line `caption`, `seconds`, `maxChars`, `text`.
+1. Save `data` as `lines.json`, or run `TC export-lines --target vi --out lines.json`: per line `caption`, `seconds`,
+   `maxChars`, `text`.
 2. Translate each line on its own, in order, using its neighbours for meaning: the same number of lines,
    nothing merged or split, names as written (or as the user says), numbers as digits, at most `maxChars`
    characters (say it shorter rather than cramming), no quotes, notes or speaker names.

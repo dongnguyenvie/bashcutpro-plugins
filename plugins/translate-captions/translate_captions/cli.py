@@ -2,8 +2,8 @@
 
 Every command prints one JSON object on stdout: `{"ok": true, "message", "data"}` or
 `{"ok": false, "error": {"code", "message"}}`. Progress goes to stderr. Exit status 0 on success, 1 on an
-error, 2 on a usage error, 3 when there is no API key (the lines to translate are in `data` then, so the
-calling agent can translate them and run `apply`).
+error, 2 on a usage error, 3 on a hand-off when there is no API key (code `no_key`): `data` holds the lines to
+translate, `then` (`apply`) and an `answer` template, so the calling agent can translate them and run `apply`.
 """
 
 import argparse
@@ -11,10 +11,10 @@ import json
 import sys
 
 import bashcut_cli
-from bashcut_cli import connection_args, emit, save
+from bashcut_cli import Handoff, connection_args, emit, save
 
 from . import __version__
-from .captions import (export_lines, lines_from_listing, set_text_steps, stale_lines, translations_from_answer,
+from .captions import (ANSWER, export_lines, lines_from_listing, set_text_steps, stale_lines, translations_from_answer,
                        caption_tracks)
 from .cover import apply_cover, detect_clip, footage_items, parse_box, video_clips
 from .mcp import AppError, McpClient
@@ -120,8 +120,7 @@ def cmd_translate(args):
         except TranslateError as error:
             if error.code != "no_key":
                 raise
-            error.data = export_lines(lines, args.target, args.max_cps)
-            raise
+            raise Handoff(error.message, export_lines(lines, args.target, args.max_cps), "apply", ANSWER, code="no_key") from None
         translated = translate_lines(lines, style, service, args.batch_size, progress)
         if args.dry_run:
             steps, kept = set_text_steps(lines, translated)
@@ -240,4 +239,4 @@ def main(argv=None):
     if hasattr(args, "max_cps") and not 8 <= args.max_cps <= 30:
         emit(bashcut_cli.failure("bad_args", "--max-cps must be between 8 and 30"))
         return bashcut_cli.EXIT_USAGE
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TranslateError), handoff=("no_key",))
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TranslateError))

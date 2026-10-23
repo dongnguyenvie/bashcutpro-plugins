@@ -82,11 +82,7 @@ def connect(args):
 
 
 def out_dir(args):
-    if getattr(args, "out", None):
-        return os.path.abspath(args.out)
-    if getattr(args, "project", None):
-        return os.path.join(os.path.dirname(os.path.abspath(args.project)), "generated", "images")
-    return os.path.abspath("generated-images")
+    return bashcut_cli.out_dir(args, os.path.join("generated", "images"), "generated-images")
 
 
 def read_json(path):

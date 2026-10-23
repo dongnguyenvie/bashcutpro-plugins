@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 import bashcut_cli
-from bashcut_cli import connection_args, save
+from bashcut_cli import Handoff, connection_args, save
 from bashcut_models import ModelError, Models
 from bashcut_timeline import TimelineError
 
@@ -35,17 +35,6 @@ MODEL_COMMANDS = ("cutout", "subjects")
 
 def progress(message):
     bashcut_cli.progress("vision", message)
-
-
-class Handoff(Exception):
-    """The calling agent has to finish: `data` holds the frames and the action to run with its answer (exit 3)."""
-
-    code = "handoff"
-
-    def __init__(self, message, data):
-        super().__init__(message)
-        self.message = message
-        self.data = data
 
 
 def frames_args(parser, samples):
@@ -113,14 +102,6 @@ def models():
         raise AppError(error.code, error.message)
 
 
-def project_folder(args):
-    if getattr(args, "project", None):
-        return os.path.dirname(os.path.abspath(args.project))
-    if getattr(args, "sidecar", None):
-        return os.path.dirname(os.path.abspath(args.sidecar))
-    return os.path.abspath(".")
-
-
 def read_answer(path):
     try:
         if path == "-":
@@ -166,7 +147,8 @@ def cmd_cutout(args):
         sequence = app.tool("sequence_inspect") or {}
         clip = video_clips(sequence, [args.clip] if args.clip else None, footage_items(app))[0]
         times = every_frame(clip, sequence, args.max_frames)
-        out = os.path.abspath(args.out) if args.out else os.path.join(project_folder(args), "vision", "cutout-%s" % clip["clip"])
+        sub = os.path.join("vision", "cutout-%s" % clip["clip"])
+        out = bashcut_cli.out_dir(args, sub, sub)
         os.makedirs(out, exist_ok=True)
         scratch = tempfile.mkdtemp(prefix="bashcut-vision-")
         kind, previous, kept, frames = args.kind, None, [], []
@@ -269,9 +251,9 @@ def cmd_ocr(args):
         clips = video_clips(sequence, args.clip, footage_items(app))
         frames = agent_frames(app, clips, args.samples, os.path.join(os.path.dirname(path), "vision-frames"))
     if not tesseract:
-        raise Handoff("No Tesseract here: read the text on these frames, then run ocr-apply", {
-            "frames": frames, "sidecar": path, "then": "ocr-apply",
-            "answer": {"frames": [{"clip": "<id>", "time": "<ticks>", "text": [{"text": "…", "x": 0.1, "y": 0.8, "w": 0.8, "h": 0.08}]}]}})
+        raise Handoff("No Tesseract here: read the text on these frames, then run ocr-apply",
+                      {"frames": frames, "sidecar": path}, "ocr-apply",
+                      {"frames": [{"clip": "<id>", "time": "<ticks>", "text": [{"text": "…", "x": 0.1, "y": 0.8, "w": 0.8, "h": 0.08}]}]})
     lines = 0
     try:
         for frame in frames:
@@ -332,9 +314,9 @@ def cmd_describe(args):
     with connect(args) as app:
         sequence = app.tool("sequence_inspect") or {}
         frames = agent_frames(app, video_clips(sequence, args.clip, footage_items(app)), args.samples, os.path.join(os.path.dirname(path), "vision-frames"))
-    raise Handoff("Describe each clip from its frames (what, who, where, shot size, motion, mood), then run describe-apply", {
-        "frames": frames, "sidecar": path, "then": "describe-apply",
-        "answer": {"clips": [{"clip": "<id>", "description": "one or two sentences", "tags": ["wide", "outdoor"]}]}})
+    raise Handoff("Describe each clip from its frames (what, who, where, shot size, motion, mood), then run describe-apply",
+                  {"frames": frames, "sidecar": path}, "describe-apply",
+                  {"clips": [{"clip": "<id>", "description": "one or two sentences", "tags": ["wide", "outdoor"]}]})
 
 
 def cmd_describe_apply(args):
@@ -385,4 +367,4 @@ def main(argv=None):
         code = relaunch(argv)
         if code is not None:
             return code
-    return bashcut_cli.run(COMMANDS[args.command], args, (Handoff, AppError, TimelineError), handoff=("handoff",))
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TimelineError))

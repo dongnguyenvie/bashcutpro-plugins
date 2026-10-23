@@ -1,5 +1,6 @@
 """The command-line plumbing every BashCutPro plugin shares: UTF-8 stdio, progress lines, the result protocol
-(`bashcut-result/1`), the connection flags, saving a headless project and the private-venv `setup` recipe.
+(`bashcut-result/1`) with its hand-off, the connection flags, the default output folder, saving a headless project and
+the private-venv `setup` recipe.
 
 Canonical copy: `tools/bashcut_cli.py` in bashcutpro-plugins. Each plugin ships an identical copy next to its
 `plugin.py` (a plugin folder is installed on its own); `python3 tools/sync_shared.py` writes the copies and
@@ -53,6 +54,15 @@ def connection_args(parser, title="connection (one of)"):
     group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
 
 
+def out_dir(args, sub, fallback):
+    """Where a command writes its files: `--out`, else `<the project's folder>/<sub>`, else `./<fallback>`."""
+    if getattr(args, "out", None):
+        return os.path.abspath(args.out)
+    if getattr(args, "project", None):
+        return os.path.join(os.path.dirname(os.path.abspath(args.project)), sub)
+    return os.path.abspath(fallback)
+
+
 def save(app, args):
     """Headless (`--project`): save the project with `file.save` unless `--no-save`. Whether it saved."""
     if args.project and not args.no_save:
@@ -102,15 +112,30 @@ def failure(code, message, data=None):
     return out
 
 
+class Handoff(Exception):
+    """The plugin cannot finish alone (exit 3): `data` holds what the calling agent needs, plus `then` (the command to
+    run with its answer) and `answer` (a template of that answer). `code` says why, `handoff` unless given."""
+
+    def __init__(self, message, data, then, answer, code="handoff"):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.data = dict(data, then=then, answer=answer)
+
+
 def run(command, args, errors=(), handoff=()):
     """Run one command and print its result; returns the exit status.
 
     `command(args)` returns `(message, data)`, or an exit status when it wrote its own output (a pass-through).
-    An exception in `errors` (with `code`, `message` and maybe `data`) becomes `{"ok": false, "error"}`: exit 3 when
-    its code is in `handoff`, 2 for `bad_args`, else 1. `OSError` and `ValueError` are `failed`, exit 1.
+    A `Handoff`, or an exception in `errors` (with `code`, `message` and maybe `data`), becomes
+    `{"ok": false, "error"}`: exit 3 for a `Handoff` or a code in `handoff`, 2 for `bad_args`, else 1. `OSError` and
+    `ValueError` are `failed`, exit 1.
     """
     try:
         result = command(args)
+    except Handoff as error:
+        emit(failure(error.code, error.message, error.data))
+        return EXIT_HANDOFF
     except errors as error:
         emit(failure(error.code, error.message, getattr(error, "data", None)))
         return EXIT_HANDOFF if error.code in handoff else EXIT_USAGE if error.code == "bad_args" else EXIT_FAILED

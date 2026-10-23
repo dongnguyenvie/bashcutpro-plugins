@@ -55,6 +55,14 @@ class Result(unittest.TestCase):
     def test_handoff_code_without_handoff_is_exit_1(self):
         self.assertEqual(run(raising(Failure("no_key", "no key")))[0], 1)
 
+    @unittest.skip("test ticket: a Handoff (not in errors) is exit 3, error.code is its code (default handoff), data carries then and answer next to its own keys")
+    def test_handoff_is_exit_3_with_then_and_answer(self):
+        pass
+
+    @unittest.skip("test ticket: out_dir is --out, else <project dir>/<sub>, else ./<fallback>, always absolute")
+    def test_out_dir_out_then_project_then_fallback(self):
+        pass
+
     def test_os_and_value_errors_are_failed(self):
         for error in (OSError("disk full"), ValueError("bad number")):
             self.assertEqual(run(raising(error)), (1, {"ok": False, "error": {"code": "failed", "message": str(error)}}))
