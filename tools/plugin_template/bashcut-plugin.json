@@ -6,7 +6,7 @@
   "summary": "__SUMMARY__",
   "i18n": {"vi": {"name": "__VI_TITLE__", "summary": "__VI_SUMMARY__"}},
   "publisher": "dongnguyenvie",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "homepage": "https://github.com/dongnguyenvie/bashcutpro-plugins/tree/main/plugins/__NAME__",
   "category": "__CATEGORY__",
   "platforms": ["macos", "windows", "linux"],

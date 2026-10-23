@@ -116,7 +116,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `id` | string | `publisher.name`, lower case (`bashcut.translate-captions`); the install folder and settings folder name |
 | `name`, `summary` | string | shown in a plugin list, English |
 | `version` | `MAJOR.MINOR.PATCH` | the plugin's version; the Python package's `__version__` (what `--version` prints) is the same, and so is the registry entry's (`tools/check_registry.py`; `--fix` writes both) |
-| `publisher`, `license`, `homepage`, `category` | string | metadata (`category`: captions, voice, graphics, resources…) |
+| `publisher`, `license`, `homepage`, `category` | string | metadata (`license`: an SPDX expression, `MIT OR Apache-2.0` for this repo's plugins; `category`: captions, voice, graphics, resources…) |
 | `platforms` | `["macos", "windows", "linux"]` | where it runs |
 | `runtime` | `{type, version, packages}` | what must be installed first: `python` `>=3.9` with no packages for translate-captions; `packages` lists pip / npm packages a host would install into the plugin's own environment |
 | `entry` | `{command: [...], windows?, macos?, linux?}` | the program to run, as an argument list relative to the plugin folder; an OS key replaces `command` there |
@@ -201,3 +201,12 @@ host installs it next to the plugins).
 - Plugins never change BashCutPro's code; they use its MCP tools and engine commands.
 - Docs, UI text and samples in English. No media, API keys or personal data in the repository.
 - Prefer the standard library: a plugin that needs no install runs anywhere a Python (or the app) is.
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your
+option, the same terms as BashCutPro and FilmCraft. Files a plugin downloads or fetches (models, stock media, fonts,
+icons) keep their own licences, recorded in `models.json` or next to each file.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you,
+as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
