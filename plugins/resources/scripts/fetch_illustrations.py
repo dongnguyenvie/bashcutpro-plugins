@@ -73,7 +73,7 @@ SYNONYMS = {
     "office": "blazer", "business": "blazer crossed", "confident": "crossed blazer", "study": "reading sitting",
     "learn": "reading", "read": "reading", "book": "reading", "eat": "eating ice cream", "food": "eating ice cream coffee",
     "drink": "coffee", "coffee": "coffee", "buy": "unboxing", "shop": "unboxing", "package": "unboxing",
-    "money": "unboxing crossed", "sport": "running sprinting jumping skating", "exercise": "running sprinting jumping",
+    "sport": "running sprinting jumping skating", "exercise": "running sprinting jumping",
     "run": "running sprinting jogging", "fast": "sprinting running", "dance": "dancing ballet groovy robot",
     "music": "groovy dancing moshing", "love": "loving petting", "pet": "petting doggie dog", "dog": "doggie dog",
     "phone": "selfie", "photo": "selfie", "social": "selfie", "plant": "plant", "nature": "plant swinging",

@@ -20,7 +20,7 @@ from . import __version__
 from .licences import credit_line, from_line, merge_notes, read_sidecar, write_sidecar
 from .mcp import AppError, McpClient
 from . import search as finder
-from .settings import KEYS, PACKAGES, plugin_dir, script_env, script_python, venv_python
+from .settings import KEYS, PACKAGES, script_env, script_python, venv_python
 from .timeline import import_files, importable, place
 
 HERE = os.path.dirname(os.path.abspath(__file__))

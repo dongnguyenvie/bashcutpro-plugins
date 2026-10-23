@@ -17,7 +17,6 @@ import argparse
 import json
 import re
 import subprocess
-import sys
 import urllib.parse
 from pathlib import Path
 

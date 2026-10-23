@@ -188,10 +188,6 @@ def parse_cube(text):
     return table
 
 
-def read_cube(path):
-    return parse_cube(Path(path).read_text(encoding="utf-8", errors="replace"))
-
-
 def apply_lut(c, table):
     """c: (..., 3) float 0-1 → the LUT's output, trilinear."""
     t = np.asarray(table, np.float32)
@@ -360,17 +356,6 @@ def auto_tags(fp):
     if fp["mid"] > 56: tags.append("bright")
     if fp["mid"] < 42: tags.append("dark")
     return tags
-
-
-# The ranges a tag asks for (grade.py candidates --target warm,matte); auto_tags uses the same edges.
-TAG_TARGETS = {
-    "warm": dict(warm=[3, 15]), "cool": dict(warm=[-15, -3]), "teal-orange": dict(shadow_rb=[-10, -1.5], high_rb=[1.5, 10]),
-    "green": dict(tint=[2.5, 8]), "magenta": dict(tint=[-8, -2.5]), "vivid": dict(sat=[1.25, 1.6]),
-    "muted": dict(sat=[0.5, 0.8]), "bw": dict(sat=[0, 0.08]), "matte": dict(black=[4, 10]),
-    "film": dict(black=[2, 8], white=[84, 93]), "punchy": dict(contrast=[1.2, 1.5]), "soft": dict(contrast=[0.7, 0.88]),
-    "bright": dict(mid=[56, 66]), "dark": dict(mid=[34, 42]), "moody": dict(mid=[34, 44], sat=[0.7, 0.9]),
-    "clean": dict(warm=[-1.5, 1.5], tint=[-1.5, 1.5], black=[0, 2], sat=[0.95, 1.2], contrast=[1, 1.2]),
-}
 
 
 # --- sources ---------------------------------------------------------------------------------------------------
