@@ -10,6 +10,8 @@ import unittest
 from unittest import mock
 import urllib.parse
 
+from bashcut_fake_engine import data_dir_env
+
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
 
 
@@ -602,7 +604,7 @@ class SharedHelperTests(unittest.TestCase):
                 self.assertEqual(self.stock.shared_dir('emoji'), Path(folder) / 'd' / 'emoji')
                 self.assertEqual(self.stock.shared_dir('luts', 'cache'), Path(folder) / 'c' / 'luts')
             plugin = Path(folder) / 'bashcut-plugins' / 'bashcut.resources'
-            with mock.patch.dict(os.environ, {'FILMCRAFT_DATA_DIR': folder}, clear=True):
+            with mock.patch.dict(os.environ, data_dir_env(folder, {}), clear=True):
                 self.assertEqual(self.stock.shared_dir('fonts'), plugin / 'shared' / 'fonts')
                 self.assertEqual(self.stock.shared_dir('fonts', 'cache'), plugin / 'cache' / 'fonts')
             with mock.patch.dict(os.environ, {'HOME': folder}, clear=True), mock.patch('sys.platform', 'linux'):

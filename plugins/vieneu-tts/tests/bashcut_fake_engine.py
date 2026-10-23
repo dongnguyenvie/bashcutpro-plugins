@@ -34,6 +34,29 @@ import wave
 
 TPS = 254016000000
 USAGE = "usage: fake_filmcraft.py mcp --project state.json"
+DATA_DIRS = ("BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR")  # bashcut-dirs' overrides, the first set one wins
+
+
+def data_dir_env(path, env=None):
+    """`env` (default `os.environ`) as a new dict with every data dir override at `path`: a test that isolates the
+    data dir sets both, so a shell's `BASHCUTPRO_DATA_DIR` never points it at real data
+    (`tests/test_data_dir_env.py` fails on a test that sets `FILMCRAFT_DATA_DIR` alone)."""
+    return dict(os.environ if env is None else env, **{name: path for name in DATA_DIRS})
+
+
+def use_data_dir(path, test=None):
+    """Every data dir override in `os.environ` at `path`; with `test`, the old values come back at its cleanup."""
+    if test is not None:
+        old = {name: os.environ.get(name) for name in DATA_DIRS}
+
+        def restore():
+            for name, value in old.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+        test.addCleanup(restore)
+    os.environ.update({name: path for name in DATA_DIRS})
 
 
 class Engine:

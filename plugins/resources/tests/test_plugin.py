@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 
 from resources_plugin import cli, shim  # noqa: E402
 from resources_plugin.licences import credit_line, merge_notes, read_sidecar, write_sidecar  # noqa: E402
+from bashcut_fake_engine import data_dir_env, use_data_dir  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
@@ -33,7 +34,7 @@ class Base(unittest.TestCase):
         self.env = {k: os.environ.get(k) for k in ENV_KEYS}
         for k in ENV_KEYS:
             os.environ.pop(k, None)
-        os.environ["FILMCRAFT_DATA_DIR"] = self.dir
+        use_data_dir(self.dir)
         os.environ["BASHCUT_RESOURCES_SCRIPTS"] = os.path.join(HERE, "scripts")
 
     def tearDown(self):
@@ -185,7 +186,7 @@ class FetchTests(Base):
             f.write('#!/bin/sh\necho "step output on stdout: $*"\n'
                     'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
         os.chmod(fake, 0o755)
-        env = dict(os.environ, FILMCRAFT_DATA_DIR=self.dir)
+        env = data_dir_env(self.dir)
         done = subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "plugin.py"), "setup", "--python", fake],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         result = json.loads(done.stdout.decode("utf-8"))  # the whole of stdout is one object

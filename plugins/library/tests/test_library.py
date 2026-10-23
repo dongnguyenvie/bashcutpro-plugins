@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 from library_plugin import cli  # noqa: E402
 from library_plugin import library  # noqa: E402
 from library_plugin.library import KINDS, PACK_INDEX, PACK_SCHEMA, Library, LibraryError  # noqa: E402
+from bashcut_fake_engine import use_data_dir  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
@@ -31,8 +32,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.dir)
-        self.old = os.environ.get("FILMCRAFT_DATA_DIR")
-        os.environ["FILMCRAFT_DATA_DIR"] = os.path.join(self.dir, "data")
+        use_data_dir(os.path.join(self.dir, "data"), self)
         os.environ.pop("BASHCUT_LIBRARY_DIR", None)
         # project A: a selected title, and a clip with an effect stack
         self.a = self.project("a.json", {"selection": 11, "sequence": {
@@ -46,12 +46,6 @@ class Base(unittest.TestCase):
             "settings": {"frame_rate": {"num": 30, "den": 1}},
             "video": [{"id": 1, "items": [{"clip": 21, "start": 0, "end": TPS, "effects": []}]}],
             "audio": [{"id": 2, "items": []}]}})
-
-    def tearDown(self):
-        if self.old is None:
-            os.environ.pop("FILMCRAFT_DATA_DIR", None)
-        else:
-            os.environ["FILMCRAFT_DATA_DIR"] = self.old
 
     def project(self, name, state):
         path = os.path.join(self.dir, name)
@@ -176,7 +170,7 @@ class PackTests(Base):
             self.assertIn("items/logo/logo.png", z.namelist())
 
         # into an empty library: the same items come back
-        os.environ["FILMCRAFT_DATA_DIR"] = os.path.join(self.dir, "other")
+        use_data_dir(os.path.join(self.dir, "other"))
         Library().add("sticker", "Logo", [self.file("other-logo.png", b"another logo")])  # takes the id `logo`
         result = self.ok("pack-import", "--path", pack)
         self.assertEqual(len(result["added"]), 3)
