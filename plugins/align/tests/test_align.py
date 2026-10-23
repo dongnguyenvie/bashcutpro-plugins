@@ -3,8 +3,10 @@
 import io
 import json
 import os
+import random
 import sys
 import tempfile
+import tracemalloc
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
@@ -12,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 from align_plugin import cli  # noqa: E402
-from align_plugin.align import align, cues, low_spans  # noqa: E402
+from align_plugin.align import align, band, cues, low_spans, pair_cost, path  # noqa: E402
 from align_plugin.texts import fold, norm, read_script, script_words  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
@@ -42,6 +44,59 @@ def heard_version():
     del heard[27]                       # "the" not heard
     heard.insert(10, {"text": "um", "start": heard[9]["end"] + 0.01, "end": heard[9]["end"] + 0.05})
     return truth, heard
+
+
+def dict_path(script, heard):
+    """The table `path` kept before it moved to row arrays (RP25): every reached cell's cost and back-pointer in
+    dicts. The reference the row arrays must agree with."""
+    n, m = len(script), len(heard)
+    width = band(n, m)
+    inf = float("inf")
+
+    def centre(i):
+        return i * m // n if n else 0
+
+    cost = {(0, 0): 0.0}
+    back = {}
+    for i in range(n + 1):
+        lo = max(0, centre(i) - width)
+        hi = min(m, centre(i) + width)
+        for j in range(lo, hi + 1):
+            if i == 0 and j == 0:
+                continue
+            best, step = inf, None
+            if i and j and (i - 1, j - 1) in cost:
+                c = cost[(i - 1, j - 1)] + pair_cost(script[i - 1], heard[j - 1])
+                if c < best:
+                    best, step = c, (i - 1, j - 1)
+            if i and (i - 1, j) in cost:
+                c = cost[(i - 1, j)] + 1.0
+                if c < best:
+                    best, step = c, (i - 1, j)
+            if j and (i, j - 1) in cost:
+                c = cost[(i, j - 1)] + 1.0
+                if c < best:
+                    best, step = c, (i, j - 1)
+            if step is not None:
+                cost[(i, j)] = best
+                back[(i, j)] = step
+    pairs = []
+    i, j = n, m
+    while (i, j) != (0, 0):
+        pi, pj = back[(i, j)]
+        if pi == i - 1 and pj == j - 1:
+            pairs.append((i - 1, j - 1))
+        elif pi == i - 1:
+            pairs.append((i - 1, None))
+        else:
+            pairs.append((None, j - 1))
+        i, j = pi, pj
+    pairs.reverse()
+    return pairs
+
+
+def normed(texts):
+    return [{"norm": norm(t), "fold": fold(t)} for t in texts]
 
 
 class AlignTests(unittest.TestCase):
@@ -101,13 +156,36 @@ class AlignTests(unittest.TestCase):
         words = align(script_words(lines), heard)
         self.assertEqual(words[2999]["start"], heard[-1]["start"])
 
-    @unittest.skip("test ticket: 500 script words against 10 000 heard words align in bounded memory (tracemalloc peak)")
     def test_short_script_against_a_long_transcript_stays_in_bounded_memory(self):
-        pass
+        heard = timed(" ".join("word%d" % (i % 300) for i in range(10000)), step=0.2, gap=0.05)
+        lines, _ = read_script(text=" ".join("word%d" % (i % 300) for i in range(4000, 4500)))
+        script, spoken = normed([w["text"] for w in script_words(lines)]), normed([w["text"] for w in heard])
+        tracemalloc.start()
+        try:
+            pairs = path(script, spoken)
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        self.assertLess(peak, 50 * 1024 * 1024)
+        self.assertEqual(sum(1 for i, _ in pairs if i is not None), 500)
+        self.assertEqual(sum(1 for _, j in pairs if j is not None), 10000)
 
-    @unittest.skip("test ticket: path() gives the same pairs as the previous dict-based table on random inputs")
     def test_row_arrays_give_the_same_path_as_before(self):
-        pass
+        vocabulary = ["trời", "troi", "đẹp", "dep", "má", "mà", "the", "a", "soup", "onion", "5", "five", "um"]
+        rng = random.Random(25)
+        cases = [([], []), ([], ["um"]), (["the"], []), (["a", "the"], ["the", "a"]), (["a"] * 5, ["a"] * 130),
+                 (["the"] * 130, ["um"])]
+        for _ in range(150):
+            n, m = rng.randint(0, 40), rng.randint(0, 40)
+            cases.append(([rng.choice(vocabulary) for _ in range(n)], [rng.choice(vocabulary) for _ in range(m)]))
+        for _ in range(10):  # long enough for the band to cut corners off the table
+            n = rng.randint(150, 250)
+            script = [rng.choice(vocabulary) for _ in range(n)]
+            heard = [w for w in script if rng.random() > 0.2] + [rng.choice(vocabulary) for _ in range(rng.randint(0, 90))]
+            cases.append((script, heard))
+        for script, heard in cases:
+            a, b = normed(script), normed(heard)
+            self.assertEqual(path(a, b), dict_path(a, b), (script, heard))
 
 
 class Base(unittest.TestCase):

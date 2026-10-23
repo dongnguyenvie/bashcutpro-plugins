@@ -143,21 +143,52 @@ class ServiceTests(Base):
         Service("gemini", "k", endpoint=self.fake.url, sleep=waits.append).generate("a fox", Style(), 512, 512)
         self.assertEqual((len(self.fake.requests), waits), (2, [3]))
 
-    @unittest.skip("test ticket: a network error (no answer) is tried again after 3 s, then the call succeeds")
     def test_network_error_is_tried_again(self):
-        pass
+        self.fake.answers = ["drop"]
+        waits = []
+        data = Service("gemini", "k", endpoint=self.fake.url, sleep=waits.append).generate("a fox", Style(), 512, 512)
+        self.assertTrue(data.startswith(b"\x89PNG"))
+        self.assertEqual((len(self.fake.requests), waits), (2, [3]))
 
-    @unittest.skip("test ticket: a Gemini 429 with RetryInfo retryDelay '7s' waits 8 s; a daily quota is final (quota)")
     def test_quota_waits_as_asked(self):
-        pass
+        self.fake.answers = [(429, {"error": {"message": "Resource has been exhausted", "details": [
+            {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "7s"}]}})]
+        waits, said = [], []
+        service = Service("gemini", "k", endpoint=self.fake.url, sleep=waits.append, on_wait=said.append)
+        self.assertTrue(service.generate("a fox", Style(), 512, 512).startswith(b"\x89PNG"))
+        self.assertEqual((len(self.fake.requests), waits), (2, [8.0]))
+        self.assertIn("waiting 7 s", said[0])
+        self.fake.answers = [(429, {"error": {"message": "Quota exceeded for metric: generate_content_free_tier_requests, "
+                                                         "limit: GenerateRequestsPerDayPerProjectPerModel-FreeTier"}})]
+        with self.assertRaises(ImageError) as caught:
+            service.generate("a fox", Style(), 512, 512)
+        self.assertEqual(caught.exception.code, "quota")
+        self.assertIn("for today", caught.exception.message)
+        self.assertEqual((len(self.fake.requests), waits), (3, [8.0]))
 
-    @unittest.skip("test ticket: --service gemini --model gpt-image-1 without an endpoint raises wrong_model, nothing sent")
     def test_wrong_model_is_refused(self):
-        pass
+        with self.assertRaises(ImageError) as caught:
+            Service("gemini", "k", model="gpt-image-1")
+        self.assertEqual(caught.exception.code, "wrong_model")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(["generate", "--prompt", "a fox", "--service", "gemini", "--model", "gpt-image-1",
+                             "--api-key", "k", "--no-ffmpeg", "--out", os.path.join(self.dir, "pics")])
+        self.assertEqual((code, json.loads(out.getvalue())["error"]["code"]), (1, "wrong_model"))
+        self.assertEqual(self.fake.requests, [])
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "pics", "images.json")))
 
-    @unittest.skip("test ticket: an images/edits call that answers 503 once is sent again with the same multipart body")
     def test_edits_busy_is_tried_again(self):
-        pass
+        self.fake.busy_once = True
+        waits = []
+        service = Service("openai", "sk-1", endpoint=self.fake.url, sleep=waits.append)
+        self.assertTrue(service.generate("a fox", Style(references=[self.ref]), 1080, 1920).startswith(b"\x89PNG"))
+        first, again = self.fake.requests
+        self.assertEqual((first["path"], again["path"]), ("/v1/images/edits", "/v1/images/edits"))
+        self.assertEqual(first["body"], again["body"])
+        self.assertEqual(first["headers"]["content-type"], again["headers"]["content-type"])
+        self.assertIn(b'filename="mascot.png"', again["body"])
+        self.assertEqual(waits, [3])
 
 
 class GenerateTests(Base):
@@ -256,9 +287,19 @@ class ImportTests(Base):
 
 
 class DownloadTests(Base):
-    @unittest.skip("test ticket: an OpenAI picture link that does not answer fails only that scene (code network); the rest are kept and images.json is written")
     def test_a_dead_openai_link_fails_one_scene(self):
-        pass
+        self.fake.dead_link_word = "unreachable"
+        out = os.path.join(self.dir, "pics")
+        code, result = self.run_cli("generate", "--prompt", "an unreachable fox", "--prompt", "a fox", "--width", "64",
+                                    "--height", "64", "--out", out, service="openai")
+        self.assertEqual(code, 0, result)
+        data = result["data"]
+        self.assertEqual([i["id"] for i in data["images"]], ["s2"])
+        self.assertEqual((data["failed"][0]["id"], data["failed"][0]["code"]), ("s1", "network"))
+        self.assertIn("picture link did not answer", data["failed"][0]["message"])
+        self.assertFalse(os.path.exists(os.path.join(out, "s1.png")))
+        with open(os.path.join(out, "images.json"), encoding="utf-8") as f:
+            self.assertEqual([e["id"] for e in json.load(f)["images"]], ["s2"])
 
 
 if __name__ == "__main__":

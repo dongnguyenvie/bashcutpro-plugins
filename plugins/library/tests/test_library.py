@@ -7,15 +7,18 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 import zipfile
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 from library_plugin import __version__, cli  # noqa: E402
-from library_plugin.library import KINDS, Library  # noqa: E402
+from library_plugin import library  # noqa: E402
+from library_plugin.library import KINDS, PACK_INDEX, PACK_SCHEMA, Library, LibraryError  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
@@ -200,19 +203,61 @@ class PackTests(Base):
         self.assertEqual(code, 2)
 
 
-    @unittest.skip("test ticket: a pack with a wrong sha256 is hashed from its files, so a same-file item is skipped and a different one added")
     def test_import_recomputes_the_pack_hash(self):
-        pass
+        lib = Library()
+        logo = lib.add("sticker", "Logo", [self.file("logo.png", b"logo")], license="own")
+        pack = os.path.join(self.dir, "lying.zip")
+        entries = [{"id": "logo", "kind": "sticker", "title": "Logo", "files": ["logo.png"], "sha256": "0" * 64},
+                   {"id": "other", "kind": "sticker", "title": "Other", "files": ["logo.png"], "sha256": logo["sha256"]}]
+        with zipfile.ZipFile(pack, "w") as z:
+            z.writestr(PACK_INDEX, json.dumps({"schema": PACK_SCHEMA, "items": entries}))
+            z.writestr("items/logo/logo.png", b"logo")  # the same file under a wrong hash
+            z.writestr("items/other/logo.png", b"not the logo")  # another file claiming the logo's hash
+        result = self.ok("pack-import", "--path", pack)
+        self.assertEqual((result["added"], result["skipped"]), (["other"], ["logo"]))
+        imported = Library().get("other")
+        self.assertNotEqual(imported["sha256"], logo["sha256"])
+        self.assertEqual(imported["sha256"], library.files_hash(Library().folder("other"), ["logo.png"]))
+        self.assertEqual(len(Library().items), 2)
 
 
 class IndexLockTests(Base):
-    @unittest.skip("test ticket: two Library objects read the index, each adds / uses an item, both saves keep both updates (uses add up)")
     def test_concurrent_saves_keep_both_updates(self):
-        pass
+        shared = Library().add("sound", "Whoosh", [self.file("whoosh.wav", b"w")])
+        first, second = Library(), Library()  # both read the index before either writes
+        one = first.add("sticker", "One", [self.file("one.png", b"1")])
+        second.used(shared["id"], "/p/b.fcproj")
+        two = second.add("music", "Two", [self.file("two.mp3", b"2")])
+        first.used(shared["id"], "/p/a.fcproj")
+        first.favourite(shared["id"])
+        now = Library()
+        self.assertEqual(sorted(i["id"] for i in now.items), sorted([shared["id"], one["id"], two["id"]]))
+        item = now.get(shared["id"])
+        self.assertEqual(item["uses"], 2)
+        self.assertEqual(set(item["recent"]), {"/p/a.fcproj", "/p/b.fcproj"})
+        self.assertTrue(item["favourite"])
+        second.remove(two["id"])
+        self.assertEqual(sorted(i["id"] for i in Library().items), sorted([shared["id"], one["id"]]))
 
-    @unittest.skip("test ticket: a stale index.json.lock is taken over; a fresh one held past LOCK_WAIT gives LibraryError busy")
     def test_stale_and_held_lock(self):
-        pass
+        lib = Library()
+        item = lib.add("sound", "Whoosh", [self.file("whoosh.wav", b"w")])
+        lock = lib.path + ".lock"
+        with open(lock, "wb"):
+            pass
+        old = time.time() - library.LOCK_STALE - 10
+        os.utime(lock, (old, old))
+        lib.favourite(item["id"])  # a crashed run's lock is taken over
+        self.assertFalse(os.path.exists(lock))
+        self.assertTrue(Library().get(item["id"])["favourite"])
+        with open(lock, "wb"):
+            pass  # a run that holds the lock now
+        with mock.patch.object(library, "LOCK_WAIT", 0.2):
+            with self.assertRaises(LibraryError) as caught:
+                lib.favourite(item["id"], on=False)
+        self.assertEqual(caught.exception.code, "busy")
+        self.assertTrue(os.path.exists(lock))  # another run's lock is left alone
+        self.assertTrue(Library().get(item["id"])["favourite"])
 
 class ManifestTests(unittest.TestCase):
     def test_manifest_matches_the_cli(self):
