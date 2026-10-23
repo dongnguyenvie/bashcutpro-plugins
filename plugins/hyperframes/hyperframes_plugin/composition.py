@@ -178,7 +178,10 @@ def provide_scripts(folder, html):
         if loads(html, file) and (replace or not os.path.isfile(target)):
             if not os.path.isfile(source):
                 raise AppError("dependency_missing", "%s is not installed: run `setup`" % file)
-            shutil.copyfile(source, target)
+            if replace:
+                with_brand(source, target)
+            else:
+                shutil.copyfile(source, target)
     if loads(html, "katex/katex.min.js") and not os.path.isfile(os.path.join(folder, "katex", "katex.min.js")):
         if not os.path.isfile(os.path.join(p["katex"], "katex.min.js")):
             raise AppError("dependency_missing", "KaTeX is not installed: run `setup`")
@@ -188,6 +191,16 @@ def provide_scripts(folder, html):
         for font in os.listdir(os.path.join(p["katex"], "fonts")):
             if font.endswith(".woff2"):
                 shutil.copyfile(os.path.join(p["katex"], "fonts", font), os.path.join(folder, "katex", "fonts", font))
+
+
+def with_brand(source, target):
+    """A shared lib script with lib/brand.js in front, so a page that loads only that script has both."""
+    with open(os.path.join(os.path.dirname(source), "brand.js"), "rb") as f:
+        shared = f.read()
+    with open(source, "rb") as f:
+        own = f.read()
+    with open(target, "wb") as f:
+        f.write(shared + b"\n" + own)
 
 
 def with_defaults(html, decl, vals):

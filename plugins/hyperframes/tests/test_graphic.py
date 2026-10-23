@@ -188,6 +188,14 @@ class CompositionTests(Base):
         touch(os.path.join(self.composition, "style.css"))
         self.assertNotEqual(first, comp.digest(self.composition, page, {"title": "A"}, 30, None, False))
 
+    @unittest.skip("test ticket: provide_scripts writes diagram.js / amenity-map.js with lib/brand.js in front (RP15)")
+    def test_shared_scripts_carry_brand(self):
+        pass
+
+    @unittest.skip("test ticket: a render of flow-diagram with --set data='{bad' fails naming the data variable (RP15)")
+    def test_bad_data_json_fails_clearly(self):
+        pass
+
 
 class RenderTests(Base):
     def test_check_is_ready(self):

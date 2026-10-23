@@ -1,25 +1,27 @@
 // Diagram layout and motion shared by the flow-diagram, mind-map, isometric-system and big-canvas examples: the
 // agent passes nodes, edges and steps as JSON, never coordinates; this script lays them out for the canvas the page
-// renders at (9:16 or 16:9) and builds the GSAP timeline. graphics.render copies it next to the page (like GSAP), and
-// the tests load it in Node to check the layout (no two node boxes overlap).
+// renders at (9:16 or 16:9) and builds the GSAP timeline. `render` copies it next to the page (like GSAP) with
+// brand.js in front; in Node it can be loaded on its own to check the layout (no two node boxes overlap).
 //
 // data: {title?, nodes: [{id, label, icon?, group?}], edges: [{from, to, label?}], root? (mind-map centre),
 //        direction? ("lr" | "tb", flow; auto by default), steps: [{at, focus: [ids], reveal: [ids], note?}]}
-//   at: seconds from the graphic's start (bin/graphic --steps-from voice|sections fills it from the voice lines or
-//   section markers); a step without a number is spread evenly over the graphic.
+//   at: seconds from the graphic's start (the agent takes them from transcript.search); a step without a number is
+//   spread evenly over the graphic.
 //   A node in no step's reveal is there from the start; reveal brings it in on that step; focus lights it up (the
 //   rest dims) until the next step; packets run along the edges that touch a focused node.
-// Growing diagram (one scene for a whole explainer): a node or edge with its own `at` (seconds, or "@words" in
-//   graphic plan) comes in then and lights up, a new edge carries data dots until the next one lands (growthSteps);
+// Growing diagram (one scene for a whole explainer): a node or edge with its own `at` (seconds) comes in then and lights up, a new edge carries data dots until the next one lands (growthSteps);
 //   a node without `at` is there from the start. Variables t0 and total render one slice of the scene: t0 is the
 //   scene second this render starts at and total the scene's length, so slices rendered per section meet without a
-//   jump (graphic plan sets both for rows that share render.scene). Knobs (a variable or the same data key):
+//   jump (pass the same data with each slice's t0 and total). Knobs (a variable or the same data key):
 //   ghosts (later blocks faint and dashed from the start), recap (scene second from which everything is lit and every
 //   edge runs dots, staggered), bottomSafe (nothing below this line: 0–1 of the height or px; 0.62 on 9:16 by
 //   default). A flow edge against the flow whose straight line would cross nodes goes round the stage (aroundPath).
 // big-canvas data adds stops: [{at, focus: id | [x, y, w, h] (0–1 of the canvas), zoom?, note?}], summary?.
+// A data variable that is not valid JSON fails the render with an error that says so.
 (function (root) {
     "use strict";
+
+    const look = root.BCBrand ?? require("./brand.js");
 
     // MARK: text measure (an estimate the layout and the tests share; the page shrinks a label that still overflows)
 
@@ -661,24 +663,13 @@
 .dg-sketch .dg-label, .dg-sketch .dg-title { font-family: var(--hand-font); }
 `;
 
+    /** The brand look (brand.js) plus the diagram's CSS; the heading font is also the sketch hand. */
     function brand(v) {
-        const look = document.documentElement.style;
-        for (const key of ["accent", "background", "text", "secondary"]) if (v[key]) look.setProperty(`--${key}`, v[key]);
-        const faces = document.createElement("style");
-        for (const [key, slot] of [["headingFont", "--heading-font"], ["bodyFont", "--body-font"]]) {
-            const name = String(v[key] ?? "").trim();
-            if (!name) continue;
-            const file = /\.(ttf|otf|woff2?)$/i.test(name);
-            if (!name.startsWith("System-")) faces.textContent += `@font-face { font-family: "${key}"; src: ${file ? `url("${name}")` : `local("${name}")`}; }`;
-            const family = name.startsWith("System-") ? "system-ui" : file ? `"${key}"` : `"${name}", "${key}"`;
-            look.setProperty(slot, family);
-            if (key === "headingFont") look.setProperty("--hand-font", family);
-        }
-        faces.textContent += CSS;
-        document.head.appendChild(faces);
+        const families = look.applyLook(v, document, CSS);
+        if (families.headingFont) document.documentElement.style.setProperty("--hand-font", families.headingFont);
     }
 
-    /** The canvas the page renders at: the root's data-width/height (bin/graphic sets them to the project's). */
+    /** The canvas the page renders at: the root's data-width/height (`render` keeps the page's own). */
     function canvas(rootEl) {
         const W = Number(rootEl.dataset.width) || 1080;
         const H = Number(rootEl.dataset.height) || 1920;
@@ -779,7 +770,7 @@
     function mount(tl, v, kind, rootEl, options = {}) {
         brand(v);
         const { W, H, unit, END: span } = canvas(rootEl);
-        const data = typeof v.data === "string" ? JSON.parse(v.data || "{}") : v.data ?? {};
+        const data = look.parseJSON(v.data, "data");
         // A slice of a longer scene: build the whole scene on its own timeline and play t0 … t0 + span of it.
         const { t0: sliceAt, sceneEnd } = sceneSlice(v, data, span);
         const END = sceneEnd;
@@ -1054,7 +1045,7 @@
             fromToState(tl, note, { opacity: 1 }, { opacity: 0 }, until - 0.25, 0.25);
         });
 
-        // Exit on the composition's end (bin/graphic plan stretches data-duration to the span).
+        // Exit on the composition's end (`render --duration` stretches data-duration to the span).
         tl.fromTo([svg, htmlLayer, overSvg], { opacity: 1, y: 0 }, { opacity: 0, y: -40 * unit, duration: 0.45, ease: "power2.in", immediateRender: false }, END - 0.5);
         const heading = rootEl.querySelector(".dg-title");
         if (heading) tl.fromTo(heading, { opacity: 1 }, { opacity: 0, duration: 0.4, immediateRender: false }, END - 0.5);
@@ -1104,7 +1095,7 @@
     function mountCanvas(tl, v, rootEl) {
         brand(v);
         const { W, H, unit: screenUnit, END } = canvas(rootEl);
-        const data = typeof v.data === "string" ? JSON.parse(v.data || "{}") : v.data ?? {};
+        const data = look.parseJSON(v.data, "data");
         rootEl.classList.add("dg-sketch");
         const world = canvasLayout(data, W, H, data.size ?? v.size);
         const { worldW, worldH, unit } = world;
