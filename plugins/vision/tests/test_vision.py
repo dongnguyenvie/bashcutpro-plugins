@@ -34,6 +34,18 @@ def clip(cid, item, start=0, seconds=0.5):
             "sourceIn": 0, "sourceOut": int(TPS * seconds), "speed": 1.0, "enabled": True}
 
 
+def windows_fake_python(folder):
+    """The batch body of a stand-in base Python for Windows: it says what it runs, and `-m venv` makes a real venv
+    (<venv>\\Scripts\\python.exe has to be a program) without pip, whose `pip` is a stub that says what it runs too."""
+    stub = os.path.join(folder, "pip_stub.py")
+    with open(stub, "w", encoding="utf-8") as f:
+        f.write('import sys\nprint("fake python -m pip " + " ".join(sys.argv[1:]))\n')
+    pip = r'"%~3\Lib\site-packages\pip'
+    return ('echo fake python %*\nif not "%2"=="venv" exit /b 0\n'
+            f'"{sys.executable}" -m venv --without-pip "%~3" || exit /b 1\n'
+            f'mkdir {pip}"\ntype nul > {pip}\\__init__.py"\ncopy /y "{stub}" {pip}\\__main__.py" >nul\n')
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -64,8 +76,14 @@ class Base(unittest.TestCase):
     def commands(self, command_id):
         return [entry["params"] for entry in self.read_state()["log"] if entry["id"] == command_id]
 
-    def script(self, name, body):
-        """A stand-in program (POSIX shell) in the test folder."""
+    def script(self, name, body, windows):
+        """A stand-in program in the test folder: POSIX shell `body`; on Windows the batch file `<name>.cmd` running
+        `windows` (it starts no child of its own, so a timeout's kill ends all of it)."""
+        if os.name == "nt":
+            path = os.path.join(self.dir, name + ".cmd")
+            with open(path, "w", encoding="utf-8", newline="\r\n") as f:
+                f.write("@echo off\n" + windows)
+            return path
         path = os.path.join(self.dir, name)
         with open(path, "w", encoding="utf-8") as f:
             f.write("#!/bin/sh\n" + body)
@@ -191,10 +209,9 @@ class TextAndDescriptionTests(Base):
         self.assertEqual(lines[0]["text"], "Hello world")
         self.assertEqual((lines[0]["x"], lines[0]["y"], lines[0]["w"]), (0.1, 0.9, 0.18))
 
-    @unittest.skipIf(os.name == "nt", "the stand-in tesseract is a shell script")
     def test_tesseract_timeout_is_an_ocr_failed_error(self):
         from vision_plugin import cli
-        slow = self.script("tesseract", "exec sleep 30\n")
+        slow = self.script("tesseract", "exec sleep 30\n", ":spin\ngoto spin\n")
         out, err = io.StringIO(), io.StringIO()
         with mock.patch("vision_plugin.ocr.TIMEOUT", 0.5), redirect_stdout(out), redirect_stderr(err):
             code = cli.main(["ocr", "--samples", "1", "--tesseract", slow, "--project", self.state, "--cli", FAKE])
@@ -242,7 +259,6 @@ class TextAndDescriptionTests(Base):
                     self.assertEqual(f.read(), before)
         self.assertFalse(os.path.exists(sidecar + ".tmp"))
 
-    @unittest.skipIf(os.name == "nt", "the stand-in tesseract is a shell script")
     def test_agent_frames_do_not_pile_up(self):
         self.write_state(64, 36, [clip(1, 7), clip(2, 8, start=int(TPS * 0.5))], {"7": PERSON, "8": OBJECT})
         code, result = self.run_cli("ocr", "--samples", "3")
@@ -258,7 +274,10 @@ class TextAndDescriptionTests(Base):
 
         tesseract = self.script("tesseract", "printf 'level\\tpage_num\\tblock_num\\tpar_num\\tline_num\\tword_num\\t"
                                               "left\\ttop\\twidth\\theight\\tconf\\ttext\\n"
-                                              "5\\t1\\t1\\t1\\t1\\t1\\t4\\t30\\t20\\t4\\t95\\tHello\\n'\n")
+                                              "5\\t1\\t1\\t1\\t1\\t1\\t4\\t30\\t20\\t4\\t95\\tHello\\n'\n",
+                                windows="echo level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\t"
+                                        "left\ttop\twidth\theight\tconf\ttext\n"
+                                        "echo 5\t1\t1\t1\t1\t1\t4\t30\t20\t4\t95\tHello\n")
         code, result = self.run_cli("ocr", "--samples", "2", "--tesseract", tesseract)
         self.assertEqual(code, 0, result)
         self.assertEqual([f["text"][0]["text"] for f in result["data"]["frames"]], ["Hello"] * 4)
@@ -288,11 +307,11 @@ class ModelsTests(Base):
         self.assertEqual(code, 0, result)
         self.assertIn("onnxruntime>=1.17", result["data"]["steps"][-1])
 
-    @unittest.skipIf(os.name == "nt", "the stand-in python is a shell script")
     def test_setup_stdout_is_one_json_object(self):
         # makes the venv by copying itself to <venv>/bin/python3; every run prints to stdout
         python = self.script("python", 'echo "fake python $*"\n'
-                                       'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
+                                       'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n',
+                             windows_fake_python(self.dir))
         full = [sys.executable, os.path.join(PLUGIN, "plugin.py"), "setup", "--python", python]
         env = data_dir_env(os.path.join(self.dir, "data"))
         out = subprocess.run(full, capture_output=True, env=env, timeout=60)

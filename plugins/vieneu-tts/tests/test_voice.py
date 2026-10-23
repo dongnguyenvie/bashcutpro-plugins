@@ -31,6 +31,18 @@ def write_wav(path, seconds):
         audio.writeframes(b"\x00\x00" * int(16000 * seconds))
 
 
+def windows_fake_python(folder):
+    """The batch body of a stand-in base Python for Windows: it says what it runs, and `-m venv` makes a real venv
+    (<venv>\\Scripts\\python.exe has to be a program) without pip, whose `pip` is a stub that says what it runs too."""
+    stub = os.path.join(folder, "pip_stub.py")
+    with open(stub, "w", encoding="utf-8") as f:
+        f.write('import sys\nprint("fake python -m pip " + " ".join(sys.argv[1:]))\n')
+    pip = r'"%~3\Lib\site-packages\pip'
+    return ('echo fake python %*\nif not "%2"=="venv" exit /b 0\n'
+            f'"{sys.executable}" -m venv --without-pip "%~3" || exit /b 1\n'
+            f'mkdir {pip}"\ntype nul > {pip}\\__init__.py"\ncopy /y "{stub}" {pip}\\__main__.py" >nul\n')
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -151,14 +163,18 @@ class SynthesizeTests(Base):
                     self.assertFalse(os.path.exists(out) and os.listdir(out))
         self.assertNotIn("file.import", [e["id"] for e in self.state().get("log", [])])
 
-    @unittest.skipIf(os.name == "nt", "the stand-in python is a shell script")
     def test_setup_stdout_is_one_json_object(self):
         # makes the venv by copying itself to <venv>/bin/python3; every run prints to stdout
-        python = os.path.join(self.dir, "python")
-        with open(python, "w", encoding="utf-8") as f:
-            f.write('#!/bin/sh\necho "fake python $*"\n'
-                    'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
-        os.chmod(python, 0o755)
+        if os.name == "nt":
+            python = os.path.join(self.dir, "python.cmd")
+            with open(python, "w", encoding="utf-8", newline="\r\n") as f:
+                f.write("@echo off\n" + windows_fake_python(self.dir))
+        else:
+            python = os.path.join(self.dir, "python")
+            with open(python, "w", encoding="utf-8") as f:
+                f.write('#!/bin/sh\necho "fake python $*"\n'
+                        'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
+            os.chmod(python, 0o755)
         plugin = os.path.join(cli.PLUGIN_ROOT, "plugin.py")
         out = subprocess.run([sys.executable, plugin, "setup", "--python", python], capture_output=True, timeout=60)
         stdout, stderr = out.stdout.decode("utf-8"), out.stderr.decode("utf-8")
