@@ -22,9 +22,10 @@ import os
 import shutil
 import tempfile
 
+from bashcut_timeline import TPS
+
 from .library import LibraryError
 
-TPS = 254016000000  # ticks per second
 VISUAL_TRACK = {"sticker": "V3", "overlay": "V3"}
 AUDIO_TRACK = {"sound": "A2", "music": "A3"}
 TRACK_DEFAULT = dict(VISUAL_TRACK, **AUDIO_TRACK)

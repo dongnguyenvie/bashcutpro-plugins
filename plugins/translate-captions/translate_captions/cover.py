@@ -15,6 +15,8 @@ import os
 import shutil
 import tempfile
 
+from bashcut_timeline import TPS
+
 from .bmp import read_gray
 
 COVER_MASK_NAME = "BashCut subtitle cover"
@@ -23,7 +25,6 @@ BRIGHT = 175          # one side of the edge must be at least this light (subtit
 ROW_MIN = 0.06        # a text row has at least this share of edge pixels in its middle 80 %
 SHARE_OF_FRAMES = 0.25
 STATIC_SIMILARITY = 0.6  # stroke edges this alike in every frame: fixed text, not subtitles
-TICKS_PER_SECOND = 254016000000
 
 
 def row_energy(grid):
@@ -215,7 +216,7 @@ def sample_times(clip, seconds=30.0, count=8):
     end = clip.get("sourceOut", start + clip.get("duration", 0))
     if end < start:
         start, end = end, start
-    span = min(end - start, int(seconds * TICKS_PER_SECOND))
+    span = min(end - start, int(seconds * TPS))
     if span <= 0:
         return [start]
     return [start + int(span * (i + 0.5) / count) for i in range(count)]

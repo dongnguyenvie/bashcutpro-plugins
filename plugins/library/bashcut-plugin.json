@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.library",
   "name": "Library",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "summary": "One place for reusable looks, titles, text styles, stickers, overlays, sounds, music beds, effect presets, project templates and brand kits: save them from a project, search them, apply them to another, share them as packs.",
   "publisher": "dongnguyenvie",
   "license": "MIT",

@@ -5,9 +5,10 @@ Read: `captions.list` -> `{tracks: [{id, label, language, locked, captions: [{id
 `command_batch`. Only the text changes, so every caption keeps its start, end, track and style.
 """
 
+from bashcut_timeline import TPS
+
 from .translate import Line, max_chars
 
-TICKS_PER_SECOND = 254016000000
 LINES_FORMAT = "bashcut.translate-captions.lines/1"
 
 
@@ -35,7 +36,7 @@ def lines_from_listing(listing, track=None):
             if text:
                 captions.append((c.get("start", 0), c.get("id"), text, c.get("end", 0)))
     captions.sort(key=lambda c: (c[0], c[1]))
-    return [Line(i + 1, cid, text, max(0, end - start) / TICKS_PER_SECOND)
+    return [Line(i + 1, cid, text, max(0, end - start) / TPS)
             for i, (start, cid, text, end) in enumerate(captions)]
 
 
