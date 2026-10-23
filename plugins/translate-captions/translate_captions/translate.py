@@ -1,4 +1,5 @@
-"""Translating caption lines with the user's Gemini or OpenAI key.
+"""Translating caption lines with the user's Gemini or OpenAI key (the client is the
+shared `bashcut_ai.Client`).
 
 Lines go in batches (40 by default) with their on-screen seconds and a character budget, the three
 lines before the batch (already translated) for context, a glossary and an optional brief. The
@@ -7,10 +8,10 @@ answer is one line per id; a line the service leaves out is asked again once on 
 
 import json
 import re
-import socket
 import time
-import urllib.error
-import urllib.request
+
+import bashcut_ai
+from bashcut_ai import retry_delay  # noqa: F401 (re-exported for the tests)
 
 LANGUAGES = {
     "vi": "Vietnamese", "en": "English", "zh": "Simplified Chinese", "ja": "Japanese", "ko": "Korean",
@@ -25,11 +26,8 @@ BATCH_SIZE = 40
 CONTEXT_LINES = 3
 
 
-class TranslateError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+class TranslateError(bashcut_ai.AIError):
+    pass
 
 
 class Line:
@@ -171,45 +169,19 @@ def too_fast(lines, translated, max_cps):
     return count
 
 
-def is_local(endpoint):
-    return bool(re.match(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(/|$)", endpoint or ""))
-
-
-class Translator:
+class Translator(bashcut_ai.Client):
     """Gemini or OpenAI (or an OpenAI-compatible server) with the user's key, model and endpoint."""
 
+    error = TranslateError
+    default_models = DEFAULT_MODELS
+
     def __init__(self, service="gemini", api_key="", model="", endpoint="", on_wait=None, sleep=time.sleep):
-        if service not in ("gemini", "openai"):
-            raise TranslateError("bad_service", "service must be gemini or openai, not %s" % service)
-        self.kind = service
-        self.key = (api_key or "").strip()
-        base = (endpoint or "").strip().rstrip("/")
-        if not self.key and not (service == "openai" and is_local(base)):
-            raise TranslateError(
-                "no_key",
-                "No %s API key. Set it (see the plugin README: --api-key, BASHCUT_TC_API_KEY, %s) or let your agent "
-                "translate: `export-lines`, then `apply`" % (self.name, "GEMINI_API_KEY" if service == "gemini" else "OPENAI_API_KEY"))
-        chosen = (model or "").strip()
-        self.default_model = chosen in ("", "auto")
-        self.model = DEFAULT_MODELS[service] if self.default_model else chosen
-        if not base and service == "gemini" and not self.model.startswith("gemini"):
-            raise TranslateError("wrong_model", "%s is not a Gemini model" % self.model)
-        if not base and service == "openai" and self.model.startswith("gemini"):
-            raise TranslateError("wrong_model", "%s is not an OpenAI model" % self.model)
-        self.endpoint = base or ("https://generativelanguage.googleapis.com" if service == "gemini" else "https://api.openai.com")
-        if not (self.endpoint.startswith("https://") or is_local(self.endpoint)):
-            raise TranslateError("bad_endpoint", "The endpoint must be an https address (or a server on this machine)")
+        super().__init__(service, api_key, model, endpoint, on_wait=on_wait, sleep=sleep)
         self.fell_back_from = None
-        self.on_wait = on_wait or (lambda message: None)
-        self.sleep = sleep
 
-    @property
-    def name(self):
-        return "Gemini" if self.kind == "gemini" else "OpenAI"
-
-    @property
-    def label(self):
-        return "%s (%s)" % (self.name, self.model)
+    def no_key_message(self):
+        return ("No %s API key. Set it (see the plugin README: --api-key, BASHCUT_TC_API_KEY, %s) or let your agent "
+                "translate: `export-lines`, then `apply`" % (self.name, bashcut_ai.KEY_ENV[self.kind]))
 
     def __call__(self, lines, style, before):
         user = style.input(lines, before)
@@ -226,7 +198,7 @@ class Translator:
 
     def _ask(self, system, user):
         if self.kind == "gemini":
-            answer = self._send("/v1beta/models/%s:generateContent" % self.model, {
+            answer = self.send("/v1beta/models/%s:generateContent" % self.model, {
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": user}]}],
                 "generationConfig": {"responseMimeType": "application/json", "temperature": 0.3},
@@ -235,7 +207,7 @@ class Translator:
             parts = (candidates[0].get("content") or {}).get("parts") or []
             text = "".join(p.get("text", "") for p in parts)
             if not text:
-                reason = candidates[0].get("finishReason") or (answer.get("promptFeedback") or {}).get("blockReason")
+                reason = bashcut_ai.finish_reason(answer)
                 raise TranslateError("no_answer", "Gemini returned no translation" + (" (%s)" % reason if reason else ""))
             return text
         body = {
@@ -244,99 +216,26 @@ class Translator:
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         }
         try:
-            answer = self._send("/v1/chat/completions", body)
+            answer = self.send("/v1/chat/completions", body)
         except TranslateError as error:
             if error.code != "http_400" or self.model in error.message:
                 raise
             # Some compatible servers do not know response_format; the instructions still ask for JSON.
             del body["response_format"]
-            answer = self._send("/v1/chat/completions", body)
+            answer = self.send("/v1/chat/completions", body)
         choices = answer.get("choices") or [{}]
         text = (choices[0].get("message") or {}).get("content")
         if not text:
             raise TranslateError("no_answer", "OpenAI returned no translation")
         return text
 
-    def _headers(self):
-        headers = {"Content-Type": "application/json"}
-        if self.kind == "gemini":
-            headers["x-goog-api-key"] = self.key
-        elif self.key:
-            headers["Authorization"] = "Bearer " + self.key
-        return headers
-
     def models(self):
         """The text models the key can use (proves the key without spending anything)."""
         if self.kind == "gemini":
-            answer = self._send("/v1beta/models?pageSize=1000", None)
+            answer = self.send("/v1beta/models?pageSize=1000", None)
             names = [m.get("name", "").replace("models/", "") for m in answer.get("models", [])
                      if "generateContent" in (m.get("supportedGenerationMethods") or [])]
             return sorted(n for n in names if not any(x in n for x in ("image", "tts", "embedding")))
-        answer = self._send("/v1/models", None)
+        answer = self.send("/v1/models", None)
         skip = ("embedding", "whisper", "tts", "dall-e", "image", "audio", "realtime", "moderation", "transcribe")
         return sorted(m["id"] for m in answer.get("data", []) if "id" in m and not any(x in m["id"] for x in skip))
-
-    def _send(self, path, body):
-        """One call with retries: a full quota (429) waits as asked (3 minutes in all), 5xx after 3, 8, 15 s."""
-        data = json.dumps(body).encode("utf-8") if body is not None else None
-        waited, busy, last = 0.0, 0, None
-        for _ in range(8):
-            request = urllib.request.Request(self.endpoint + path, data=data, headers=self._headers(),
-                                             method="POST" if data is not None else "GET")
-            try:
-                with urllib.request.urlopen(request, timeout=180) as response:
-                    return json.loads(response.read().decode("utf-8") or "{}")
-            except urllib.error.HTTPError as error:
-                status = error.code
-                try:
-                    payload = json.loads(error.read().decode("utf-8") or "{}")
-                except ValueError:
-                    payload = {}
-            except (urllib.error.URLError, socket.timeout, ConnectionError) as error:
-                busy += 1
-                last = TranslateError("network", "%s did not answer: %s" % (self.name, getattr(error, "reason", error)))
-                if busy > 2:
-                    break
-                self.on_wait("%s did not answer; trying again" % self.name)
-                self.sleep(3)
-                continue
-            message = ((payload.get("error") or {}) if isinstance(payload.get("error"), dict) else {}).get("message") or "HTTP %d" % status
-            if status in (401, 403) or (status == 400 and "api key" in message.lower()):
-                raise TranslateError("auth", "%s refused the key: %s" % (self.name, message))
-            if status == 429:
-                daily = "PerDay" in message or "per day" in message.lower()
-                delay = retry_delay(payload, message) or 20.0
-                if daily or waited + delay > 180:
-                    raise TranslateError("quota", "%s quota for %s is used up%s: %s" % (
-                        self.name, self.model, " for today" if daily else "", message))
-                self.on_wait("%s quota is full for %s: waiting %d s" % (self.name, self.model, round(delay)))
-                self.sleep(min(delay + 1, 61))
-                waited += delay
-                last = TranslateError("quota", message)
-                continue
-            if status >= 500:
-                busy += 1
-                last = TranslateError("busy", "%s %s is busy (%s)" % (self.name, self.model, message))
-                if busy > 3:
-                    break
-                self.on_wait("%s %s is busy: trying again" % (self.name, self.model))
-                self.sleep([3, 8, 15][busy - 1])
-                continue
-            if status == 404 or (status == 400 and "model" in message.lower()):
-                raise TranslateError("model_missing", "%s has no model %s for your key (%s)" % (self.name, self.model, message))
-            raise TranslateError("http_%d" % status, message)
-        raise last or TranslateError("network", "The service did not answer")
-
-
-def retry_delay(payload, message):
-    """The wait a 429 asks for: Gemini's RetryInfo `retryDelay` ("39s") or "retry in 39.09s" in the message."""
-    details = (payload.get("error") or {}).get("details") if isinstance(payload.get("error"), dict) else None
-    for detail in details or []:
-        delay = detail.get("retryDelay") if isinstance(detail, dict) else None
-        if isinstance(delay, str):
-            try:
-                return float(delay.rstrip("s"))
-            except ValueError:
-                pass
-    match = re.search(r"retry in ([0-9.]+)\s*s", message or "", re.IGNORECASE)
-    return float(match.group(1)) if match else None

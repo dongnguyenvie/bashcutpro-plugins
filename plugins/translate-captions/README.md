@@ -57,6 +57,8 @@ removal; blur or mosaic on the clip itself instead of an opaque band or a zoom; 
 - `translate_captions/`: `cli.py` (commands), `mcp.py` (MCP client for `bashcutpro mcp`), `captions.py` (caption
   round trip), `translate.py` (batching, prompt, Gemini and OpenAI), `cover.py` (finding and covering subtitles),
   `bmp.py` (reading frames), `settings.py`
+- `bashcut_cli.py`, `bashcut_settings.py`, `bashcut_ai.py` (the Gemini / OpenAI client): copies of the repo's
+  `tools/` modules (`tools/sync_shared.py`), not edited here
 - `skills/translate-captions/SKILL.md`: the agent skill, including translating without a key
 - `tests/`: unit tests, a fake `filmcraft-cli mcp` (`fake_filmcraft.py`) and synthetic frames (`frames.py`); no network,
   no key

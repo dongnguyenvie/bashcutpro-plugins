@@ -27,6 +27,7 @@ tools/check_models.py              checks models.json and the plugins that use i
 tools/bashcut_models.py            the downloader (copied into each plugin that downloads)
 tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, connection flags, the setup venv recipe (copied into each plugin)
 tools/bashcut_settings.py          data dir, plugin folder, flag → env → file → default (copied into plugins that use it)
+tools/bashcut_ai.py                the Gemini / OpenAI client: key and endpoint checks, send() with retries (copied into plugins that use it)
 tools/sync_shared.py               writes those copies (--check lists stale ones)
 tools/new_plugin.py                starts a new plugin from tools/plugin_template/ (see Adding a plugin)
 tools/check_all.py                 every check and every plugin's tests in one run
@@ -59,8 +60,8 @@ to the table above; run `tools/check_all.py` (it finds the new plugin's tests by
 
 A plugin folder is installed on its own (the host copies `registry.json`'s `source.path`), so it imports nothing
 outside its folder: shared code is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every
-plugin, `bashcut_settings.py` into those that import it, `bashcut_models.py` into those with `models`), and
-`tests/test_shared_copies.py` fails while a copy is stale. Fix shared code in `tools/`, then run `sync_shared.py`. A
+plugin, `bashcut_settings.py` and `bashcut_ai.py` into those that import them, `bashcut_models.py` into those with
+`models`), and `tests/test_shared_copies.py` fails while a copy is stale. Fix shared code in `tools/`, then run `sync_shared.py`. A
 plugin with settings writes a `settings.py` with its `SETTINGS` table (`{id: ([env vars], default, secret?)}`) and
 `bashcut_settings.resolve` (translate-captions shows a secret API key); one that downloads lists its files in
 `models.json` and names them in its manifest's `models`.
