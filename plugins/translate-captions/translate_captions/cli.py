@@ -8,7 +8,6 @@ translate, `then` (`apply`) and an `answer` template, so the calling agent can t
 
 import argparse
 import json
-import sys
 
 import bashcut_cli
 from bashcut_cli import Handoff, connection_args, emit, save
@@ -163,16 +162,9 @@ def cmd_export_lines(args):
     return "%d lines to translate into %s" % (len(lines), LANGUAGES[args.target]), data
 
 
-def load_json(path):
-    if path == "-":
-        return json.load(sys.stdin)
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
 def cmd_apply(args):
-    answer = load_json(args.answer)
-    exported = load_json(args.lines) if args.lines else None
+    answer = bashcut_cli.read_json(args.answer)
+    exported = bashcut_cli.read_json(args.lines) if args.lines else None
     with connect(args) as app:
         listing, lines = read_lines(app, args)
         stale = {l.id for l in stale_lines(exported, lines)}
@@ -200,7 +192,7 @@ def cmd_cover(args):
             progress("Looking at clip %s (%s)" % (clip["clip"], clip.get("name")))
             try:
                 found = detect_clip(app, clip, args.seconds, args.frames, args.where)
-            except (AppError, ValueError) as error:
+            except (AppError, OSError, ValueError) as error:  # OSError: file.exportFrame wrote no file
                 results.append({"clip": clip["clip"], "name": clip.get("name"), "skipped": str(error)})
                 continue
             box = fixed_box or found["subtitles"]
@@ -239,4 +231,4 @@ def main(argv=None):
     if hasattr(args, "max_cps") and not 8 <= args.max_cps <= 30:
         emit(bashcut_cli.failure("bad_args", "--max-cps must be between 8 and 30"))
         return bashcut_cli.EXIT_USAGE
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TranslateError))
+    return bashcut_cli.run(COMMANDS[args.command], args)

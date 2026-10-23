@@ -157,5 +157,10 @@ class CoverCommandTests(unittest.TestCase):
     def test_damaged_frame_skips_the_clip_and_leaves_no_temp_folder(self):
         pass
 
+    @unittest.skip("test ticket: cover where file.exportFrame writes no file for one clip skips that clip (OSError) "
+                   "and still covers the others")
+    def test_missing_exported_frame_skips_only_that_clip(self):
+        pass
+
 if __name__ == "__main__":
     unittest.main()

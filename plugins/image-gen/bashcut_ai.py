@@ -14,15 +14,14 @@ import time
 import urllib.error
 import urllib.request
 
+import bashcut_cli
+
 ENDPOINTS = {"gemini": "https://generativelanguage.googleapis.com", "openai": "https://api.openai.com"}
 KEY_ENV = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY"}
 
 
-class AIError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+class AIError(bashcut_cli.PluginError):
+    pass
 
 
 def is_local(endpoint):

@@ -11,7 +11,7 @@ import bashcut_cli
 from bashcut_cli import connection_args
 
 from . import __version__
-from .mcp import AppError, McpClient
+from .mcp import McpClient
 
 KINDS = ("all", "video", "audio")
 
@@ -50,4 +50,4 @@ COMMANDS = {"clips": cmd_clips}
 def main(argv=None):
     bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError,))
+    return bashcut_cli.run(COMMANDS[args.command], args)

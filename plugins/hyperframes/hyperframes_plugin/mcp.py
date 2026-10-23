@@ -12,18 +12,15 @@ import subprocess
 import sys
 import threading
 
+import bashcut_cli
+
 from . import __version__
 
 PROTOCOL_VERSION = "2025-06-18"
 
 
-class AppError(Exception):
+class AppError(bashcut_cli.PluginError):
     """A command or tool the app answered with an error."""
-
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
 
 
 def find_cli(explicit=None):

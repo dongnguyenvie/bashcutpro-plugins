@@ -1,6 +1,6 @@
 """The command-line plumbing every BashCutPro plugin shares: UTF-8 stdio, progress lines, the result protocol
-(`bashcut-result/1`) with its hand-off, the connection flags, the default output folder, saving a headless project and
-the private-venv `setup` recipe.
+(`bashcut-result/1`) with its hand-off, the plugin error, JSON input, the connection flags, the default output folder,
+saving a headless project and the private-venv `setup` recipe.
 
 Canonical copy: `tools/bashcut_cli.py` in bashcutpro-plugins. Each plugin ships an identical copy next to its
 `plugin.py` (a plugin folder is installed on its own); `python3 tools/sync_shared.py` writes the copies and
@@ -16,6 +16,38 @@ EXIT_OK = 0
 EXIT_FAILED = 1
 EXIT_USAGE = 2
 EXIT_HANDOFF = 3  # the plugin cannot finish alone; `data` holds what the calling agent needs
+
+
+class PluginError(Exception):
+    """A failure the plugin reports as `{"ok": false, "error": {code, message}}` (`data` when given); `bad_args` is a
+    usage error (exit 2). Each plugin's own error classes derive from it."""
+
+    def __init__(self, code, message, data=None):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.data = data
+
+
+def parse_json(text, what):
+    """`text` as JSON; not JSON is `bad_args`. `what` names it in the message (a flag or a file)."""
+    try:
+        return json.loads(text)
+    except ValueError as error:
+        raise PluginError("bad_args", "%s is not JSON: %s" % (what, error))
+
+
+def read_json(path_or_dash):
+    """The JSON in a file, or on stdin for `-`; a file that cannot be read or is not JSON is `bad_args`."""
+    try:
+        if path_or_dash == "-":
+            text = sys.stdin.read()
+        else:
+            with open(path_or_dash, encoding="utf-8") as f:
+                text = f.read()
+    except (OSError, ValueError) as error:  # ValueError: not UTF-8
+        raise PluginError("bad_args", "cannot read %s: %s" % (path_or_dash, error))
+    return parse_json(text, "stdin" if path_or_dash == "-" else path_or_dash)
 
 
 def utf8_stdio():
@@ -127,7 +159,7 @@ def run(command, args, errors=(), handoff=()):
     """Run one command and print its result; returns the exit status.
 
     `command(args)` returns `(message, data)`, or an exit status when it wrote its own output (a pass-through).
-    A `Handoff`, or an exception in `errors` (with `code`, `message` and maybe `data`), becomes
+    A `Handoff`, a `PluginError`, or an exception in `errors` (with `code`, `message` and maybe `data`), becomes
     `{"ok": false, "error"}`: exit 3 for a `Handoff` or a code in `handoff`, 2 for `bad_args`, else 1. `OSError` and
     `ValueError` are `failed`, exit 1.
     """
@@ -136,7 +168,7 @@ def run(command, args, errors=(), handoff=()):
     except Handoff as error:
         emit(failure(error.code, error.message, error.data))
         return EXIT_HANDOFF
-    except errors as error:
+    except (PluginError,) + tuple(errors) as error:
         emit(failure(error.code, error.message, getattr(error, "data", None)))
         return EXIT_HANDOFF if error.code in handoff else EXIT_USAGE if error.code == "bad_args" else EXIT_FAILED
     except (OSError, ValueError) as error:

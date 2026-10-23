@@ -19,7 +19,7 @@ from bashcut_timeline import TimelineError
 
 from . import __version__
 from .mcp import AppError, McpClient
-from .service import ImageError, Service, Style, generate_batch
+from .service import Service, Style, generate_batch
 from .settings import resolve
 from .timeline import ensure_video_track, import_files, label, overlaps, place_still
 
@@ -85,21 +85,11 @@ def out_dir(args):
     return bashcut_cli.out_dir(args, os.path.join("generated", "images"), "generated-images")
 
 
-def read_json(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except OSError as error:
-        raise AppError("bad_args", "cannot read %s: %s" % (path, error))
-    except ValueError as error:
-        raise AppError("bad_args", "%s is not JSON: %s" % (path, error))
-
-
 def read_scenes(args):
     """(scenes [{id, prompt, seconds?, duration?}], the file's style or None, width, height)."""
     scenes, style, width, height = [], None, None, None
     if args.scenes:
-        value = read_json(args.scenes)
+        value = bashcut_cli.read_json(args.scenes)
         base = os.path.dirname(os.path.abspath(args.scenes))
         if isinstance(value, dict):
             entries = value.get("scenes", value.get("prompts")) or []
@@ -136,7 +126,7 @@ def read_scenes(args):
 def asked_style(args, from_file):
     """The style the call asks for, or None when it names none."""
     if args.style:
-        value = read_json(args.style)
+        value = bashcut_cli.read_json(args.style)
         base = os.path.dirname(os.path.abspath(args.style))
         value = dict(value, references=[os.path.join(base, r) for r in value.get("references") or []])
     elif from_file:
@@ -155,7 +145,7 @@ def asked_style(args, from_file):
 def locked_style(folder, asked, restyle):
     """The folder's locked style; the asked one locks it when there is none (or with --restyle)."""
     path = os.path.join(folder, "style.json")
-    current = Style.from_json(read_json(path)) if os.path.isfile(path) else None
+    current = Style.from_json(bashcut_cli.read_json(path)) if os.path.isfile(path) else None
     if current and asked and not restyle and asked.to_json() != current.to_json():
         raise AppError("style_locked", "%s already locks another style: use it (no style flags), pass --restyle "
                        "to change every later picture's look, or another --out" % path)
@@ -169,7 +159,7 @@ def locked_style(folder, asked, restyle):
 def record(folder, images, service, style):
     """Add the batch to images.json (a picture made again replaces its entry)."""
     path = os.path.join(folder, "images.json")
-    value = read_json(path) if os.path.isfile(path) else {}
+    value = bashcut_cli.read_json(path) if os.path.isfile(path) else {}
     entries = {e["id"]: e for e in value.get("images", []) if isinstance(e, dict) and "id" in e}
     made = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
     for image in images:
@@ -187,7 +177,7 @@ def known_picture(path):
     record_path = os.path.join(folder, "images.json")
     if not os.path.isfile(record_path):
         return {}
-    for entry in read_json(record_path).get("images", []):
+    for entry in bashcut_cli.read_json(record_path).get("images", []):
         if os.path.abspath(entry.get("path", "")) == os.path.abspath(path):
             return entry
     return {}
@@ -242,7 +232,7 @@ def cmd_style(args):
     path = os.path.join(out_dir(args), "style.json")
     if not os.path.isfile(path):
         return "No style is locked in %s yet: the first generate locks it" % os.path.dirname(path), {"styleFile": path, "style": None}
-    return "Style locked in %s" % path, {"styleFile": path, "style": read_json(path)}
+    return "Style locked in %s" % path, {"styleFile": path, "style": bashcut_cli.read_json(path)}
 
 
 def cmd_generate(args):
@@ -301,4 +291,4 @@ COMMANDS = {"style": cmd_style, "generate": cmd_generate, "import": cmd_import, 
 def main(argv=None):
     bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, ImageError, TimelineError))
+    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))

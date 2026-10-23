@@ -243,4 +243,4 @@ COMMANDS = {"align": cmd_align, "check": cmd_check}
 def main(argv=None):
     bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError,))
+    return bashcut_cli.run(COMMANDS[args.command], args)

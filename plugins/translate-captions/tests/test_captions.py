@@ -209,6 +209,10 @@ class RoundTripTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(json.loads(out_buf.getvalue())["error"]["code"], "bad_args")
 
+    @unittest.skip("test ticket: apply with an --answer (or --lines) that is missing or not JSON exits 2 with bad_args")
+    def test_apply_with_a_bad_answer_is_a_usage_error(self):
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

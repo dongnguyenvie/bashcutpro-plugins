@@ -305,4 +305,4 @@ COMMANDS = {"scripts": cmd_scripts, "setup": cmd_setup, "fetch": cmd_fetch, "imp
 def main(argv=None):
     bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TimelineError))
+    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))

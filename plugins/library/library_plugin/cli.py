@@ -8,7 +8,6 @@ host:port` for the open app); the rest work on the library alone.
 """
 
 import argparse
-import json
 import os
 
 import bashcut_cli
@@ -17,7 +16,7 @@ from bashcut_cli import connection_args, save
 from . import __version__
 from .engine import apply_brand, apply_item, save_selection
 from .library import BRAND_FIELDS, KINDS, Library, LibraryError
-from .mcp import AppError, McpClient
+from .mcp import McpClient
 
 
 def progress(message):
@@ -143,10 +142,7 @@ def connect(args):
 def json_arg(text, name):
     if not text:
         return None
-    try:
-        return json.loads(text)
-    except ValueError as error:
-        raise LibraryError("bad_args", "%s is not JSON: %s" % (name, error))
+    return bashcut_cli.parse_json(text, name)
 
 
 def view(lib, item):
@@ -269,4 +265,4 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     if args.library_dir:
         os.environ["BASHCUT_LIBRARY_DIR"] = os.path.abspath(args.library_dir)
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, LibraryError))
+    return bashcut_cli.run(COMMANDS[args.command], args)

@@ -7,7 +7,6 @@ error, 2 on a usage error, 3 on a hand-off: the plugin needs the calling agent (
 """
 
 import argparse
-import json
 import os
 import shutil
 import subprocess
@@ -102,14 +101,6 @@ def models():
         raise AppError(error.code, error.message)
 
 
-def read_answer(path):
-    try:
-        if path == "-":
-            return json.load(sys.stdin)
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError) as error:
-        raise AppError("bad_args", "cannot read the answer %s: %s" % (path, error))
 
 
 def cmd_models(args):
@@ -298,7 +289,7 @@ def store_text(sidecar, clips, frames):
 
 
 def cmd_ocr_apply(args):
-    answer = read_answer(args.answer)
+    answer = bashcut_cli.read_json(args.answer)
     frames = answer.get("frames") if isinstance(answer, dict) else None
     if not isinstance(frames, list):
         raise AppError("bad_args", 'the answer is {"frames": [{"clip", "time", "text": [...]}]}')
@@ -320,7 +311,7 @@ def cmd_describe(args):
 
 
 def cmd_describe_apply(args):
-    answer = read_answer(args.answer)
+    answer = bashcut_cli.read_json(args.answer)
     clips = answer.get("clips") if isinstance(answer, dict) else None
     if not isinstance(clips, list):
         raise AppError("bad_args", 'the answer is {"clips": [{"clip", "description", "tags"?}]}')
@@ -367,4 +358,4 @@ def main(argv=None):
         code = relaunch(argv)
         if code is not None:
             return code
-    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TimelineError))
+    return bashcut_cli.run(COMMANDS[args.command], args, (TimelineError,))

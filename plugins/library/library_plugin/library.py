@@ -18,6 +18,7 @@ import tempfile
 import time
 import zipfile
 
+import bashcut_cli
 import bashcut_settings
 
 SCHEMA = "bashcut-library/1"
@@ -44,11 +45,8 @@ FILE_TYPES = {"look": (".cube", ".3dl"), "lut": (".cube", ".3dl"), "title": (".f
 BRAND_FIELDS = ("logo", "colors", "fonts", "intro", "outro", "captionStyle", "lowerThird")
 
 
-class LibraryError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+class LibraryError(bashcut_cli.PluginError):
+    pass
 
 
 
