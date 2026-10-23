@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from vision_plugin.images import write_bmp, write_png  # noqa: E402
+from bashcut_images import write_bmp, write_png  # noqa: E402
 
 TPS = 254016000000
 COLOURS = {"person": (220, 30, 30), "face": (230, 220, 40), "object": (30, 40, 220)}

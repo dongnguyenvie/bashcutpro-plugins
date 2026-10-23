@@ -16,18 +16,18 @@ import tempfile
 
 import bashcut_cli
 from bashcut_cli import Handoff, connection_args, save
+from bashcut_frames import footage_items, sample_times, sequence_time
+from bashcut_images import png_size
 from bashcut_models import ModelError, Models
 from bashcut_timeline import TimelineError
 
 from . import __version__
 from .backends import MODELS, backend
-from .images import read_png_size
 from .mcp import AppError, McpClient
 from .ocr import find_tesseract, read_text
 from .settings import PACKAGES, resolve, venv_python
-from .timeline import (clip_entry, every_frame, export_still, footage_items, fps_text, import_sequence, import_still,
-                       load_sidecar, place, reframe_steps, sample_times, save_sidecar, sequence_time, settings,
-                       sidecar_path, video_clips, ensure_video_track)
+from .timeline import (clip_entry, every_frame, export_still, fps_text, import_sequence, import_still, load_sidecar,
+                       place, reframe_steps, save_sidecar, settings, sidecar_path, video_clips, ensure_video_track)
 
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_COMMANDS = ("cutout", "subjects")
@@ -257,7 +257,7 @@ def cmd_ocr(args):
     lines = 0
     try:
         for frame in frames:
-            width, height = read_png_size(frame["path"])
+            width, height = png_size(frame["path"])
             frame["text"] = read_text(tesseract, frame.pop("path"), width, height, args.languages)
             lines += len(frame["text"])
     finally:

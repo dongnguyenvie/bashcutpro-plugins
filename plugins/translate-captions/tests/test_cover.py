@@ -14,7 +14,7 @@ sys.path.insert(0, HERE)
 
 from frames import draw_frame  # noqa: E402
 from translate_captions import cli  # noqa: E402
-from translate_captions.bmp import read_gray, write_bmp  # noqa: E402
+from bashcut_images import read_gray, write_bmp  # noqa: E402
 from translate_captions.cover import COVER_MASK_NAME, cover_params, find_subtitles, parse_box, sample_times  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
@@ -85,6 +85,11 @@ class DetectTests(unittest.TestCase):
         frames = [grey(spec, i) for i in range(8)]
         self.assertIsNone(find_subtitles(frames)["subtitles"])
         self.assertLess(find_subtitles(frames, "top")["subtitles"]["y"], 0.07)
+
+    @unittest.skip("test ticket: cover on a clip at speed 2 exports frames over the first --seconds x 2 of its source "
+                   "(fake engine's file.exportFrame times)")
+    def test_cover_samples_count_speed(self):
+        pass
 
     def test_box_sample_times_and_cover_params(self):
         self.assertEqual(parse_box("0.1, 0.8, 0.8, 0.3")["h"], 0.2)  # clipped to the picture

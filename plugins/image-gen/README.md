@@ -77,7 +77,7 @@ project setting (the style lives in the output folder); the BashCut provider ran
 
 - `bashcut-plugin.json`: the manifest; `plugin.py`: the entry point
 - `image_gen/`: `cli.py` (commands, the locked style, the record), `service.py` (the request, Gemini and OpenAI),
-  `picture.py` (PNG decode and encode, centre crop, ffmpeg), `timeline.py` (import, label, place), `mcp.py` (MCP
+  `picture.py` (centre crop, ffmpeg; PNG decode and encode from the shared `bashcut_images.py`), `timeline.py` (import, label, place), `mcp.py` (MCP
   client for `bashcutpro mcp`), `settings.py`
 - `bashcut_cli.py`, `bashcut_settings.py`, `bashcut_ai.py` (the Gemini / OpenAI client): copies of the repo's
   `tools/` modules (`tools/sync_shared.py`), not edited here

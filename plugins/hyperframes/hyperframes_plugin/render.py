@@ -10,10 +10,11 @@ import glob
 import json
 import os
 import shutil
-import struct
 import subprocess
 import tempfile
 import time
+
+import bashcut_images
 
 from . import composition as comp
 from .mcp import AppError
@@ -28,11 +29,11 @@ def render_fps(fps, draft):
 
 
 def png_size(path):
-    with open(path, "rb") as f:
-        head = f.read(24)
-    if head[:8] != b"\x89PNG\r\n\x1a\n":
+    """(width, height) of a rendered frame; (None, None) when it is not a PNG (the record keeps no size)."""
+    try:
+        return bashcut_images.png_size(path)
+    except ValueError:
         return None, None
-    return struct.unpack(">II", head[16:24])
 
 
 def lint(node, chrome, folder):

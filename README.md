@@ -29,6 +29,8 @@ tools/bashcut_cli.py               UTF-8 stdio, progress, the result protocol, c
 tools/bashcut_settings.py          data dir, plugin folder, flag → env → file → default (copied into plugins that use it)
 tools/bashcut_ai.py                the Gemini / OpenAI client: key and endpoint checks, send() with retries (copied into plugins that use it)
 tools/bashcut_timeline.py          ticks per second, import, tracks, overlaps, timeline.place (copied into plugins that use it)
+tools/bashcut_images.py            BMP stills from file.exportFrame, PNG read / write / size (copied into plugins that use it)
+tools/bashcut_frames.py            clips with frames to look at, speed-aware sample times (copied into plugins that use it)
 tools/sync_shared.py               writes those copies (--check lists stale ones)
 tools/new_plugin.py                starts a new plugin from tools/plugin_template/ (see Adding a plugin)
 tools/check_all.py                 every check and every plugin's tests in one run
@@ -61,7 +63,8 @@ to the table above; run `tools/check_all.py` (it finds the new plugin's tests by
 
 A plugin folder is installed on its own (the host copies `registry.json`'s `source.path`), so it imports nothing
 outside its folder: shared code is copied in from `tools/` by `tools/sync_shared.py` (`bashcut_cli.py` into every
-plugin, `bashcut_settings.py`, `bashcut_ai.py` and `bashcut_timeline.py` into those that import them,
+plugin, `bashcut_settings.py`, `bashcut_ai.py`, `bashcut_timeline.py`, `bashcut_images.py` and `bashcut_frames.py` into
+those that import them (`bashcut_frames.py` brings `bashcut_timeline.py`),
 `bashcut_models.py` into those with `models`), and `tests/test_shared_copies.py` fails while a copy is stale. Fix
 shared code in `tools/`, then run `sync_shared.py`. A plugin with settings writes a `settings.py` with its `SETTINGS`
 table (`{id: ([env vars], default, secret?)}`) and `bashcut_settings.resolve` (translate-captions shows a secret API

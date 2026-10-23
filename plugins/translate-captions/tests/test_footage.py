@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from translate_captions.cover import footage_items, video_clips  # noqa: E402
+from bashcut_frames import footage_items, video_clips  # noqa: E402
 
 TREE = {"root": {"children": [
     {"item": 1, "name": "a.mp4", "type": "Movie"},
