@@ -124,6 +124,10 @@ class SynthesizeTests(Base):
         self.assertEqual(len(steps), 2)
         self.assertEqual(result["data"]["models"], ["vieneu-v3-turbo", "moss-audio-tokenizer-nano-onnx"])
 
+    @unittest.skip("test ticket: setup with a step that prints to stdout (fake python/uv): stdout is exactly one JSON object, the step output is on stderr")
+    def test_setup_stdout_is_one_json_object(self):
+        pass
+
     def test_model_files_come_from_models_json(self):
         from bashcut_models import Models
         models = Models.find(cli.PLUGIN_ROOT, root=self.dir)

@@ -98,6 +98,14 @@ class Result(unittest.TestCase):
             self.assertEqual(bashcut_cli.save(app, argparse.Namespace(project=project, no_save=no_save)), saved)
             self.assertEqual(app.calls, [("file.save", {"path": project})] if saved else [])
 
+    @unittest.skip("test ticket: venv_steps: --python / this Python >= 3.10 makes a venv + pip; older Python uses uv venv 3.12 + uv pip; no make step when the target exists")
+    def test_venv_steps_python_check_and_uv_fallback(self):
+        pass
+
+    @unittest.skip("test ticket: run_steps sends a step's stdout to stderr (stdout stays empty), returns the failing step, and a missing executable (uv) is a failed step, not a traceback")
+    def test_run_steps_output_on_stderr_and_failed_step(self):
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

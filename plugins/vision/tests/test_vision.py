@@ -200,6 +200,10 @@ class ModelsTests(Base):
         self.assertEqual(code, 0, result)
         self.assertIn("onnxruntime>=1.17", result["data"]["steps"][-1])
 
+    @unittest.skip("test ticket: setup with a step that prints to stdout (fake python/uv): stdout is exactly one JSON object, the step output is on stderr")
+    def test_setup_stdout_is_one_json_object(self):
+        pass
+
     def test_nms_keeps_the_best_of_overlapping_boxes(self):
         boxes = [{"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2, "score": 0.9}, {"x": 0.11, "y": 0.1, "w": 0.2, "h": 0.2, "score": 0.7},
                  {"x": 0.6, "y": 0.1, "w": 0.2, "h": 0.2, "score": 0.8}]

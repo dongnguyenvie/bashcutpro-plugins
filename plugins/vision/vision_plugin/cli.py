@@ -63,7 +63,7 @@ def build_parser():
     p.add_argument("--model", choices=MODELS, help="with --download: only this model")
 
     p = sub.add_parser("setup", help="make the private Python environment with onnxruntime, numpy and Pillow")
-    p.add_argument("--python", help="the Python to make it with (default: this one)")
+    p.add_argument("--python", help="a Python 3.10+ to make it with (default: this one, else uv)")
     p.add_argument("--dry-run", action="store_true", help="print the steps, run nothing")
 
     p = sub.add_parser("cutout", help="cut the person (else the main object) out of a clip, import it and place it above")
@@ -148,15 +148,12 @@ def cmd_models(args):
 
 def cmd_setup(args):
     target = venv_python()
-    venv = os.path.dirname(os.path.dirname(target))
-    steps = [] if os.path.isfile(target) else [[args.python or sys.executable, "-m", "venv", venv]]
-    steps.append([target, "-m", "pip", "install", "--upgrade"] + PACKAGES)
+    steps = bashcut_cli.venv_steps(target, PACKAGES, args.python)
     if args.dry_run:
         return "%d steps (dry run: nothing ran)" % len(steps), {"steps": steps}
-    for step in steps:
-        progress(" ".join(step))
-        if subprocess.run(step).returncode != 0:
-            raise AppError("setup_failed", "this step failed: %s" % " ".join(step))
+    failed = bashcut_cli.run_steps(steps, progress)
+    if failed:
+        raise AppError("setup_failed", "this step failed: %s" % " ".join(failed))
     return "The model packages are installed in %s" % target, {"python": target, "steps": steps}
 
 
