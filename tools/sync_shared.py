@@ -6,13 +6,16 @@ so shared code is vendored).
     python3 tools/sync_shared.py --check   # prints stale copies, exit 1 when there are any
 
 - `bashcut_cli.py` (UTF-8 stdio, progress, the result protocol, connection flags): every plugin;
+- `bashcut_settings.py` (data dir, plugin folder, settings resolution): every plugin whose code imports it;
 - `bashcut_models.py` (the downloader): every plugin whose manifest has a `models` list (`check_models.py` checks it too).
 
 Edit the copy in `tools/`, then run this; `tests/test_shared_copies.py` fails while a copy differs.
 """
 
+import glob
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,10 +32,22 @@ def uses_models(root, name):
         return bool(json.load(f).get("models"))
 
 
+def imports(root, name, module):
+    """Whether the plugin's own code (not the vendored copy) imports `module`."""
+    pattern = re.compile(r"^\s*(import|from) %s\b" % module, re.M)
+    for path in glob.glob(os.path.join(root, "plugins", name, "*", "*.py")):
+        with open(path, encoding="utf-8") as f:
+            if pattern.search(f.read()):
+                return True
+    return False
+
+
 def copies(root=ROOT):
     """(canonical file, plugin copy) for every vendored module."""
     for name in plugins(root):
         yield os.path.join(root, "tools", "bashcut_cli.py"), os.path.join(root, "plugins", name, "bashcut_cli.py")
+        if imports(root, name, "bashcut_settings"):
+            yield os.path.join(root, "tools", "bashcut_settings.py"), os.path.join(root, "plugins", name, "bashcut_settings.py")
         if uses_models(root, name):
             yield os.path.join(root, "tools", "bashcut_models.py"), os.path.join(root, "plugins", name, "bashcut_models.py")
 

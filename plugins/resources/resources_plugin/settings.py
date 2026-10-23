@@ -9,34 +9,19 @@ Data folder: `<data dir>/bashcut-plugins/bashcut.resources/` (data dir: `FILMCRA
 import os
 import sys
 
+import bashcut_settings
+
 PLUGIN_ID = "bashcut.resources"
 KEYS = ["PIXABAY_API_KEY", "PEXELS_API_KEY", "FREESOUND_API_KEY"]
 PACKAGES = ["pillow>=10.1", "numpy>=1.26", "fonttools>=4.40", "resvg-py>=0.5", "rlottie-python>=1.3"]
 
 
-def data_dir(env=None):
-    env = os.environ if env is None else env
-    if env.get("FILMCRAFT_DATA_DIR"):
-        return env["FILMCRAFT_DATA_DIR"]
-    home = env.get("HOME") or os.path.expanduser("~")
-    if sys.platform == "darwin":
-        return os.path.join(home, "Library", "Application Support", "FilmCraft")
-    if sys.platform == "win32":
-        return os.path.join(env.get("APPDATA") or home, "FilmCraft")
-    if env.get("XDG_DATA_HOME"):
-        return os.path.join(env["XDG_DATA_HOME"], "filmcraft")
-    return os.path.join(home, ".local", "share", "filmcraft")
-
-
 def plugin_dir(env=None):
-    return os.path.join(data_dir(env), "bashcut-plugins", PLUGIN_ID)
+    return bashcut_settings.plugin_dir(PLUGIN_ID, env)
 
 
 def venv_python(env=None):
-    venv = os.path.join(plugin_dir(env), "venv")
-    if sys.platform == "win32":
-        return os.path.join(venv, "Scripts", "python.exe")
-    return os.path.join(venv, "bin", "python3")
+    return bashcut_settings.venv_python(PLUGIN_ID, env)
 
 
 def script_python(explicit=None, env=None):
