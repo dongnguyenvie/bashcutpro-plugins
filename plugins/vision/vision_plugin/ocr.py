@@ -8,7 +8,10 @@ which are joined into lines (same block, paragraph and line numbers).
 import shutil
 import subprocess
 
+from .mcp import AppError
+
 MIN_CONFIDENCE = 60
+TIMEOUT = 120
 
 
 def find_tesseract(setting):
@@ -52,8 +55,11 @@ def parse_tsv(text, width, height):
 
 
 def read_text(tesseract, path, width, height, languages="eng"):
-    out = subprocess.run([tesseract, path, "stdout", "-l", languages, "--psm", "11", "tsv"],
-                         capture_output=True, timeout=120)
+    try:
+        out = subprocess.run([tesseract, path, "stdout", "-l", languages, "--psm", "11", "tsv"],
+                             capture_output=True, timeout=TIMEOUT)
+    except subprocess.TimeoutExpired:
+        raise AppError("ocr_failed", "tesseract took more than %d s on %s" % (TIMEOUT, path))
     if out.returncode != 0:
         raise OSError("tesseract failed: %s" % out.stderr.decode("utf-8", "replace").strip()[:200])
     return parse_tsv(out.stdout.decode("utf-8", "replace"), width, height)

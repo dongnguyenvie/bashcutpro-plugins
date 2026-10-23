@@ -42,6 +42,10 @@ class BmpTests(unittest.TestCase):
             read_gray(b"PNG...")
 
 
+    @unittest.skip("test ticket: a BMP cut short (header or pixels) raises ValueError, not struct.error / IndexError")
+    def test_truncated_bmp_is_a_value_error(self):
+        pass
+
 class DetectTests(unittest.TestCase):
     def test_finds_the_changing_subtitle_band_and_reports_the_fixed_logo(self):
         found = find_subtitles([grey(SPEC, i) for i in range(8)])
@@ -143,6 +147,10 @@ class CoverCommandTests(unittest.TestCase):
         self.assertEqual(len(self.clip()["effects"]), 3)
         self.assertIn("nothing changed", out["message"])
 
+
+    @unittest.skip("test ticket: cover on a clip whose exported frame is truncated skips that clip and leaves no bashcut-cover-* folder")
+    def test_damaged_frame_skips_the_clip_and_leaves_no_temp_folder(self):
+        pass
 
 if __name__ == "__main__":
     unittest.main()

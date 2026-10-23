@@ -12,6 +12,7 @@ second run replaces it. Everything is undoable engine commands; nothing is rende
 """
 
 import os
+import shutil
 import tempfile
 
 from .bmp import read_gray
@@ -174,7 +175,7 @@ def parse_box(text):
 
 
 def video_clips(sequence, footage=None):
-    """Clips on the video tracks that come from a media item, top track first. With `footage` (from
+    """Clips on the video tracks that come from a media item, bottom track (V1) first. With `footage` (from
     `footage_items`), only clips of those items: a title or graphic has no source frame to export."""
     clips = []
     for index, track in enumerate(sequence.get("video") or []):
@@ -222,16 +223,23 @@ def sample_times(clip, seconds=30.0, count=8):
 
 def detect_clip(app, clip, seconds=30.0, count=8, where="bottom", folder=None):
     """Export sample frames of `clip`'s source and look for subtitles; result with the frame size."""
-    folder = folder or tempfile.mkdtemp(prefix="bashcut-cover-")
+    scratch = None if folder else tempfile.mkdtemp(prefix="bashcut-cover-")
     frames, size = [], None
-    for i, t in enumerate(sample_times(clip, seconds, count)):
-        path = os.path.join(folder, "clip%s-%02d.bmp" % (clip["clip"], i))
-        app.run("file.exportFrame", {"target": "source", "item": clip["item"], "time": t, "format": "bmp", "path": path})
-        with open(path, "rb") as f:
-            grid, width, height = read_gray(f.read())
-        os.remove(path)
-        frames.append(grid)
-        size = (width, height)
+    try:
+        for i, t in enumerate(sample_times(clip, seconds, count)):
+            path = os.path.join(folder or scratch, "clip%s-%02d.bmp" % (clip["clip"], i))
+            app.run("file.exportFrame", {"target": "source", "item": clip["item"], "time": t, "format": "bmp", "path": path})
+            try:
+                with open(path, "rb") as f:
+                    grid, width, height = read_gray(f.read())
+            finally:
+                if os.path.exists(path):
+                    os.remove(path)
+            frames.append(grid)
+            size = (width, height)
+    finally:
+        if scratch:
+            shutil.rmtree(scratch, ignore_errors=True)
     found = find_subtitles(frames, where)
     found["width"], found["height"] = size
     return found
