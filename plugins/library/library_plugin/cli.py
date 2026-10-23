@@ -10,7 +10,9 @@ host:port` for the open app); the rest work on the library alone.
 import argparse
 import json
 import os
-import sys
+
+import bashcut_cli
+from bashcut_cli import connection_args
 
 from . import __version__
 from .engine import apply_brand, apply_item, save_selection
@@ -19,17 +21,7 @@ from .mcp import AppError, McpClient
 
 
 def progress(message):
-    if hasattr(sys.stderr, "reconfigure"):  # UTF-8 whatever the code page (Windows): the Runs log reads Vietnamese
-        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
-    print("[library] " + message, file=sys.stderr, flush=True)
-
-
-def connection_args(parser):
-    group = parser.add_argument_group("connection (one of)")
-    group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
-    group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
-    group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
+    bashcut_cli.progress("library", message)
 
 
 def meta_args(parser):
@@ -279,29 +271,9 @@ COMMANDS = {"kinds": cmd_kinds, "add": cmd_add, "save": cmd_save, "apply": cmd_a
             "pack-import": cmd_pack_import, "stats": cmd_stats, "brand": cmd_brand}
 
 
-def emit(value):
-    """The result as UTF-8 whatever the console's code page is (Windows), so a caller can always decode it."""
-    text = json.dumps(value, ensure_ascii=False, indent=1) + "\n"
-    sys.stdout.flush()
-    out = getattr(sys.stdout, "buffer", None)
-    if out is None:  # a text stream (tests)
-        sys.stdout.write(text)
-    else:
-        out.write(text.encode("utf-8"))
-        out.flush()
-
-
 def main(argv=None):
+    bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
     if args.library_dir:
         os.environ["BASHCUT_LIBRARY_DIR"] = os.path.abspath(args.library_dir)
-    try:
-        message, data = COMMANDS[args.command](args)
-    except (AppError, LibraryError) as error:
-        emit({"ok": False, "error": {"code": error.code, "message": error.message}})
-        return 2 if error.code == "bad_args" else 1
-    except (OSError, ValueError) as error:
-        emit({"ok": False, "error": {"code": "failed", "message": str(error)}})
-        return 1
-    emit({"ok": True, "message": message, "data": data})
-    return 0
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, LibraryError))

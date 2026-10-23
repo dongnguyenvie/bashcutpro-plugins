@@ -13,6 +13,9 @@ import subprocess
 import sys
 import tempfile
 
+import bashcut_cli
+from bashcut_cli import connection_args
+
 from . import __version__
 from .licences import credit_line, from_line, merge_notes, read_sidecar, write_sidecar
 from .mcp import AppError, McpClient
@@ -37,19 +40,11 @@ SCRIPTS = {
     "facts": ("fetch_facts", "numbers for a video from Wikidata, the World Bank and Wikipedia", []),
 }
 
+CONNECTION = "connection (one of; needed to import or place)"
+
 
 def progress(message):
-    if hasattr(sys.stderr, "reconfigure"):  # UTF-8 whatever the code page (Windows): the Runs log reads Vietnamese
-        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
-    print("[resources] " + message, file=sys.stderr, flush=True)
-
-
-def connection_args(parser):
-    group = parser.add_argument_group("connection (one of; needed to import or place)")
-    group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
-    group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
-    group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
+    bashcut_cli.progress("resources", message)
 
 
 def place_args(parser):
@@ -71,7 +66,7 @@ def build_parser():
     p.add_argument("--dry-run", action="store_true")
 
     p = sub.add_parser("fetch", help="run a fetch script; licences go next to the files; optionally import and place")
-    connection_args(p)
+    connection_args(p, CONNECTION)
     place_args(p)
     p.add_argument("--script", required=True, choices=sorted(SCRIPTS))
     p.add_argument("--args", default="", help='the script\'s own arguments, as one string or a JSON list ("--help" lists them)')
@@ -81,7 +76,7 @@ def build_parser():
     p.add_argument("rest", nargs=argparse.REMAINDER, help="after --: more script arguments")
 
     p = sub.add_parser("import", help="import fetched files (or a folder of them); --credits notes their credits in the project")
-    connection_args(p)
+    connection_args(p, CONNECTION)
     place_args(p)
     p.add_argument("--path", action="append", default=[], help="a file to import (repeatable)")
     p.add_argument("--folder", help="every media file in this folder that has a licence record")
@@ -319,27 +314,7 @@ COMMANDS = {"scripts": cmd_scripts, "setup": cmd_setup, "fetch": cmd_fetch, "imp
             "search": cmd_search, "download": cmd_download}
 
 
-def emit(value):
-    """The result as UTF-8 whatever the console's code page is (Windows), so a caller can always decode it."""
-    text = json.dumps(value, ensure_ascii=False, indent=1) + "\n"
-    sys.stdout.flush()
-    out = getattr(sys.stdout, "buffer", None)
-    if out is None:  # a text stream (tests)
-        sys.stdout.write(text)
-    else:
-        out.write(text.encode("utf-8"))
-        out.flush()
-
-
 def main(argv=None):
+    bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    try:
-        message, data = COMMANDS[args.command](args)
-    except AppError as error:
-        emit({"ok": False, "error": {"code": error.code, "message": error.message}})
-        return 2 if error.code == "bad_args" else 1
-    except (OSError, ValueError) as error:
-        emit({"ok": False, "error": {"code": "failed", "message": str(error)}})
-        return 1
-    emit({"ok": True, "message": message, "data": data})
-    return 0
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError,))

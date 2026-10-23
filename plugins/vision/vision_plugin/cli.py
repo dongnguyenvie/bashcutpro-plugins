@@ -14,6 +14,8 @@ import subprocess
 import sys
 import tempfile
 
+import bashcut_cli
+from bashcut_cli import connection_args
 from bashcut_models import ModelError, Models
 
 from . import __version__
@@ -27,29 +29,22 @@ from .timeline import (clip_entry, every_frame, export_still, footage_items, fps
                        video_clips, ensure_video_track)
 
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXIT_HANDOFF = 3
 MODEL_COMMANDS = ("cutout", "subjects")
 
 
+def progress(message):
+    bashcut_cli.progress("vision", message)
+
+
 class Handoff(Exception):
+    """The calling agent has to finish: `data` holds the frames and the action to run with its answer (exit 3)."""
+
+    code = "handoff"
+
     def __init__(self, message, data):
         super().__init__(message)
         self.message = message
         self.data = data
-
-
-def progress(message):
-    if hasattr(sys.stderr, "reconfigure"):  # UTF-8 whatever the code page (Windows): the Runs log reads Vietnamese
-        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
-    print("[vision] " + message, file=sys.stderr, flush=True)
-
-
-def connection_args(parser):
-    group = parser.add_argument_group("connection (one of)")
-    group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
-    group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
-    group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
 
 
 def frames_args(parser, samples):
@@ -351,11 +346,6 @@ COMMANDS = {"models": cmd_models, "setup": cmd_setup, "cutout": cmd_cutout, "sub
             "ocr-apply": cmd_ocr_apply, "describe": cmd_describe, "describe-apply": cmd_describe_apply}
 
 
-def emit(value):
-    sys.stdout.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
-    sys.stdout.flush()
-
-
 def relaunch(argv):
     """Run the same command with the private environment's Python when this one lacks the model packages."""
     if os.environ.get("VISION_FAKE") == "1":
@@ -374,25 +364,11 @@ def relaunch(argv):
 
 
 def main(argv=None):
-    for stream in (sys.stdin, sys.stdout):  # UTF-8 whatever the code page (`--answer -` and the result)
-        if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8")
+    bashcut_cli.utf8_stdio()  # `--answer -` and the result
     argv = sys.argv[1:] if argv is None else argv
     args = build_parser().parse_args(argv)
     if args.command in MODEL_COMMANDS:
         code = relaunch(argv)
         if code is not None:
             return code
-    try:
-        message, data = COMMANDS[args.command](args)
-    except Handoff as handoff:
-        emit({"ok": False, "error": {"code": "handoff", "message": handoff.message}, "data": handoff.data})
-        return EXIT_HANDOFF
-    except AppError as error:
-        emit({"ok": False, "error": {"code": error.code, "message": error.message}})
-        return 2 if error.code == "bad_args" else 1
-    except (OSError, ValueError) as error:
-        emit({"ok": False, "error": {"code": "failed", "message": str(error)}})
-        return 1
-    emit({"ok": True, "message": message, "data": data})
-    return 0
+    return bashcut_cli.run(COMMANDS[args.command], args, (Handoff, AppError), handoff=("handoff",))

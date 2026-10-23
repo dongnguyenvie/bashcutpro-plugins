@@ -132,7 +132,7 @@ class RoundTripTests(unittest.TestCase):
 
     def test_no_key_hands_the_lines_to_the_agent_then_apply_writes_them(self):
         code, out = self.run_cli("translate", "--target", "vi")
-        self.assertEqual(code, cli.EXIT_NO_KEY)
+        self.assertEqual(code, cli.bashcut_cli.EXIT_HANDOFF)
         self.assertEqual(out["error"]["code"], "no_key")
         lines = out["data"]["lines"]
         self.assertEqual([(l["caption"], l["maxChars"]) for l in lines], [(51, 34), (52, 25)])
