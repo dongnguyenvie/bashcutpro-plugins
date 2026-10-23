@@ -607,7 +607,7 @@ class SharedHelperTests(unittest.TestCase):
                 self.assertEqual(self.stock.shared_dir('fonts', 'cache'), plugin / 'cache' / 'fonts')
             with mock.patch.dict(os.environ, {'HOME': folder}, clear=True), mock.patch('sys.platform', 'linux'):
                 self.assertEqual(self.stock.shared_dir('luts'),
-                                 Path(folder) / '.local' / 'share' / 'filmcraft' / 'bashcut-plugins' / 'bashcut.resources'
+                                 Path(folder) / '.local' / 'share' / 'bashcutpro' / 'bashcut-plugins' / 'bashcut.resources'
                                  / 'shared' / 'luts')
 
     def test_openverse_photo_licence_matches_audio(self):

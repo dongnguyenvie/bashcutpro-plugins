@@ -55,6 +55,29 @@ def render_args(parser):
     parser.add_argument("--snapshot", metavar="S1,S2", help="PNGs at these seconds with these values instead of a render")
 
 
+# subcommand -> what it works on, given as its first argument or as --<name> (the app passes only flags)
+TARGETS = {"render": "composition", "place": "composition", "rerender": "record"}
+
+
+def target_args(parser, name, text):
+    parser.add_argument(name, nargs="?", help=text)
+    parser.add_argument("--" + name, dest=name + "_flag", metavar=name.upper(), help="the same, as a flag")
+
+
+def take_target(parser, args):
+    """`args.<name>` from the argument or its flag: one of them, the same when both are given."""
+    name = TARGETS.get(args.command)
+    if name is None:
+        return args
+    given, flag = getattr(args, name), getattr(args, name + "_flag")
+    if given and flag and given != flag:
+        parser.error("%s: give the %s once (%s or --%s %s)" % (args.command, name, given, name, flag))
+    if not (given or flag):
+        parser.error("%s: say which %s (%s %s or --%s %s)" % (args.command, name, args.command, name.upper(), name, name.upper()))
+    setattr(args, name, given or flag)
+    return args
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="hyperframes", description="HTML/GSAP graphics for BashCutPro with HyperFrames.")
     parser.add_argument("--version", action="version", version=__version__)
@@ -79,11 +102,11 @@ def build_parser():
     p.add_argument("args", nargs=argparse.REMAINDER)
 
     p = sub.add_parser("render", help="render a composition to PNG frames (or a .mov), place nothing")
-    p.add_argument("composition", help="a composition folder, an .html in one, or an example name")
+    target_args(p, "composition", "a composition folder, an .html in one, or an example name")
     render_args(p)
 
     p = sub.add_parser("place", help="render, import and place on a video track over the picture")
-    p.add_argument("composition")
+    target_args(p, "composition", "a composition folder, an .html in one, or an example name")
     connection_args(p)
     render_args(p)
     p.add_argument("--seconds", type=float, help="where the graphic starts on the timeline (with --frame: no)")
@@ -91,7 +114,7 @@ def build_parser():
     p.add_argument("--track", default="V2", help="video track (default V2, added when missing; `new` adds one on top)")
 
     p = sub.add_parser("rerender", help="render a placed graphic again from its record with changes and swap the media")
-    p.add_argument("record", help="the .graphic.json next to the render (or the render's folder or .mov)")
+    target_args(p, "record", "the .graphic.json next to the render (or the render's folder or .mov)")
     connection_args(p)
     render_args(p)
     p.add_argument("--unset", action="append", default=[], help="drop a recorded value")
@@ -329,5 +352,6 @@ def main(argv=None):
     if argv[:1] in (["hf"], ["osm-map"]) and not set(argv[1:2]) & {"-h", "--help"}:
         args = split_passthrough(argv)
     else:
-        args = build_parser().parse_args(argv)
+        parser = build_parser()
+        args = take_target(parser, parser.parse_args(argv))
     return bashcut_cli.run(COMMANDS[args.command], args)

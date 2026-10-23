@@ -19,7 +19,7 @@ from vieneu_tts.synth import pick_take, read_lines, syllables  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
 TPS = 254016000000
-ENV_KEYS = ("VIENEU_FAKE", "FILMCRAFT_DATA_DIR", "BASHCUT_VIENEU_VOICE", "BASHCUT_VIENEU_VARIATION", "BASHCUT_VIENEU_PYTHON")
+ENV_KEYS = ("VIENEU_FAKE", "BASHCUTPRO_DATA_DIR", "FILMCRAFT_DATA_DIR", "BASHCUT_VIENEU_VOICE", "BASHCUT_VIENEU_VARIATION", "BASHCUT_VIENEU_PYTHON")
 
 
 def write_wav(path, seconds):

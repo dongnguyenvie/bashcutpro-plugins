@@ -1,8 +1,8 @@
 """Where the plugin keeps its files, the API keys it passes on, and the Python that runs the scripts.
 
-Data folder: `<data dir>/bashcut-plugins/bashcut.resources/` (data dir: `FILMCRAFT_DATA_DIR`, else
-`~/Library/Application Support/FilmCraft`, `%APPDATA%\\FilmCraft`, `$XDG_DATA_HOME/filmcraft` or
-`~/.local/share/filmcraft`): `shared/` (indexes the scripts keep), `cache/` (downloads), `venv/` (made by `setup`),
+Data folder: `<data dir>/bashcut-plugins/bashcut.resources/` (data dir: `BASHCUTPRO_DATA_DIR`, else `FILMCRAFT_DATA_DIR`, else
+`~/Library/Application Support/BashCutPro`, `%APPDATA%\\BashCutPro`, `$XDG_DATA_HOME/bashcutpro` or
+`~/.local/share/bashcutpro`): `shared/` (indexes the scripts keep), `cache/` (downloads), `venv/` (made by `setup`),
 `project-data.json`. Keys are secrets: only from the environment (or a flag), never from a file.
 """
 

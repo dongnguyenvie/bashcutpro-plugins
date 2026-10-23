@@ -16,26 +16,30 @@ import check_registry  # noqa: E402
 
 # Run in a child Python with the plugin folder on sys.path (every plugin vendors modules of the same name): prints
 # the package's version, `cli.COMMANDS`, the option strings of the parser and each subcommand ({"sub cmd": [...]})
-# and the settings table ({id: [env vars]}, null without a `settings.SETTINGS`).
+# the required positional arguments of each subcommand ({"sub cmd": [dest, ...]}) and the settings table
+# ({id: [env vars]}, null without a `settings.SETTINGS`).
 DESCRIBE = r"""
 import argparse, importlib, json, sys
 sys.path.insert(0, sys.argv[1])
 package = sys.argv[2]
 cli = importlib.import_module(package + ".cli")
-def walk(parser, path, out):
+def walk(parser, path, out, required):
     options = out.setdefault(" ".join(path), [])
     for a in parser._actions:
         if isinstance(a, argparse._SubParsersAction):
             for name, sub in a.choices.items():
-                walk(sub, path + [name], out)
+                walk(sub, path + [name], out, required)
+        elif not a.option_strings and a.required:
+            required.setdefault(" ".join(path), []).append(a.dest)
         options += a.option_strings
     return out
 try:
     settings = {k: list(v[0]) for k, v in importlib.import_module(package + ".settings").SETTINGS.items()}
 except (ImportError, AttributeError):
     settings = None
+required = {}
 print(json.dumps({"version": importlib.import_module(package).__version__, "commands": sorted(cli.COMMANDS),
-                  "parsers": walk(cli.build_parser(), [], {}), "settings": settings}))
+                  "parsers": walk(cli.build_parser(), [], {}, required), "positionals": required, "settings": settings}))
 """
 
 # Commands for the calling agent only (in the plugin's README and skill), with no form in the app.
@@ -101,6 +105,16 @@ class ManifestCliTests(unittest.TestCase):
                 if action["needs"] == "project":
                     for args in manifest["connect"].values():
                         self.assertIn(args[0], accepted, "%s %s" % (action["id"], args[0]))
+        self.each(check)
+
+    def test_no_action_needs_an_argument_the_app_cannot_pass(self):
+        """The app passes an action's `args` and its params' flags only: a required positional argument the `args`
+        do not fill can never be given, so the action always fails (PX: hyperframes `render COMPOSITION`)."""
+        def check(name, manifest, code):
+            for action in manifest["actions"]:
+                path = subcommand(code["parsers"], action["args"])
+                given = len(action["args"]) - len(path.split())  # args after the subcommand fill positionals
+                self.assertEqual(code["positionals"].get(path, [])[given:], [], "action %s" % action["id"])
         self.each(check)
 
     def test_settings_match_the_resolver(self):

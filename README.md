@@ -91,7 +91,8 @@ person from a shell. The host and these runs all start a plugin the same way, fr
    open app (`--bridge 127.0.0.1:<port>`, the app started with `filmcraft --control <port>`). It talks to the engine with
    the MCP tools (`command_run`, `command_batch`, `sequence_inspect`, …) and engine command ids.
 3. **Settings**: each setting comes from its flag, else its environment variables, else the plugin's settings file
-   `<data dir>/bashcut-plugins/<id>/settings.json` (FilmCraft's data dir; `tools/bashcut_settings.py`). Secrets (API keys) never go in that file:
+   `<data dir>/bashcut-plugins/<id>/settings.json` (BashCutPro's data dir, in the order of its `bashcut-dirs` crate: `BASHCUTPRO_DATA_DIR`, `FILMCRAFT_DATA_DIR`, then
+   `BashCutPro` / `bashcutpro` in the per-user folder; `tools/bashcut_settings.py`). Secrets (API keys) never go in that file:
    a host keeps them in the OS key store and passes them as environment variables.
 4. **Result** (`output: "bashcut-result/1"`): one JSON object on stdout, `{"ok": true, "message", "data"}` or
    `{"ok": false, "error": {"code", "message"}, "data"?}`; progress lines on stderr. Exit status 0 success, 1 failure,
@@ -189,7 +190,7 @@ Every model or asset a plugin downloads (voice models, cutout models, LUT packs,
 
 The downloader `bashcut_models.py` (standard library; canonical copy in `tools/`, an identical copy in each plugin
 that downloads, kept equal by `check_models.py`) caches files in `<data dir>/bashcut-models/<id>/` (`BASHCUT_MODELS_DIR`
-overrides), resumes an interrupted download with an HTTP Range request, verifies the SHA-256 before a file is moved into
+overrides; a file that upstream FilmCraft's old `bashcut-models/` already has is hard-linked in, not downloaded again), resumes an interrupted download with an HTTP Range request, verifies the SHA-256 before a file is moved into
 place, falls back to the mirror, and prints progress on stderr. `Models.hf_cache()` makes verified Hugging Face files
 visible to `huggingface_hub` so a library such as VieNeu runs offline on them. A plugin finds `models.json` through
 `BASHCUT_MODELS_MANIFEST`, the repository root above its folder, or `<data dir>/bashcut-plugins/models.json` (where a

@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.hyperframes",
   "name": "HyperFrames Graphics",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "summary": "Animated graphics written as HTML/CSS + GSAP (counters, charts, cards, diagrams, maps, kinetic type), rendered with HyperFrames in headless Chrome to a PNG sequence or ProRes 4444 with alpha, imported and placed over the picture.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
@@ -133,6 +133,7 @@
       "needs": "none",
       "edits": false,
       "params": [
+        {"id": "composition", "title": "Composition", "flag": "--composition", "type": "path", "help": "A composition folder, an .html in one, or an example name (List the example graphics).", "i18n": {"vi": {"title": "Bố cục đồ họa", "help": "Thư mục bố cục, một tệp .html trong đó, hoặc tên một mẫu (xem Liệt kê đồ họa mẫu)."}}},
         {"id": "set", "title": "Values (name=value)", "flag": "--set", "type": "string", "optional": true, "i18n": {"vi": {"title": "Giá trị (tên=giá trị)"}}},
         {"id": "variables", "title": "Variables (JSON)", "flag": "--variables", "type": "string", "optional": true, "i18n": {"vi": {"title": "Biến (JSON)"}}},
         {"id": "brand", "title": "Brand file", "flag": "--brand", "type": "path", "optional": true, "i18n": {"vi": {"title": "Tệp thương hiệu"}}},
@@ -153,6 +154,7 @@
       "needs": "project",
       "edits": true,
       "params": [
+        {"id": "composition", "title": "Composition", "flag": "--composition", "type": "path", "help": "A composition folder, an .html in one, or an example name (List the example graphics).", "i18n": {"vi": {"title": "Bố cục đồ họa", "help": "Thư mục bố cục, một tệp .html trong đó, hoặc tên một mẫu (xem Liệt kê đồ họa mẫu)."}}},
         {"id": "seconds", "title": "Start (s)", "flag": "--seconds", "type": "number", "optional": true, "i18n": {"vi": {"title": "Bắt đầu (giây)"}}},
         {"id": "frame", "title": "Start (frame)", "flag": "--frame", "type": "integer", "optional": true, "i18n": {"vi": {"title": "Bắt đầu (khung hình)"}}},
         {"id": "track", "title": "Track", "flag": "--track", "type": "string", "default": "V2", "i18n": {"vi": {"title": "Track"}}},
@@ -174,6 +176,7 @@
       "needs": "project",
       "edits": true,
       "params": [
+        {"id": "record", "title": "Graphic record", "flag": "--record", "type": "path", "help": "The .graphic.json next to the render (or the render's folder or .mov).", "i18n": {"vi": {"title": "Bản ghi đồ họa", "help": "Tệp .graphic.json nằm cạnh bản dựng (hoặc thư mục bản dựng, hay tệp .mov)."}}},
         {"id": "set", "title": "Values (name=value)", "flag": "--set", "type": "string", "optional": true, "i18n": {"vi": {"title": "Giá trị (tên=giá trị)"}}},
         {"id": "unset", "title": "Drop recorded values", "flag": "--unset", "type": "string", "optional": true, "i18n": {"vi": {"title": "Bỏ các giá trị đã lưu"}}},
         {"id": "duration", "title": "Length (s)", "flag": "--duration", "type": "number", "optional": true, "i18n": {"vi": {"title": "Độ dài (giây)"}}},

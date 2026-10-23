@@ -27,9 +27,9 @@ py -3 plugin.py place graphics\title --seconds 3 --bridge 127.0.0.1:9876      # 
 | `examples [NAME]` | the 31 examples, one line each; with NAME its variables, brand ids and pitfalls | – |
 | `hf …` | the pinned HyperFrames CLI (`catalog`, `add`, `lint`, `check`, `snapshot`, `docs`); `hf --gsap` prints GSAP's path | – |
 | `osm-map …` | OpenStreetMap tiles and a route into a composition folder (`lib/osm-map.mjs`, cached in the data folder) | – |
-| `render COMP` | renders a composition folder, an `.html` or an example name with `--set k=v`, `--variables`, `--brand`, `--duration`, `--draft`, `--format png\|mov`; `--snapshot S1,S2` only looks | – |
+| `render COMP` | COMP (or `--composition COMP`, what the app passes) is a composition folder, an `.html` or an example name, rendered with `--set k=v`, `--variables`, `--brand`, `--duration`, `--draft`, `--format png\|mov`; `--snapshot S1,S2` only looks | – |
 | `place COMP --seconds S \| --frame F` | `render`, then imports and places on `--track` (default V2, added when missing; `new` adds one) and records the placement | `sequence_inspect`, `sequence.addTracks`, `file.importImageSequence` or `media_import`, `timeline.place`, `file.save` |
-| `rerender RECORD` | renders again from the record with changes and swaps the media of every placement | `media.replaceFootage`, `file.save` |
+| `rerender RECORD` | (or `--record RECORD`) renders again from the record with changes and swaps the media of every placement | `media.replaceFootage`, `file.save` |
 | `finalise` | every placed draft in the renders folder rendered again at full fps and swapped | the same |
 
 A render works on a copy of the composition: the values are written in as the declared defaults, the root's

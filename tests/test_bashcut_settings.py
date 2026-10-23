@@ -20,18 +20,22 @@ TABLE = {
 
 
 class DataDir(unittest.TestCase):
-    def test_override(self):
+    def test_overrides_in_bashcut_dirs_order(self):
         self.assertEqual(bashcut_settings.data_dir({"FILMCRAFT_DATA_DIR": "/d"}), "/d")
+        self.assertEqual(bashcut_settings.data_dir({"BASHCUTPRO_DATA_DIR": "/b"}), "/b")
+        self.assertEqual(bashcut_settings.data_dir({"BASHCUTPRO_DATA_DIR": "/b", "FILMCRAFT_DATA_DIR": "/d"}), "/b")
+        self.assertEqual(bashcut_settings.data_dir({"BASHCUTPRO_DATA_DIR": "", "FILMCRAFT_DATA_DIR": "/d"}), "/d")
 
-    def test_each_os(self):
+    def test_each_os_is_bashcutpros_folder_not_filmcrafts(self):
         env = {"HOME": "/h", "APPDATA": "C:/AppData", "XDG_DATA_HOME": "/x"}
-        cases = {"darwin": os.path.join("/h", "Library", "Application Support", "FilmCraft"),
-                 "win32": os.path.join("C:/AppData", "FilmCraft"), "linux": os.path.join("/x", "filmcraft")}
+        cases = {"darwin": os.path.join("/h", "Library", "Application Support", "BashCutPro"),
+                 "win32": os.path.join("C:/AppData", "BashCutPro"), "linux": os.path.join("/x", "bashcutpro")}
         for platform, expected in cases.items():
             with mock.patch.object(bashcut_settings.sys, "platform", platform):
                 self.assertEqual(bashcut_settings.data_dir(env), expected)
+                self.assertNotIn("filmcraft", bashcut_settings.plugin_dir("bashcut.hyperframes", env).lower())
         with mock.patch.object(bashcut_settings.sys, "platform", "linux"):
-            self.assertEqual(bashcut_settings.data_dir({"HOME": "/h"}), os.path.join("/h", ".local", "share", "filmcraft"))
+            self.assertEqual(bashcut_settings.data_dir({"HOME": "/h"}), os.path.join("/h", ".local", "share", "bashcutpro"))
 
     def test_plugin_folder_and_venv(self):
         env = {"FILMCRAFT_DATA_DIR": "/d"}

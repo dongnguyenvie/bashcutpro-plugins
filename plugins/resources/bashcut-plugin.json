@@ -2,7 +2,7 @@
   "schema": "bashcut-plugin/1",
   "id": "bashcut.resources",
   "name": "Online Resources",
-  "version": "0.2.20",
+  "version": "0.2.21",
   "summary": "Fetch open music, sound effects, stock photos and video, emoji, logos, illustrations, Lottie, fonts and LUTs from official APIs, with each file's licence recorded next to it, then import and place them; credit lines only when asked.",
   "publisher": "dongnguyenvie",
   "license": "MIT",
