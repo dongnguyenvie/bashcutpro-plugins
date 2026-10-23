@@ -130,13 +130,45 @@ class RoundTripTests(unittest.TestCase):
         self.assertNotIn("saved", self.state())
         self.assertEqual(self.state()["captions"]["tracks"][0]["captions"][1]["text"], "First   line\nwrapped")
 
-    @unittest.skip("test ticket: apply with every answered line stale reports no 'had no translation' count")
-    def test_apply_counts_only_unanswered_lines_as_missing(self):
-        pass
+    def write_json(self, name, value):
+        path = os.path.join(self.dir, name)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(value, f, ensure_ascii=False)
+        return path
 
-    @unittest.skip("test ticket: the no_key hand-off and export-lines carry then == apply and the answer template {lines: [{caption, text}]}")
+    def test_apply_counts_only_unanswered_lines_as_missing(self):
+        exported = self.write_json("lines.json", {"lines": [{"caption": 51, "text": "Old first"}, {"caption": 52, "text": "Old second"}]})
+        answer = self.write_json("answer.json", {"lines": [{"caption": 51, "text": "Một"}, {"caption": 52, "text": "Hai"}]})
+        code, out = self.run_cli("apply", "--answer", answer, "--lines", exported)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((out["data"]["written"], out["data"]["stale"]), (0, ["1", "2"]))
+        self.assertIn("2 skipped", out["message"])
+        self.assertNotIn("had no translation", out["message"])
+
+        # one stale, one answered and fresh, nothing missing; then one fresh line left unanswered
+        exported = self.write_json("lines.json", {"lines": [{"caption": 51, "text": "Old first"}, {"caption": 52, "text": "Second line"}]})
+        code, out = self.run_cli("apply", "--answer", answer, "--lines", exported)
+        self.assertEqual((code, out["data"]["written"], out["data"]["stale"]), (0, 1, ["1"]), out)
+        self.assertNotIn("had no translation", out["message"])
+        answer = self.write_json("answer.json", {"lines": [{"caption": 52, "text": "Hai nữa"}]})
+        code, out = self.run_cli("apply", "--answer", answer)
+        self.assertEqual((code, out["data"]["written"], out["data"]["stale"]), (0, 1, []), out)
+        self.assertIn("1 had no translation", out["message"])
+
     def test_no_key_hand_off_names_apply_and_the_answer_shape(self):
-        pass
+        template = {"lines": [{"caption": "<caption>", "text": "<translation>"}]}
+        code, out = self.run_cli("translate", "--target", "vi")
+        self.assertEqual((code, out["error"]["code"]), (cli.bashcut_cli.EXIT_HANDOFF, "no_key"))
+        self.assertEqual(out["data"]["then"], "apply")
+        self.assertEqual(out["data"]["answer"], template)
+        self.assertIn("apply", cli.COMMANDS)
+        code, out = self.run_cli("export-lines", "--target", "vi")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((out["data"]["then"], out["data"]["answer"]), ("apply", template))
+        # the template's shape is what apply reads: filled in, it writes the line
+        answer = self.write_json("answer.json", {"lines": [dict(template["lines"][0], caption=51, text="Dòng đầu")]})
+        code, out = self.run_cli("apply", "--answer", answer)
+        self.assertEqual((code, out["data"]["written"]), (0, 1), out)
 
     def test_no_key_hands_the_lines_to_the_agent_then_apply_writes_them(self):
         code, out = self.run_cli("translate", "--target", "vi")
@@ -209,9 +241,19 @@ class RoundTripTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(json.loads(out_buf.getvalue())["error"]["code"], "bad_args")
 
-    @unittest.skip("test ticket: apply with an --answer (or --lines) that is missing or not JSON exits 2 with bad_args")
     def test_apply_with_a_bad_answer_is_a_usage_error(self):
-        pass
+        good = self.write_json("answer.json", {"lines": [{"caption": 51, "text": "Một"}]})
+        bad = os.path.join(self.dir, "bad.json")
+        with open(bad, "w", encoding="utf-8") as f:
+            f.write("{not json")
+        missing = os.path.join(self.dir, "missing.json")
+        for argv in (["--answer", missing], ["--answer", bad], ["--answer", good, "--lines", missing], ["--answer", good, "--lines", bad]):
+            with self.subTest(argv=argv):
+                code, out = self.run_cli("apply", *argv)
+                self.assertEqual((code, out["ok"], out["error"]["code"]), (2, False, "bad_args"))
+        state = self.state()
+        self.assertNotIn("saved", state)
+        self.assertNotIn("captions.setText", [e["id"] for e in state.get("log", [])])
 
 
 if __name__ == "__main__":

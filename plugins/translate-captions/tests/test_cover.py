@@ -14,7 +14,7 @@ sys.path.insert(0, HERE)
 
 from frames import draw_frame  # noqa: E402
 from translate_captions import cli  # noqa: E402
-from bashcut_images import read_gray, write_bmp  # noqa: E402
+from bashcut_images import read_bmp, read_gray, write_bmp  # noqa: E402
 from translate_captions.cover import COVER_MASK_NAME, cover_params, find_subtitles, parse_box, sample_times  # noqa: E402
 
 FAKE = os.path.join(HERE, "fake_filmcraft.py")
@@ -41,10 +41,18 @@ class BmpTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             read_gray(b"PNG...")
 
-
-    @unittest.skip("test ticket: a BMP cut short (header or pixels) raises ValueError, not struct.error / IndexError")
     def test_truncated_bmp_is_a_value_error(self):
-        pass
+        path = os.path.join(tempfile.mkdtemp(), "f.bmp")
+        write_bmp(path, [[(x, y, 0) for x in range(40)] for y in range(30)])
+        with open(path, "rb") as f:
+            data = f.read()
+        for size in (2, 20, 40, 53, 54, 60, len(data) // 2, len(data) - 1):
+            with self.subTest(size=size):
+                with self.assertRaises(ValueError):
+                    read_gray(data[:size])
+                with self.assertRaises(ValueError):
+                    read_bmp(data[:size])
+        self.assertEqual(read_gray(data)[1:], (40, 30))
 
 class DetectTests(unittest.TestCase):
     def test_finds_the_changing_subtitle_band_and_reports_the_fixed_logo(self):
@@ -85,11 +93,6 @@ class DetectTests(unittest.TestCase):
         frames = [grey(spec, i) for i in range(8)]
         self.assertIsNone(find_subtitles(frames)["subtitles"])
         self.assertLess(find_subtitles(frames, "top")["subtitles"]["y"], 0.07)
-
-    @unittest.skip("test ticket: cover on a clip at speed 2 exports frames over the first --seconds x 2 of its source "
-                   "(fake engine's file.exportFrame times)")
-    def test_cover_samples_count_speed(self):
-        pass
 
     def test_box_sample_times_and_cover_params(self):
         self.assertEqual(parse_box("0.1, 0.8, 0.8, 0.3")["h"], 0.2)  # clipped to the picture
@@ -152,15 +155,71 @@ class CoverCommandTests(unittest.TestCase):
         self.assertEqual(len(self.clip()["effects"]), 3)
         self.assertIn("nothing changed", out["message"])
 
+    def edit_state(self, change):
+        with open(self.project, encoding="utf-8") as f:
+            state = json.load(f)
+        change(state)
+        with open(self.project, "w", encoding="utf-8") as f:
+            json.dump(state, f)
 
-    @unittest.skip("test ticket: cover on a clip whose exported frame is truncated skips that clip and leaves no bashcut-cover-* folder")
+    def export_times(self):
+        with open(self.project, encoding="utf-8") as f:
+            return [e["params"]["time"] for e in json.load(f)["log"] if e["id"] == "file.exportFrame"]
+
+    def add_clip(self, state, clip, item, spec):
+        first = state["sequence"]["video"][0]["items"][0]
+        state["sequence"]["video"][0]["items"].append(dict(first, clip=clip, item=item, name="other.mp4", start=4 * TPS,
+                                                           effects=json.loads(json.dumps(first["effects"]))))
+        state["frames"][str(item)] = spec
+
+    def test_cover_samples_count_speed(self):
+        def speed_two(state):
+            item = state["sequence"]["video"][0]["items"][0]
+            item["speed"] = 2.0
+            item["sourceOut"] = None  # the source span is duration x speed: 8 s
+        self.edit_state(speed_two)
+        code, out = self.run_cli("--mode", "detect", "--seconds", "1.5", "--frames", "4")
+        self.assertEqual(code, 0, out)
+        # the first 1.5 s on the timeline are 3 s of source at speed 2
+        self.assertEqual(self.export_times(), [int(3 * TPS * (i + 0.5) / 4) for i in range(4)])
+
+    def scratch_root(self):
+        """A temp dir of its own for tempfile while the test runs, so leftovers are the plugin's."""
+        root = tempfile.mkdtemp()
+        saved = tempfile.tempdir
+        tempfile.tempdir = root
+        self.addCleanup(setattr, tempfile, "tempdir", saved)
+        return root
+
     def test_damaged_frame_skips_the_clip_and_leaves_no_temp_folder(self):
-        pass
+        self.edit_state(lambda state: self.add_clip(state, 8, 4, dict(SPEC, export="truncated")))
+        root = self.scratch_root()
+        code, out = self.run_cli()
+        self.assertEqual(code, 0, out)
+        clips = {c["clip"]: c for c in out["data"]["clips"]}
+        self.assertIn("truncated", clips[8]["skipped"])
+        self.assertNotIn("skipped", clips[7])
+        self.assertEqual(out["data"]["covered"], 1)
+        self.assertEqual([n for n in os.listdir(root) if n.startswith("bashcut-cover-")], [])
+        with open(self.project, encoding="utf-8") as f:
+            items = json.load(f)["sequence"]["video"][0]["items"]
+        self.assertEqual([len(i["effects"]) for i in items], [4, 3])
 
-    @unittest.skip("test ticket: cover where file.exportFrame writes no file for one clip skips that clip (OSError) "
-                   "and still covers the others")
     def test_missing_exported_frame_skips_only_that_clip(self):
-        pass
+        self.edit_state(lambda state: self.add_clip(state, 8, 4, dict(SPEC, export="missing")))
+        root = self.scratch_root()
+        code, out = self.run_cli()
+        self.assertEqual(code, 0, out)
+        clips = {c["clip"]: c for c in out["data"]["clips"]}
+        self.assertIn("skipped", clips[8])
+        self.assertIsNotNone(clips[7]["subtitles"])
+        self.assertEqual(out["data"]["covered"], 1)
+        self.assertIn("1 of 2 clips", out["message"])
+        self.assertEqual(os.listdir(root), [])
+        with open(self.project, encoding="utf-8") as f:
+            state = json.load(f)
+        self.assertEqual([len(i["effects"]) for i in state["sequence"]["video"][0]["items"]], [4, 3])
+        self.assertEqual(state["saved"], 1)
 
 if __name__ == "__main__":
     unittest.main()

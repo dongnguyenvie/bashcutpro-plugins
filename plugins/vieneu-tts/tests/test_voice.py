@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -73,11 +74,6 @@ class LineTests(unittest.TestCase):
         with self.assertRaises(AppError):
             read_lines(["ok", "  "])
 
-    @unittest.skip("test ticket: speak/synthesize with a line without text, duplicate ids, a non-number seconds, a lines file "
-                   "that is not JSON or not {lines: [...]} each exit 2 with bad_args")
-    def test_bad_lines_are_usage_errors(self):
-        pass
-
     def test_pick_take_closest_to_rate(self):
         entry = {"takes": [{"take": 1, "syllablesPerSecond": 3.0}, {"take": 2, "syllablesPerSecond": 4.6}]}
         self.assertEqual(pick_take(entry)["take"], 1)
@@ -130,9 +126,49 @@ class SynthesizeTests(Base):
         self.assertEqual(len(steps), 2)
         self.assertEqual(result["data"]["models"], ["vieneu-v3-turbo", "moss-audio-tokenizer-nano-onnx"])
 
-    @unittest.skip("test ticket: setup with a step that prints to stdout (fake python/uv): stdout is exactly one JSON object, the step output is on stderr")
+    def test_bad_lines_are_usage_errors(self):
+        def lines_file(name, content):
+            path = os.path.join(self.dir, name)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content if isinstance(content, str) else json.dumps(content, ensure_ascii=False))
+            return path
+        bad = {
+            "no text": ["--text", "Chào", "--text", "   "],
+            "no text in file": ["--lines", lines_file("empty.json", {"lines": [{"id": "a", "text": ""}]})],
+            "duplicate ids": ["--lines", lines_file("dup.json", {"lines": [{"id": "a", "text": "Một"}, {"id": "a", "text": "Hai"}]})],
+            "seconds": ["--lines", lines_file("seconds.json", {"lines": [{"text": "Một", "seconds": "soon"}]})],
+            "not JSON": ["--lines", lines_file("broken.json", "{lines: [")],
+            "not lines": ["--lines", lines_file("object.json", {"text": "Một"})],
+            "missing file": ["--lines", os.path.join(self.dir, "nowhere.json")],
+        }
+        for command in ("synthesize", "speak"):
+            for case, argv in bad.items():
+                with self.subTest(command=command, case=case):
+                    out = os.path.join(self.dir, "out-%s" % command)
+                    code, result = self.run_cli(command, *argv, "--out", out, project=command == "speak")
+                    self.assertEqual((code, result["ok"], result["error"]["code"]), (2, False, "bad_args"), result)
+                    self.assertFalse(os.path.exists(out) and os.listdir(out))
+        self.assertNotIn("file.import", [e["id"] for e in self.state().get("log", [])])
+
+    @unittest.skipIf(os.name == "nt", "the stand-in python is a shell script")
     def test_setup_stdout_is_one_json_object(self):
-        pass
+        # makes the venv by copying itself to <venv>/bin/python3; every run prints to stdout
+        python = os.path.join(self.dir, "python")
+        with open(python, "w", encoding="utf-8") as f:
+            f.write('#!/bin/sh\necho "fake python $*"\n'
+                    'if [ "$2" = venv ]; then mkdir -p "$3/bin" && cp "$0" "$3/bin/python3"; fi\n')
+        os.chmod(python, 0o755)
+        plugin = os.path.join(cli.PLUGIN_ROOT, "plugin.py")
+        out = subprocess.run([sys.executable, plugin, "setup", "--python", python], capture_output=True, timeout=60)
+        stdout, stderr = out.stdout.decode("utf-8"), out.stderr.decode("utf-8")
+        self.assertEqual(out.returncode, 0, stdout + stderr)
+        result = json.loads(stdout)  # the whole of stdout is the one object
+        self.assertNotIn("fake python", stdout)
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(result["data"]["steps"]), 2)
+        self.assertEqual(result["data"]["models"], {})
+        self.assertIn("fake python -m venv", stderr)
+        self.assertIn("fake python -m pip install", stderr)
 
     def test_model_files_come_from_models_json(self):
         from bashcut_models import Models
