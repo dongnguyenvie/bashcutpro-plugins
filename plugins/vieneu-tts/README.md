@@ -66,9 +66,9 @@ Differences from the BashCut provider: no take check by re-transcription (the ki
 
 - `bashcut-plugin.json`: the manifest; `plugin.py`: the entry point
 - `vieneu_tts/`: `cli.py` (commands), `synth.py` (lines, worker, measuring takes), `engine.py` (the model worker),
-  `timeline.py` (import and place), `mcp.py` (MCP client for `bashcutpro mcp`), `voices.py`, `settings.py`
+  `timeline.py` (import and place), `mcp.py` (MCP client for `bashcutpro-cli mcp`), `voices.py`, `settings.py`
 - `skills/vieneu-tts/SKILL.md`: the agent skill
-- `tests/`: unit tests and a fake `filmcraft-cli mcp` (`fake_filmcraft.py`); `VIENEU_FAKE=1` makes the worker write
+- `tests/`: unit tests and a fake `bashcutpro-cli mcp` (`fake_filmcraft.py`); `VIENEU_FAKE=1` makes the worker write
   tones instead of loading the model, so tests need no download
 
 ## Test
@@ -77,4 +77,4 @@ Differences from the BashCut provider: no take check by re-transcription (the ki
 python3 -m unittest discover -s tests -v
 ```
 
-Live test pending (needs `filmcraft-cli` and the model): a Vietnamese line voiced and landing on A2.
+Live test pending (needs `bashcutpro-cli` and the model): a Vietnamese line voiced and landing on A2.

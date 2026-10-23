@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A stand-in for `filmcraft-cli mcp --project <state.json>` used by the tests.
+"""A stand-in for `bashcutpro-cli mcp --project <state.json>` used by the tests.
 
 The JSON-RPC loop, `command_run` / `command_batch` and the state file are the shared `bashcut_fake_engine.py`; this
 answers the tools and commands the plugin uses, with the shapes FilmCraft's engine returns

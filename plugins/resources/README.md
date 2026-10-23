@@ -100,7 +100,7 @@ names the Python that runs the scripts; default the private environment, else th
   (records and credits), `timeline.py` (import and place), `mcp.py` (MCP client), `settings.py`
 - `skills/resources/SKILL.md`: the agent skill
 - `tests/`: the scripts' tests from BashCut, `test_plugin.py`, a stand-in script (`tests/scripts/fetch_stock.py`)
-  and a fake `filmcraft-cli mcp`; no network
+  and a fake `bashcutpro-cli mcp`; no network
 
 ## Test
 
@@ -112,4 +112,4 @@ No network and no UTF-8 mode needed (on Windows too). Tests that draw sheets or 
 numpy or rlottie is missing (`setup` installs them for the scripts, not for the test Python); the font measuring test
 needs macOS fonts (Arial Narrow, Arial Rounded, Didot or Bodoni).
 
-Live test pending (needs `filmcraft-cli` and the network): fetched assets imported with their licence noted.
+Live test pending (needs `bashcutpro-cli` and the network): fetched assets imported with their licence noted.

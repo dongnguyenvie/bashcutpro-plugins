@@ -48,7 +48,7 @@ computer: if `no_node`, ask the user to install Node.js 22 LTS — you cannot). 
 a `.fcgt` template.
 
 Connection (for `place`, `rerender`, `finalise`): `--project film.fcproj` (headless; saved unless `--no-save`) or
-`--bridge 127.0.0.1:9876` (the open app, started with `filmcraft --control 9876`); `--cli` names `bashcutpro` (or `filmcraft-cli`)
+`--bridge 127.0.0.1:9876` (the open app, started with `bashcutpro --control 9876`); `--cli` names `bashcutpro-cli` (else `bcpro` or `filmcraft-cli` is looked up)
 when it is not found.
 
 ## 2. The loop: design, build, look, draft, review, final

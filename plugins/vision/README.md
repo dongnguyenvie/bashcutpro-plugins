@@ -51,6 +51,6 @@ from those projects.
 
 ## Tests
 
-`python3 -m unittest discover -s tests` runs everything against a fake `filmcraft-cli mcp` and a fake model backend
+`python3 -m unittest discover -s tests` runs everything against a fake `bashcutpro-cli mcp` and a fake model backend
 (`VISION_FAKE=1`: red pixels are a person, yellow a face, blue an object): no download, no packages.
 Manual check pending: a person cut out of a real clip, and a horizontal clip reframed to vertical following the face.

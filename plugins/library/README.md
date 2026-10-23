@@ -55,6 +55,6 @@ keeps every project), so concurrent runs such as batch packs keep each other's u
 python3 -m unittest discover -s tests
 ```
 
-A fake `filmcraft-cli mcp` (`tests/fake_filmcraft.py`) answers the commands: a title and an effect preset are saved
+A fake `bashcutpro-cli mcp` (`tests/fake_filmcraft.py`) answers the commands: a title and an effect preset are saved
 from one project and re-applied on another, a LUT and a sound range are saved and applied, packs round-trip with
 clashing ids, search ranks favourites and recent items first.

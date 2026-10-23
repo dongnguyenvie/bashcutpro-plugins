@@ -87,8 +87,8 @@ person from a shell. The host and these runs all start a plugin the same way, fr
 
 1. **Start**: run `entry.command` (or the `entry.<os>` override) in the plugin folder, followed by the action's `args`,
    the connection arguments (`connect`) and the action's parameters as flags.
-2. **Connect**: the plugin starts `bashcutpro mcp` itself, headless on a project file (`--project`) or bridged to the
-   open app (`--bridge 127.0.0.1:<port>`, the app started with `filmcraft --control <port>`). It talks to the engine with
+2. **Connect**: the plugin starts `bashcutpro-cli mcp` itself, headless on a project file (`--project`) or bridged to the
+   open app (`--bridge 127.0.0.1:<port>`, the app started with `bashcutpro --control <port>`). It talks to the engine with
    the MCP tools (`command_run`, `command_batch`, `sequence_inspect`, …) and engine command ids.
 3. **Settings**: each setting comes from its flag, else its environment variables, else the plugin's settings file
    `<data dir>/bashcut-plugins/<id>/settings.json` (BashCutPro's data dir, in the order of its `bashcut-dirs` crate: `BASHCUTPRO_DATA_DIR`, `FILMCRAFT_DATA_DIR`, then
@@ -120,7 +120,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `platforms` | `["macos", "windows", "linux"]` | where it runs |
 | `runtime` | `{type, version, packages}` | what must be installed first: `python` `>=3.9` with no packages for translate-captions; `packages` lists pip / npm packages a host would install into the plugin's own environment |
 | `entry` | `{command: [...], windows?, macos?, linux?}` | the program to run, as an argument list relative to the plugin folder; an OS key replaces `command` there |
-| `connect` | `{project, bridge, cli}` | argument templates the host adds: `{project}` a `.fcproj` path, `{address}` `host:port` of the open app, `{cli}` the path of the BashCutPro command line (`bashcutpro`, else `filmcraft-cli`; also in `BASHCUTPRO_CLI`) |
+| `connect` | `{project, bridge, cli}` | argument templates the host adds: `{project}` a `.fcproj` path, `{address}` `host:port` of the open app, `{cli}` the path of the BashCutPro command line (`bashcutpro-cli`, else `bcpro`, else `filmcraft-cli`; also in `BASHCUTPRO_CLI`) |
 | `output` | `"bashcut-result/1"` | the result protocol above |
 | `app` | object | what the plugin needs from BashCutPro: `minVersion` (the workspace version, `0.9.0` today), `connections` (`mcp-headless`, `mcp-bridge`, `control`), `tools` (MCP tools), `commands` (engine command ids), `effects` (effect ids). A host checks them against `command_list` / `effects.list` before running |
 | `settings` | list | `{id, title, type, default?, choices?, env: [...], flag, optional?, help}`; `type` one of string, secret, enum, integer, number, bool, path; a `secret` has no default and is passed only through `env` or `flag`; `help` is shown under the field, in the user's words (no flags, exit statuses or command names) |

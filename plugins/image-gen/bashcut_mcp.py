@@ -1,8 +1,8 @@
-"""A small MCP client for `bashcutpro mcp` or `filmcraft-cli mcp` (stdio, newline-delimited JSON-RPC).
+"""A small MCP client for `bashcutpro-cli mcp` (or `bcpro mcp`, `filmcraft-cli mcp`; stdio, newline-delimited JSON-RPC).
 
 Only what a plugin needs: initialize, `tools/call` and the `command_run` / `command_batch` / `sequence_inspect`
 tools. Headless mode opens a project file in the server's own engine session; bridge mode drives the running app
-(`filmcraft --control <port>`). The handshake names the plugin: `McpClient.connect(..., client=(PLUGIN_ID,
+(`bashcutpro --control <port>`). The handshake names the plugin: `McpClient.connect(..., client=(PLUGIN_ID,
 __version__))` (each plugin's `mcp.py` does that).
 
 Canonical copy: `tools/bashcut_mcp.py` in bashcutpro-plugins. Each plugin whose code imports it ships an identical
@@ -20,6 +20,8 @@ import threading
 import bashcut_cli
 
 PROTOCOL_VERSION = "2025-06-18"
+# the command line's file names, in lookup order (NM3): `bcpro` is its short alias, `filmcraft-cli` an older build
+CLI_NAMES = ("bashcutpro-cli", "bcpro", "filmcraft-cli")
 
 
 class AppError(bashcut_cli.PluginError):
@@ -27,37 +29,38 @@ class AppError(bashcut_cli.PluginError):
 
 
 def find_cli(explicit=None):
-    """The BashCutPro command line to run (BashCutPro#154): `--cli`, then $BASHCUTPRO_CLI, then $FILMCRAFT_CLI, then
-    `bashcutpro` or `filmcraft-cli` on PATH, then the release install folders. `bashcutpro` runs the `filmcraft-cli`
-    beside it with the same arguments; either one works."""
+    """The BashCutPro command line to run (BashCutPro#154, NM3): `--cli`, then $BASHCUTPRO_CLI, then $FILMCRAFT_CLI,
+    then `bashcutpro-cli`, `bcpro` or `filmcraft-cli` on PATH (exact names; never plain `bashcutpro`, the GUI on
+    Linux), then the release install folders."""
     for candidate in (explicit, os.environ.get("BASHCUTPRO_CLI"), os.environ.get("FILMCRAFT_CLI")):
         if candidate:
             found = candidate if os.path.isfile(candidate) else shutil.which(candidate)
             if found:
                 return found
             raise AppError("no_cli", "the BashCutPro command line was not found at %s" % candidate)
-    for name in ("bashcutpro", "filmcraft-cli"):
+    for name in CLI_NAMES:
         on_path = shutil.which(name)
         if on_path:
             return on_path
     defaults = {
-        "win32": [r"C:\Program Files\BashCutPro\bashcutpro.exe", r"C:\Program Files\BashCutPro\filmcraft-cli.exe",
-                  r"C:\Program Files\FilmCraft\filmcraft-cli.exe"],
-        "linux": ["/usr/bin/bashcutpro", "/usr/local/bin/bashcutpro", "/usr/bin/filmcraft-cli", "/usr/local/bin/filmcraft-cli"],
-        "darwin": ["/usr/local/bin/bashcutpro", "/opt/homebrew/bin/bashcutpro", "/usr/local/bin/filmcraft-cli",
-                   "/opt/homebrew/bin/filmcraft-cli"],
+        "win32": [r"C:\Program Files\BashCutPro\bashcutpro-cli.exe", r"C:\Program Files\BashCutPro\bcpro.exe",
+                  r"C:\Program Files\BashCutPro\filmcraft-cli.exe", r"C:\Program Files\FilmCraft\filmcraft-cli.exe"],
+        "linux": ["/usr/bin/bashcutpro-cli", "/usr/local/bin/bashcutpro-cli", "/usr/bin/bcpro", "/usr/local/bin/bcpro",
+                  "/usr/bin/filmcraft-cli", "/usr/local/bin/filmcraft-cli"],
+        "darwin": ["/usr/local/bin/bashcutpro-cli", "/opt/homebrew/bin/bashcutpro-cli", "/usr/local/bin/bcpro",
+                   "/opt/homebrew/bin/bcpro", "/usr/local/bin/filmcraft-cli", "/opt/homebrew/bin/filmcraft-cli"],
     }
     for path in defaults.get(sys.platform, []):
         if os.path.isfile(path):
             return path
     raise AppError(
         "no_cli",
-        "bashcutpro (or filmcraft-cli) not found: pass --cli <path>, set BASHCUTPRO_CLI, or put it on PATH "
+        "bashcutpro-cli not found: pass --cli <path>, set BASHCUTPRO_CLI, or put it on PATH "
         "(it ships next to the app on Windows and Linux, and in the CLI zip on macOS)")
 
 
 def server_args(project=None, bridge=None):
-    """The arguments after `bashcutpro` for one of the two server modes."""
+    """The arguments after `bashcutpro-cli` for one of the two server modes."""
     if project and bridge:
         raise AppError("bad_args", "use either --project (headless) or --bridge (the open app), not both")
     if bridge:

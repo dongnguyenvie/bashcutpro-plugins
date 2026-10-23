@@ -1,4 +1,5 @@
-"""The shared MCP client's `find_cli` (`bashcut_mcp`, every plugin's `mcp.py` uses it; BashCutPro#154): `bashcutpro` first, else `filmcraft-cli`; BASHCUTPRO_CLI, then FILMCRAFT_CLI."""
+"""The shared MCP client's `find_cli` (`bashcut_mcp`, every plugin's `mcp.py` uses it; BashCutPro#154, NM3): `bashcutpro-cli`,
+then `bcpro`, then `filmcraft-cli`, never plain `bashcutpro` (the GUI on Linux); BASHCUTPRO_CLI, then FILMCRAFT_CLI."""
 
 import glob
 import importlib
@@ -69,20 +70,38 @@ class FindCliTests(unittest.TestCase):
     def test_there_are_plugins(self):
         self.assertGreaterEqual(len(MODULES), 1)
 
-    def test_only_bashcutpro_on_path(self):
-        pro = os.path.normcase(self.fake("bashcutpro"))
-        for name, mod in MODULES:
-            self.assertEqual(self.found(mod), pro, name)
+    def test_each_name_alone_on_path(self):
+        for cli in ("bashcutpro-cli", "bcpro", "filmcraft-cli"):
+            path = os.path.normcase(self.fake(cli))
+            for name, mod in MODULES:
+                self.assertEqual(self.found(mod), path, (cli, name))
+            os.remove(path)
 
-    def test_only_filmcraft_cli_on_path(self):
+    def test_the_gui_name_is_not_the_cli(self):
+        self.fake("bashcutpro")
+        for name, mod in MODULES:
+            with self.env(), self.assertRaises(mod.AppError) as e:
+                mod.find_cli()
+            self.assertEqual(e.exception.code, "no_cli", name)
         old = os.path.normcase(self.fake("filmcraft-cli"))
         for name, mod in MODULES:
             self.assertEqual(self.found(mod), old, name)
 
-    def test_pro_name_wins_and_env_names_it(self):
-        pro, old = self.fake("bashcutpro"), self.fake("filmcraft-cli")
+    def test_lookup_order(self):
+        pro, alias, old = self.fake("bashcutpro-cli"), self.fake("bcpro"), self.fake("filmcraft-cli")
+        self.fake("bashcutpro")
         for name, mod in MODULES:
             self.assertEqual(self.found(mod), os.path.normcase(pro), name)
+        os.remove(pro)
+        for name, mod in MODULES:
+            self.assertEqual(self.found(mod), os.path.normcase(alias), name)
+        os.remove(alias)
+        for name, mod in MODULES:
+            self.assertEqual(self.found(mod), os.path.normcase(old), name)
+
+    def test_env_wins_over_path(self):
+        pro, old = self.fake("bashcutpro-cli"), self.fake("filmcraft-cli")
+        for name, mod in MODULES:
             self.assertEqual(self.found(mod, FILMCRAFT_CLI=old), os.path.normcase(old), name)
             self.assertEqual(self.found(mod, BASHCUTPRO_CLI=old, FILMCRAFT_CLI=pro), os.path.normcase(old), name)
             with self.env():
@@ -94,6 +113,8 @@ class FindCliTests(unittest.TestCase):
                 mod.find_cli()
             self.assertEqual(e.exception.code, "no_cli", name)
             self.assertIn("BASHCUTPRO_CLI", e.exception.message, name)
+            self.assertTrue(e.exception.message.startswith("bashcutpro-cli not found"), name)
+            self.assertNotIn("filmcraft", e.exception.message, name)
             with self.env(BASHCUTPRO_CLI=os.path.join(self.dir, "missing")), self.assertRaises(mod.AppError):
                 mod.find_cli()
 
