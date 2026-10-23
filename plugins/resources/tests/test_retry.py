@@ -91,6 +91,18 @@ class GetTests(unittest.TestCase):
     def test_the_agent_is_sent_and_a_404_raises_not_found(self):
         pass
 
+    @unittest.skip("test ticket: get_file writes curl -o <path>.part and renames it; a failed try leaves no .part and is retried like get")
+    def test_get_file_writes_through_a_part_file(self):
+        pass
+
+    @unittest.skip("test ticket: get_file over max_bytes (curl exit 63, or exit 56 with the cap reached, or more on disk) raises TooLarge once, no retry, nothing left")
+    def test_get_file_over_the_cap_stops_and_is_not_retried(self):
+        pass
+
+    @unittest.skip("test ticket: --max-mb: a video that passes what is left of the cap is deferred (not an error) and a smaller later one still downloads; capped is reported")
+    def test_a_video_over_the_cap_is_deferred(self):
+        pass
+
     @unittest.skip("test ticket: save() reuses an item the library already has, place() maps an error to placeError")
     def test_save_reuses_an_item_and_place_reports_its_error(self):
         pass

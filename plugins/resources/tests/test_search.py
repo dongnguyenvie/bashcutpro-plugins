@@ -13,11 +13,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 REAL_SCRIPTS = os.path.join(ROOT, "scripts")
 sys.path.insert(0, ROOT)
+sys.path.insert(0, HERE)
 
 from resources_plugin import cli  # noqa: E402
 from resources_plugin import search as finder  # noqa: E402
 from resources_plugin.licences import read_sidecar  # noqa: E402
 from resources_plugin.mcp import AppError  # noqa: E402
+from test_fetch_assets import file_from_get  # noqa: E402
 
 with open(os.path.join(ROOT, "bashcut-plugin.json"), encoding="utf-8") as f:
     MANIFEST = json.load(f)
@@ -43,7 +45,7 @@ class SearchTest(unittest.TestCase):
             sys.path.remove(REAL_SCRIPTS)
         self.stock, self.audio = finder._scripts()
         self.urls = []
-        self.saved = (self.stock.get, self.audio.music_candidates, dict(self.stock.SEARCH))
+        self.saved = (self.stock.get, self.stock.get_file, self.audio.music_candidates, dict(self.stock.SEARCH))
 
         def fake_get(url, headers=None, timeout=30, tries=3):
             self.urls.append(url)
@@ -54,9 +56,10 @@ class SearchTest(unittest.TestCase):
             raise OSError("no network in tests: %s" % url)
 
         self.stock.get = fake_get
+        self.stock.get_file = file_from_get(self.stock)
 
     def tearDown(self):
-        self.stock.get, self.audio.music_candidates, search = self.saved
+        self.stock.get, self.stock.get_file, self.audio.music_candidates, search = self.saved
         self.stock.SEARCH.clear()
         self.stock.SEARCH.update(search)
         for k, v in self.env.items():
@@ -122,6 +125,10 @@ class SearchTest(unittest.TestCase):
             finder.download("music", "file:///etc/passwd", "x")
         with self.assertRaises(AppError):
             finder.download("music", "https://elsewhere.example/missing.mp3", "x")
+
+    @unittest.skip("test ticket: download of a file over MAX_BYTES stops while downloading, raises AppError 'larger than', leaves no file")
+    def test_download_over_the_cap_stops_early(self):
+        pass
 
     def test_cli_prints_one_result_object(self):
         out, err = io.StringIO(), io.StringIO()

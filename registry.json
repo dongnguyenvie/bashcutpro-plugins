@@ -34,7 +34,7 @@
     {
       "id": "bashcut.resources",
       "name": "Online Resources",
-      "version": "0.2.15",
+      "version": "0.2.16",
       "summary": "Open music, SFX, stock photos and video, icons, emoji, logos, illustrations, fonts and LUTs from official APIs: search with the licence shown before download, each file's licence recorded next to it; credit lines only when asked.",
       "i18n": {"vi": {"name": "Tài nguyên trực tuyến", "summary": "Nhạc, hiệu ứng âm thanh, ảnh và video stock, biểu tượng, emoji, logo, hình minh họa, phông chữ và LUT mở từ API chính thức: xem giấy phép trước khi tải, ghi giấy phép cạnh từng tệp; chỉ ghi nguồn khi được yêu cầu."}},
       "category": "resources",

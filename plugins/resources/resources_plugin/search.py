@@ -167,18 +167,16 @@ def download(kind, url, title="", license="", author="", source="", dest=None):
     while os.path.exists(path):
         path = os.path.join(folder, "%s-%d%s" % (slug(title or "item"), n, suffix))
         n += 1
-    try:
-        body = stock.get(url, timeout=300)
+    try:  # streamed to disk; a file over MAX_BYTES stops while downloading and leaves nothing behind
+        size = stock.get_file(url, path, timeout=300, max_bytes=MAX_BYTES)
+    except stock.TooLarge:
+        raise AppError("failed", "the file is larger than %d MB" % (MAX_BYTES // (1024 * 1024)))
     except OSError as error:
         raise AppError("failed", "download failed: %s" % str(error)[:200])
-    if len(body) > MAX_BYTES:
-        raise AppError("failed", "the file is larger than %d MB" % (MAX_BYTES // (1024 * 1024)))
-    with open(path, "wb") as f:
-        f.write(body)
     record = write_sidecar(path, {"title": title, "license": license, "author": author, "source": source, "kind": kind},
                            "search")
     return {"path": path, "kind": kind, "license": record.get("license"), "record": path + ".licence.json",
-            "credit": credit_line(record), "bytes": len(body)}
+            "credit": credit_line(record), "bytes": size}
 
 
 def _download_font(family, license, source, folder):

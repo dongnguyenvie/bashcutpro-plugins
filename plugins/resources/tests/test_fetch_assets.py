@@ -18,7 +18,21 @@ def load(relative):
     spec = importlib.util.spec_from_file_location(path.stem, path)
     value = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(value)
+    if hasattr(value, 'get_file'):
+        value.get_file = file_from_get(value)
     return value
+
+
+def file_from_get(module):
+    """A get_file that answers through module.get as it is at call time, so a test that fakes get fakes files too
+    (the real get_file runs curl -o; its own tests fake curl)."""
+    def get_file(url, path, timeout=300, tries=3, max_bytes=None, agent=None):
+        body = module.get(url, timeout=timeout)
+        if max_bytes is not None and len(body) > max_bytes:
+            raise module.TooLarge('over the cap', url)
+        Path(path).write_bytes(body)
+        return len(body)
+    return get_file
 
 
 class FakeWeb:
@@ -582,6 +596,10 @@ class SharedHelperTests(unittest.TestCase):
 
     @unittest.skip("test ticket: a --slots query with no letters or digits gets slot<n>, not 'stock'")
     def test_empty_query_slot_name(self):
+        pass
+
+    @unittest.skip("test ticket: label_font takes the first LABEL_FONTS entry that loads (Windows %WINDIR%\\Fonts, Linux DejaVu/Noto), and its glyphs cover 'Phở Hà Nội'")
+    def test_label_font_has_vietnamese_on_windows_and_linux(self):
         pass
 
 
