@@ -10,6 +10,9 @@ import argparse
 import json
 import sys
 
+import bashcut_cli
+from bashcut_cli import connection_args, emit
+
 from . import __version__
 from .captions import (export_lines, lines_from_listing, set_text_steps, stale_lines, translations_from_answer,
                        caption_tracks)
@@ -19,19 +22,8 @@ from .settings import resolve
 from .translate import LANGUAGES, Style, TranslateError, Translator, glossary_entries, too_fast, translate_lines
 from .view import review_view
 
-EXIT_NO_KEY = 3
-
-
 def progress(message):
-    print("[translate-captions] " + message, file=sys.stderr, flush=True)
-
-
-def connection_args(parser):
-    group = parser.add_argument_group("connection (one of)")
-    group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
-    group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
-    group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
+    bashcut_cli.progress("translate-captions", message)
 
 
 def translation_args(parser):
@@ -247,35 +239,10 @@ def cmd_check_key(args):
 COMMANDS = {"translate": cmd_translate, "review": cmd_review, "export-lines": cmd_export_lines, "apply": cmd_apply, "cover": cmd_cover, "check-key": cmd_check_key}
 
 
-def emit(value):
-    sys.stdout.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
-    sys.stdout.flush()
-
-
-def utf8_stdio():
-    """UTF-8 on stdin / stdout / stderr whatever the code page is (Windows pipes default to it, e.g. cp1252),
-    so Vietnamese text survives the round trip with the host and the calling agent."""
-    for stream, errors in ((sys.stdin, "strict"), (sys.stdout, "strict"), (sys.stderr, "backslashreplace")):
-        if hasattr(stream, "reconfigure"):  # not on the tests' StringIO
-            stream.reconfigure(encoding="utf-8", errors=errors)
-
-
 def main(argv=None):
-    utf8_stdio()
+    bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
     if hasattr(args, "max_cps") and not 8 <= args.max_cps <= 30:
-        emit({"ok": False, "error": {"code": "bad_args", "message": "--max-cps must be between 8 and 30"}})
-        return 2
-    try:
-        message, data = COMMANDS[args.command](args)
-    except (AppError, TranslateError) as error:
-        out = {"ok": False, "error": {"code": error.code, "message": error.message}}
-        if getattr(error, "data", None) is not None:
-            out["data"] = error.data
-        emit(out)
-        return EXIT_NO_KEY if error.code == "no_key" else 2 if error.code == "bad_args" else 1
-    except (OSError, ValueError) as error:
-        emit({"ok": False, "error": {"code": "failed", "message": str(error)}})
-        return 1
-    emit({"ok": True, "message": message, "data": data})
-    return 0
+        emit(bashcut_cli.failure("bad_args", "--max-cps must be between 8 and 30"))
+        return bashcut_cli.EXIT_USAGE
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, TranslateError), handoff=("no_key",))

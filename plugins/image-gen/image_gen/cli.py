@@ -12,7 +12,9 @@ import argparse
 import datetime
 import json
 import os
-import sys
+
+import bashcut_cli
+from bashcut_cli import connection_args
 
 from . import __version__
 from .mcp import AppError, McpClient
@@ -22,17 +24,7 @@ from .timeline import ensure_video_track, import_files, label, overlaps, place_s
 
 
 def progress(message):
-    if hasattr(sys.stderr, "reconfigure"):  # UTF-8 whatever the code page (Windows): the Runs log reads Vietnamese
-        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
-    print("[image-gen] " + message, file=sys.stderr, flush=True)
-
-
-def connection_args(parser):
-    group = parser.add_argument_group("connection (one of)")
-    group.add_argument("--project", help="a .fcproj file, edited headlessly (saved unless --no-save)")
-    group.add_argument("--bridge", help="host:port of the open app (filmcraft --control <port>), e.g. 127.0.0.1:9876")
-    group.add_argument("--cli", help="path to bashcutpro or filmcraft-cli (default: $BASHCUTPRO_CLI, $FILMCRAFT_CLI, PATH, the install folder)")
-    group.add_argument("--no-save", action="store_true", help="with --project: leave the file unchanged")
+    bashcut_cli.progress("image-gen", message)
 
 
 def generate_args(parser):
@@ -313,27 +305,7 @@ def cmd_illustrate(args):
 COMMANDS = {"style": cmd_style, "generate": cmd_generate, "import": cmd_import, "illustrate": cmd_illustrate}
 
 
-def emit(value):
-    """The result as UTF-8 whatever the console's code page is (Windows), so a caller can always decode it."""
-    text = json.dumps(value, ensure_ascii=False, indent=1) + "\n"
-    sys.stdout.flush()
-    out = getattr(sys.stdout, "buffer", None)
-    if out is None:  # a text stream (tests)
-        sys.stdout.write(text)
-    else:
-        out.write(text.encode("utf-8"))
-        out.flush()
-
-
 def main(argv=None):
+    bashcut_cli.utf8_stdio()
     args = build_parser().parse_args(argv)
-    try:
-        message, data = COMMANDS[args.command](args)
-    except (AppError, ImageError) as error:
-        emit({"ok": False, "error": {"code": error.code, "message": error.message}})
-        return 2 if error.code == "bad_args" else 1
-    except (OSError, ValueError) as error:
-        emit({"ok": False, "error": {"code": "failed", "message": str(error)}})
-        return 1
-    emit({"ok": True, "message": message, "data": data})
-    return 0
+    return bashcut_cli.run(COMMANDS[args.command], args, (AppError, ImageError))
