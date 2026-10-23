@@ -79,6 +79,26 @@ class GetTests(unittest.TestCase):
         audio = load('audio-mix/fetch_audio.py')
         self.assertEqual((audio.get.__module__, audio.get.__name__), ('fetch_stock', 'get'))
 
+    @unittest.skip("test ticket: every fetch_* script (facts, font, fonts, luts, lottie) downloads with fetch_stock.get")
+    def test_every_script_downloads_with_the_same_get(self):
+        pass
+
+    @unittest.skip("test ticket: get(data=…) POSTs the body on stdin, keeps the headers and retries a 503")
+    def test_a_post_sends_the_body_and_is_retried(self):
+        pass
+
+    @unittest.skip("test ticket: get(agent=…) sends that User-Agent; a 404 raises NotFound (a FetchError) once")
+    def test_the_agent_is_sent_and_a_404_raises_not_found(self):
+        pass
+
+    @unittest.skip("test ticket: save() reuses an item the library already has, place() maps an error to placeError")
+    def test_save_reuses_an_item_and_place_reports_its_error(self):
+        pass
+
+    @unittest.skip("test ticket: bashcut() retries a stale revision once for luts, facts and fonts too")
+    def test_a_stale_revision_is_retried_in_every_script(self):
+        pass
+
 
 @unittest.skipIf(PIL is None, 'Pillow not installed')
 class BatchTests(unittest.TestCase):

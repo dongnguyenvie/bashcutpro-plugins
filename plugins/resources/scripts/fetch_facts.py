@@ -27,19 +27,19 @@ import argparse
 import concurrent.futures
 import json
 import re
-import subprocess
 import sys
 import tempfile
-import time
 import unicodedata
 import urllib.parse
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fetch_stock import NotFound, bashcut, get  # noqa: E402,F401  (NotFound: a missing page)
 
 # Wikimedia asks for a User-Agent that names the tool and a contact.
 AGENT = "bashcut-agent-kit/1 (https://github.com/dongnguyenvie/bashcut-agent-kit) curl"
 WIKIDATA = "https://www.wikidata.org/w/api.php"
 WORLDBANK = "https://api.worldbank.org/v2"
-TRANSIENT = {6, 7, 18, 28, 35, 52, 55, 56}  # curl: DNS, connect, partial, timeout, TLS, empty, send, receive
 
 # Common names → Wikidata properties (P-ids work as they are).
 PROPERTIES = {
@@ -78,44 +78,8 @@ WB_UNITS = {"current US$": "US$", "sq. km": "km²", "% of GDP": "% of GDP", "ann
             "% of population": "%", "people per sq. km of land area": "people/km²"}
 
 
-class NotFound(OSError):
-    pass
-
-
-def get(url, timeout=30, tries=3):
-    # curl, not urllib: it uses the system's certificates, which some Python installs lack. Transient network
-    # errors and HTTP 429/5xx are tried again; 404 raises NotFound.
-    for attempt in range(tries):
-        out = subprocess.run(["curl", "-sL", "-A", AGENT, "--max-time", str(timeout), "-w", "%{stderr}%{http_code}",
-                              url], capture_output=True)
-        status = int((out.stderr or b"0").decode(errors="replace").strip()[-3:] or 0) if out.returncode == 0 else 0
-        if out.returncode == 0 and status < 400:
-            return out.stdout
-        if status == 404:
-            raise NotFound(f"404 for {url.split('?')[0]}")
-        if attempt + 1 < tries and (out.returncode in TRANSIENT or status == 429 or status >= 500):
-            time.sleep(1.5 * (attempt + 1))
-            continue
-        raise OSError(f"curl exit {out.returncode} http {status} for {url.split('?')[0]}")
-
-
 def get_json(url):
-    return json.loads(get(url))
-
-
-def bashcut(*args):
-    try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
-    except FileNotFoundError:
-        return {"error": "bashcut is not on PATH"}
-    try:
-        result = json.loads(out.stdout or out.stderr)
-    except ValueError:
-        return {"error": (out.stderr or out.stdout).strip()[:200] or f"bashcut exit {out.returncode}"}
-    error = result.get("error") if isinstance(result, dict) else None
-    if isinstance(error, dict):
-        result = {**result, "error": error.get("message") or str(error)}
-    return result
+    return json.loads(get(url, agent=AGENT))  # Wikimedia asks for an agent that names the tool
 
 
 # ---------- questions

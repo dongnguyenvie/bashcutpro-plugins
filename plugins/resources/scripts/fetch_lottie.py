@@ -24,14 +24,13 @@ import json
 import math
 import os
 import re
-import subprocess
 import sys
 import tarfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_stock import AGENT, draw_sheets, get, parse_pick, slug  # noqa: E402
+from fetch_stock import draw_sheets, get, parse_pick, slug  # noqa: E402
 
 # Licences checked October 2026 (the user owns the rights question): useAnimations MIT; Noto Animated Emoji CC BY 4.0;
 # LottieFiles' free animations the Lottie Simple License (commercial use and edits allowed, attribution not required
@@ -81,13 +80,8 @@ def words(text):
 
 
 def post(url, body, timeout=30):
-    """A JSON POST with curl (LottieFiles' GraphQL takes no GET)."""
-    out = subprocess.run(["curl", "-sfL", "-A", AGENT, "--max-time", str(timeout), "-H",
-                          "content-type: application/json", "--data-binary", "@-", url],
-                         input=json.dumps(body).encode(), capture_output=True)
-    if out.returncode != 0:
-        raise OSError(f"curl exit {out.returncode} for {url}")
-    return json.loads(out.stdout)
+    """A JSON POST (LottieFiles' GraphQL takes no GET)."""
+    return json.loads(get(url, {"content-type": "application/json"}, timeout, data=json.dumps(body).encode()))
 
 
 # --- useAnimations: the npm package's modules hold the animation as a JS literal ------------------------------------

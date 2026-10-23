@@ -63,23 +63,34 @@ TRIES, BACKOFF = 3, 1.5  # seconds before the 2nd try, twice that before the 3rd
 class FetchError(OSError):
     """A request that failed for good; reason is the error without the URL ("curl exit 56 after 3 tries")."""
 
-    def __init__(self, reason, url):
-        super().__init__(f"{reason} for {url.split('?')[0]}")
+    def __init__(self, reason, url=None):
+        super().__init__(f"{reason} for {url.split('?')[0]}" if url else reason)
         self.reason = reason
 
 
-def get(url, headers=None, timeout=30, tries=TRIES):
-    # curl, not urllib: it uses the system's certificates, which some Python installs lack. Transient network errors
-    # (Openverse and Wikimedia reset connections now and then: curl 56) and HTTP 429/5xx are tried again with backoff.
-    command = ["curl", "-sL", "-A", AGENT, "--max-time", str(timeout), "-w", "%{stderr}%{http_code}"]
+class NotFound(FetchError):
+    """HTTP 404: never tried again (a missing page is an answer, not a network error)."""
+
+
+def get(url, headers=None, timeout=30, tries=TRIES, agent=AGENT, data=None):
+    """The body of url; with data (bytes) a POST. The one HTTP getter of the resources scripts.
+
+    curl, not urllib: it uses the system's certificates, which some Python installs lack. Transient network errors
+    (Openverse and Wikimedia reset connections now and then: curl 56) and HTTP 429/5xx are tried again with backoff;
+    404 raises NotFound, any other failure FetchError."""
+    command = ["curl", "-sL", "-A", agent, "--max-time", str(timeout), "-w", "%{stderr}%{http_code}"]
     for name, value in (headers or {}).items():
         command += ["-H", f"{name}: {value}"]
+    if data is not None:
+        command += ["--data-binary", "@-"]
     for attempt in range(1, tries + 1):
-        out = subprocess.run(command + [url], capture_output=True)
+        out = subprocess.run(command + [url], input=data, capture_output=True)
         status = int(re.sub(rb"\D", b"", (out.stderr or b"")[-3:]) or 0)
         if out.returncode == 0 and status < 400:
             return out.stdout
         reason = f"http {status}" if out.returncode == 0 else f"curl exit {out.returncode}"
+        if status == 404:
+            raise NotFound(reason, url)
         if attempt < tries and (out.returncode in TRANSIENT or status == 429 or status >= 500):
             time.sleep(BACKOFF * attempt)
             continue
@@ -477,6 +488,8 @@ def import_into(dest, rows):
 
 
 def bashcut(*args, retry=True):
+    """bashcut … as a dict; an error becomes {"error": message}. A stale revision is read and tried once more.
+    The one CLI wrapper of the resources scripts."""
     try:
         out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
     except FileNotFoundError:
@@ -485,7 +498,9 @@ def bashcut(*args, retry=True):
         result = json.loads(out.stdout or out.stderr)
     except ValueError:
         return {"error": (out.stderr or out.stdout).strip()[:200] or f"bashcut exit {out.returncode}"}
-    error = result.get("error") if isinstance(result, dict) else None
+    if not isinstance(result, dict):
+        return {"result": result}
+    error = result.get("error")
     if isinstance(error, dict):
         if retry and (error.get("data") or {}).get("category") == "stale_revision":
             bashcut("context", "get", retry=False)  # the open project changed: read it, then once more
@@ -494,26 +509,47 @@ def bashcut(*args, retry=True):
     return result
 
 
+def save(scope, wanted, *args):
+    """library add --scope scope --id wanted *args: {"id": "scope:id"} (an item added before is reused) or
+    {"error": message}."""
+    added = bashcut("library", "add", "--scope", scope, "--id", wanted, *args)
+    if added.get("error") and "already has" in str(added["error"]):
+        return {"id": f"{scope}:{wanted}"}  # the same file, fetched before
+    if added.get("error"):
+        return {"error": str(added["error"])[:120]}
+    item = added.get("item") if isinstance(added.get("item"), dict) else added
+    found = item.get("reference") or item.get("id") or wanted
+    return {"id": found if ":" in str(found) else f"{scope}:{found}"}
+
+
+def place(item, frame, duration=None, size=None, position=None):
+    """library place item at frame (duration in frames, size, position when given): {"placed", "rev"} or
+    {"placeError"}."""
+    args = ["library", "place", item, "--at-frame", str(frame), "--base-rev", "last"]
+    for flag, value in (("--duration", duration), ("--size", size), ("--position", position)):
+        if value:
+            args += [flag, str(value)]
+    placed = bashcut(*args)
+    if placed.get("error"):
+        return {"placeError": str(placed["error"])[:120]}
+    return {"placed": frame, "rev": placed.get("rev")}
+
+
 def library_add(row, dest, scope):
     """Save a downloaded candidate as a library clip; fills row['id'] (or row['error'])."""
     tags = ",".join(t for t in ["stock", row.get("slot"), *slug(row.get("words")).split("-"),
                                  *(slug(str(row[k])) for k in ("year", "collection") if row.get(k))] if t)
     wanted = slug(f"{row['source']}-{row['id']}")
-    args = ["library", "add", "--kind", "clip", "--file", str(dest / row["file"]), "--scope", scope,
+    args = ["--kind", "clip", "--file", str(dest / row["file"]),
             "--name", f"{row.get('slot')} #{row.get('n')} {row.get('tags') or ''}"[:80].strip(), "--tags", tags]
-    args += ["--id", wanted]
     for flag, key in (("--source", "page"), ("--license", "license"), ("--author", "author")):
         if row.get(key):
             args += [flag, str(row[key])]
-    added = bashcut(*args)
-    item = added.get("item") if isinstance(added.get("item"), dict) else added
-    if added.get("error") and "already has" in str(added["error"]):
-        row["libraryId"] = f"{scope}:{wanted}"  # the same picture, fetched before
-    elif added.get("error"):
-        row["libraryError"] = str(added["error"])[:120]
+    saved = save(scope, wanted, *args)
+    if saved.get("error"):
+        row["libraryError"] = saved["error"]
     else:
-        found = item.get("reference") or item.get("id")
-        row["libraryId"] = found if ":" in str(found) else f"{scope}:{found}"
+        row["libraryId"] = saved["id"]
 
 
 def fetch_body(url, timeout=300, row=None):
@@ -755,14 +791,7 @@ def pick(dest, spec, scope):
         line = {"slot": row["slot"], "n": n, "id": row.get("libraryId"),
                 **{k: row.get(k) for k in ("file", "kind", "size", "seconds", "libraryError")}}
         if frame is not None and row.get("libraryId"):
-            args = ["library", "place", row["libraryId"], "--at-frame", str(frame), "--base-rev", "last"]
-            if duration:
-                args += ["--duration", str(duration)]
-            placed = bashcut(*args)
-            if placed.get("error"):
-                line["placeError"] = str(placed["error"])[:120]
-            else:
-                line.update(placed=frame, rev=placed.get("rev"))
+            line.update(place(row["libraryId"], frame, duration))
         chosen.append(line)
     manifest.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
     return chosen

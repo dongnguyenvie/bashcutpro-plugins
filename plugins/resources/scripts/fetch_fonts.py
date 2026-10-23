@@ -28,7 +28,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 import urllib.parse
@@ -36,6 +35,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fetch_font as single  # noqa: E402  (whole-file download from Google Fonts)
+from fetch_stock import bashcut, get  # noqa: E402
 
 API = "https://api.fontsource.org/v1/fonts"
 CSS = "https://fonts.googleapis.com/css2"
@@ -67,14 +67,6 @@ def shared(kind):
     return folder
 
 
-def get(url, timeout=30, agent=PLAIN_AGENT):
-    # curl, not urllib: it uses the system's certificates, which some Python installs lack.
-    out = subprocess.run(["curl", "-sfL", "-A", agent, "--max-time", str(timeout), url], capture_output=True)
-    if out.returncode != 0:
-        raise OSError(f"curl exit {out.returncode} for {url.split('?')[0]}")
-    return out.stdout
-
-
 def read_json(path, default):
     try:
         return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -104,11 +96,11 @@ def subset_font(family, weight, text, folder):
     if path.exists():
         return path
     query = urllib.parse.urlencode({"family": f"{family}:wght@{weight}", "text": text})
-    css = get(f"{CSS}?{query}").decode("utf-8", "replace")
+    css = get(f"{CSS}?{query}", agent=PLAIN_AGENT).decode("utf-8", "replace")
     found = re.search(r"url\((https://[^)]+)\)", css)
     if not found:
         raise OSError(f"no font url for {family}")
-    path.write_bytes(get(found.group(1)))
+    path.write_bytes(get(found.group(1), agent=PLAIN_AGENT))
     return path
 
 
@@ -214,7 +206,7 @@ def ingest(subset="vietnamese", limit=None, do_measure=True, workers=12):
     cache.mkdir(exist_ok=True)
     index_path = data / "index.json"
     old = read_json(index_path, {}).get("families", {})
-    catalogue = json.loads(get(API, agent=single.AGENT))
+    catalogue = json.loads(get(API))
     families, new, changed = {}, 0, 0
     for font in catalogue:
         if font.get("type") != "google":
@@ -455,20 +447,6 @@ def draw_sheet(rows, text, role, folder):
 
 
 # ---- pick ------------------------------------------------------------------------------------------------------
-
-def bashcut(*args):
-    try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
-    except FileNotFoundError:
-        return {"error": "bashcut is not on PATH"}
-    try:
-        result = json.loads(out.stdout or out.stderr)
-    except ValueError:
-        return {"error": (out.stderr or out.stdout).strip()[:200] or f"bashcut exit {out.returncode}"}
-    if isinstance(result, dict) and isinstance(result.get("error"), dict):
-        result = {**result, "error": result["error"].get("message") or str(result["error"])}
-    return result if isinstance(result, dict) else {"result": result}
-
 
 def postscript_name(path, weight):
     """The PostScript name BashCut's textStyle.font takes: the file's own, or a variable font's named instance."""

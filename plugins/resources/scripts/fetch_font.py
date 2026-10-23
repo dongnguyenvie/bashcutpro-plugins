@@ -17,21 +17,16 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 import urllib.parse
 from pathlib import Path
 
-AGENT = "Mozilla/5.0 (Macintosh) bashcut-agent-kit"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fetch_stock import AGENT, get  # noqa: E402,F401  (AGENT: fetch_fonts reads single.AGENT)
+
 API = "https://api.fontsource.org/v1/fonts"
 NAMES = {100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular", 500: "Medium", 600: "SemiBold",
          700: "Bold", 800: "ExtraBold", 900: "Black"}
-
-
-def get(url, timeout=30):
-    # curl, not urllib: it uses the system's certificates, which some Python installs lack.
-    out = subprocess.run(["curl", "-sfL", "-A", AGENT, "--max-time", str(timeout), url], capture_output=True)
-    if out.returncode != 0:
-        raise OSError(f"curl exit {out.returncode} for {url}")
-    return out.stdout
 
 
 def search(subset, category, query, weight, count):

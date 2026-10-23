@@ -417,6 +417,7 @@ class CandidateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, \
                 mock.patch.dict(os.environ, {'FREESOUND_API_KEY': 'k'}, clear=True), \
                 mock.patch.object(self.audio, 'get', web), mock.patch.object(self.audio, 'bashcut', fake), \
+                mock.patch('fetch_stock.bashcut', fake), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
             self.audio.main(['--dest', folder, '--sfx', 'whoosh', '--sfx-count', '3'])
             files = sorted(p.name for p in Path(folder).glob('*.mp3'))
@@ -437,7 +438,7 @@ class CandidateTests(unittest.TestCase):
         self.assertEqual(analyzes[0][2], 'project:lib-1,project:lib-2,project:lib-3')
 
         picked = io.StringIO()
-        with tempfile.TemporaryDirectory() as folder, mock.patch.object(self.audio, 'bashcut', fake), \
+        with tempfile.TemporaryDirectory() as folder, mock.patch('fetch_stock.bashcut', fake), \
                 contextlib.redirect_stdout(picked):
             (Path(folder) / 'candidates.json').write_text(json.dumps(manifest), encoding='utf-8')
             self.audio.main(['--dest', folder, '--pick', 'whoosh=2@120:30,3;bed=1@0'])

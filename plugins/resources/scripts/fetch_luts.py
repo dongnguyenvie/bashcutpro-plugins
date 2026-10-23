@@ -30,7 +30,6 @@ import io
 import json
 import os
 import re
-import subprocess
 import sys
 import urllib.parse
 import zipfile
@@ -38,7 +37,9 @@ from pathlib import Path
 
 import numpy as np
 
-AGENT = "Mozilla/5.0 (Macintosh) bashcut-agent-kit"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fetch_stock import bashcut, get  # noqa: E402
+
 GMIC = "https://gmic.eu/color_presets/"
 # A copy of the same RawTherapee collection, used when the official server refuses (it often answers 509).
 RT_MIRROR = "cedeber/hald-clut"
@@ -51,32 +52,6 @@ def shared(env, fallback):
 
 DATA = shared("BASHCUT_SHARED_DATA", "~/Library/Application Support/BashCut/PluginData/_shared") / "luts"
 CACHE = shared("BASHCUT_SHARED_CACHE", "~/Library/Caches/BashCut/PluginData/_shared") / "luts"
-
-
-def get(url, timeout=60):
-    # curl, not urllib: it uses the system's certificates, which some Python installs lack.
-    out = subprocess.run(["curl", "-sfL", "-A", AGENT, "--max-time", str(timeout), url], capture_output=True)
-    if out.returncode != 0:
-        raise OSError(f"curl exit {out.returncode} for {url.split('?')[0]}")
-    return out.stdout
-
-
-def bashcut(*args, retry=True):
-    try:
-        out = subprocess.run(["bashcut", *args], capture_output=True, text=True, encoding="utf-8")
-    except FileNotFoundError:
-        return {"error": "bashcut is not on PATH"}
-    try:
-        result = json.loads(out.stdout or out.stderr)
-    except ValueError:
-        return {"error": (out.stderr or out.stdout).strip()[:200] or f"bashcut exit {out.returncode}"}
-    error = result.get("error") if isinstance(result, dict) else None
-    if isinstance(error, dict):
-        if retry and (error.get("data") or {}).get("category") == "stale_revision":
-            bashcut("context", "get", retry=False)  # the open project changed: read it, then once more
-            return bashcut(*args, retry=False)
-        result = {**result, "error": error.get("message") or str(error)}
-    return result
 
 
 def slug(text):
@@ -368,18 +343,18 @@ def gmic(quota):
     pack = CACHE / "gmic-creative_cube.zip"
     if not pack.exists():
         pack.parent.mkdir(parents=True, exist_ok=True)
-        pack.write_bytes(get(GMIC + "creative/creative_cube.zip"))
+        pack.write_bytes(get(GMIC + "creative/creative_cube.zip", timeout=60))
     with zipfile.ZipFile(pack) as z:
         names = sorted(n for n in z.namelist() if n.endswith(".cube"))
         for n in names[:max(1, quota // 4) if quota else None]:
             yield f"creative-{Path(n).stem}", z.read(n), "cube"
             taken += 1
-    page = get(GMIC).decode("utf-8", "replace")
+    page = get(GMIC, timeout=60).decode("utf-8", "replace")
     cats = sorted({c for c in re.findall(r'([a-z_]+)_sample_1\.html', page) if c != "creative"})
     lists = {}
     for cat in cats:
         try:
-            html = get(f"{GMIC}{cat}_sample_1.html").decode("utf-8", "replace")
+            html = get(f"{GMIC}{cat}_sample_1.html", timeout=60).decode("utf-8", "replace")
         except OSError:
             continue
         lists[cat] = sorted(set(re.findall(rf'href="({re.escape(cat)}/clut/[^"]+\.zip)"', html)))
@@ -395,7 +370,7 @@ def gmic(quota):
         if kept.exists():
             return name, b"", "seen"
         try:
-            with zipfile.ZipFile(io.BytesIO(get(GMIC + urllib.parse.quote(ref)))) as z:
+            with zipfile.ZipFile(io.BytesIO(get(GMIC + urllib.parse.quote(ref), timeout=60))) as z:
                 inner = next(n for n in z.namelist() if n.endswith(".cube"))
                 return name, z.read(inner), "cube"
         except (OSError, zipfile.BadZipFile, StopIteration):
@@ -429,7 +404,7 @@ def rawtherapee(quota):
             for n in names[:quota or None]:
                 yield "-".join(Path(n).parts[-2:]).removesuffix(".png"), z.read(n), "hald"
         return
-    tree = json.loads(get(f"https://api.github.com/repos/{RT_MIRROR}/git/trees/master?recursive=1"))
+    tree = json.loads(get(f"https://api.github.com/repos/{RT_MIRROR}/git/trees/master?recursive=1", timeout=60))
     paths = sorted(t["path"] for t in tree.get("tree", []) if t.get("type") == "blob"
                    and t["path"].startswith(RT_FOLDER) and t["path"].lower().endswith(".png"))
     if quota:  # spread a small quota over the folders (black and white, colour, each maker)
