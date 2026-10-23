@@ -13,9 +13,10 @@ import json
 import os
 import re
 import shutil
-import sys
 import tempfile
 import zipfile
+
+import bashcut_settings
 
 SCHEMA = "bashcut-library/1"
 PACK_SCHEMA = "bashcut-library-pack/1"
@@ -48,23 +49,10 @@ class LibraryError(Exception):
         self.message = message
 
 
-def data_dir(env=None):
-    env = os.environ if env is None else env
-    if env.get("FILMCRAFT_DATA_DIR"):
-        return env["FILMCRAFT_DATA_DIR"]
-    home = env.get("HOME") or os.path.expanduser("~")
-    if sys.platform == "darwin":
-        return os.path.join(home, "Library", "Application Support", "FilmCraft")
-    if sys.platform == "win32":
-        return os.path.join(env.get("APPDATA") or home, "FilmCraft")
-    if env.get("XDG_DATA_HOME"):
-        return os.path.join(env["XDG_DATA_HOME"], "filmcraft")
-    return os.path.join(home, ".local", "share", "filmcraft")
-
 
 def library_dir(env=None):
     env = os.environ if env is None else env
-    return env.get("BASHCUT_LIBRARY_DIR") or os.path.join(data_dir(env), "bashcut", "library")
+    return env.get("BASHCUT_LIBRARY_DIR") or os.path.join(bashcut_settings.data_dir(env), "bashcut", "library")
 
 
 def now():
