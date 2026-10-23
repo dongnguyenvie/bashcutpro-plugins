@@ -183,6 +183,10 @@ class FetchTests(Base):
         pass
 
 
+    @unittest.skip("test ticket: a script that exits non-zero with no lines after its files were imported reports success with a note")
+    def test_fetch_succeeds_when_files_were_imported_before_the_script_failed(self):
+        pass
+
 class OutputTests(unittest.TestCase):
     def test_the_result_is_utf8_whatever_the_console_code_page(self):
         folder = tempfile.mkdtemp()

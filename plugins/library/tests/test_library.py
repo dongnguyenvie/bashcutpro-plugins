@@ -200,6 +200,20 @@ class PackTests(Base):
         self.assertEqual(code, 2)
 
 
+    @unittest.skip("test ticket: a pack with a wrong sha256 is hashed from its files, so a same-file item is skipped and a different one added")
+    def test_import_recomputes_the_pack_hash(self):
+        pass
+
+
+class IndexLockTests(Base):
+    @unittest.skip("test ticket: two Library objects read the index, each adds / uses an item, both saves keep both updates (uses add up)")
+    def test_concurrent_saves_keep_both_updates(self):
+        pass
+
+    @unittest.skip("test ticket: a stale index.json.lock is taken over; a fresh one held past LOCK_WAIT gives LibraryError busy")
+    def test_stale_and_held_lock(self):
+        pass
+
 class ManifestTests(unittest.TestCase):
     def test_manifest_matches_the_cli(self):
         self.assertEqual(MANIFEST["version"], __version__)

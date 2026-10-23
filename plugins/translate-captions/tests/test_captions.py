@@ -130,6 +130,10 @@ class RoundTripTests(unittest.TestCase):
         self.assertNotIn("saved", self.state())
         self.assertEqual(self.state()["captions"]["tracks"][0]["captions"][1]["text"], "First   line\nwrapped")
 
+    @unittest.skip("test ticket: apply with every answered line stale reports no 'had no translation' count")
+    def test_apply_counts_only_unanswered_lines_as_missing(self):
+        pass
+
     def test_no_key_hands_the_lines_to_the_agent_then_apply_writes_them(self):
         code, out = self.run_cli("translate", "--target", "vi")
         self.assertEqual(code, cli.bashcut_cli.EXIT_HANDOFF)

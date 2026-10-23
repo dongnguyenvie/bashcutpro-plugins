@@ -37,7 +37,9 @@ host:port`). Output and exit status follow `bashcut-result/1` (see the [reposito
 `<data dir>/bashcut/library/` (`--library-dir` or `BASHCUT_LIBRARY_DIR` override): `index.json`
 (`bashcut-library/1`) and `items/<id>/` with each item's files and preview. An item: `id`, `kind`, `title`,
 `purpose`, `tags`, `files`, `preview`, `license`, `source`, `favourite`, `added`, `uses`, `recent` (project → last
-use), `params` (the preset name; a brand kit's fields), `sha256` (of its files, to find duplicates).
+use), `params` (the preset name; a brand kit's fields), `sha256` (of its files, to find duplicates; recomputed when a pack is imported).
+Every write takes `index.json.lock`, re-reads the index and merges this run's changes into it (`uses` adds up, `recent`
+keeps every project), so concurrent runs such as batch packs keep each other's updates.
 
 ## Limits
 
