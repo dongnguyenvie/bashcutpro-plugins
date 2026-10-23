@@ -104,7 +104,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `schema` | `"bashcut-plugin/1"` | manifest format version |
 | `id` | string | `publisher.name`, lower case (`bashcut.translate-captions`); the install folder and settings folder name |
 | `name`, `summary` | string | shown in a plugin list, English |
-| `version` | `MAJOR.MINOR.PATCH` | the plugin's version; the Python package's `__version__` (what `--version` prints) is the same, and so is the registry entry's (`tools/check_registry.py`) |
+| `version` | `MAJOR.MINOR.PATCH` | the plugin's version; the Python package's `__version__` (what `--version` prints) is the same, and so is the registry entry's (`tools/check_registry.py`; `--fix` writes both) |
 | `publisher`, `license`, `homepage`, `category` | string | metadata (`category`: captions, voice, graphics, resources…) |
 | `platforms` | `["macos", "windows", "linux"]` | where it runs |
 | `runtime` | `{type, version, packages}` | what must be installed first: `python` `>=3.9` with no packages for translate-captions; `packages` lists pip / npm packages a host would install into the plugin's own environment |
@@ -113,7 +113,7 @@ One per plugin folder. Fields (example: [translate-captions](plugins/translate-c
 | `output` | `"bashcut-result/1"` | the result protocol above |
 | `app` | object | what the plugin needs from BashCutPro: `minVersion` (the workspace version, `0.9.0` today), `connections` (`mcp-headless`, `mcp-bridge`, `control`), `tools` (MCP tools), `commands` (engine command ids), `effects` (effect ids). A host checks them against `command_list` / `effects.list` before running |
 | `settings` | list | `{id, title, type, default?, choices?, env: [...], flag, optional?, help}`; `type` one of string, secret, enum, integer, number, bool, path; a `secret` has no default and is passed only through `env` or `flag`; `help` is shown under the field, in the user's words (no flags, exit statuses or command names) |
-| `actions` | list | what the plugin can do: `{id, title, args, needs: "project" | "none", edits: bool, params: [{id, title, flag, type, default?, choices?, optional?}], handoff?: {exit, then}}`; a param's `title` is its label in the app's form, sentence case, in the README's words; a `bool` param is sent as its `flag` when true; when false nothing is sent, unless its `default` is `true`: then BashCutPro sends `--no-<name>` (e.g. `--keep` → `--no-keep`), so the script must accept it (`argparse.BooleanOptionalAction`; `tools/check_registry.py` checks) |
+| `actions` | list | what the plugin can do: `{id, title, args, needs: "project" | "none", edits: bool, params: [{id, title, flag, type, default?, choices?, optional?}], handoff?: {exit, then}}`; a param's `title` is its label in the app's form, sentence case, in the README's words; a `bool` param is sent as its `flag` when true; when false nothing is sent, unless its `default` is `true`: then BashCutPro sends `--no-<name>` (e.g. `--keep` → `--no-keep`), so the script must accept it (`argparse.BooleanOptionalAction`; `tools/check_registry.py` checks the option on the action's subcommand in the package's `cli.build_parser()`) |
 | `skills` | list | agent skills (Markdown with front matter), relative paths |
 | `i18n` | object, optional | translations of the text a person sees, by language (`vi` today): on the plugin `{"vi": {"name", "summary"}}`; on a setting, an action or a param `{"vi": {"title", "help"}}`; on an `enum` setting or param also `"choices": {value: label}` (BashCutPro VI2), which may be partial: a value without a label shows as itself. A host shows the app's UI language and falls back to the English field; a manifest without `i18n` is fine. Once a plugin has `vi` anywhere, every name, summary, title and help on it has a `vi` one (`tools/check_registry.py`). The choice values themselves never change: the value is what is saved and passed to the plugin, and a label map names only the item's own choices |
 
@@ -123,6 +123,17 @@ The list a host or an agent reads to find plugins. Each entry repeats the manife
 without fetching it; `tools/check_registry.py` keeps them equal to the manifest. `summary` is a shorter line than the
 manifest's. `i18n` (optional) is `{"vi": {"name", "summary"}}`: the name is the manifest's `i18n.vi.name`, the summary
 the registry's own short line in Vietnamese; once the manifest has a language, the entry has both in it.
+
+A version bump (or a new name, category, platform list, `app.minVersion` or `i18n.vi.name`) is one manifest edit,
+then:
+
+```sh
+python3 tools/check_registry.py --fix
+```
+
+`--fix` writes the entry's copied fields (`name`, `version`, `category`, `platforms`, `minAppVersion`, `path`,
+`i18n.<lang>.name`) and every `__version__` in the plugin's Python (tests aside), keeps the file's layout, prints
+each change and then runs the check. The `summary` lines and a new plugin's entry stay hand-written.
 
 ```json
 {
